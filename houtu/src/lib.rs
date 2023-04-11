@@ -13,6 +13,7 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run() {
     let mut app = App::new();
+    // app.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()));
 
     app.add_plugins(MinimalPlugins);
     app.add_plugin(bevy::asset::AssetPlugin::default());
@@ -35,6 +36,8 @@ pub fn run() {
     // app.add_plugin(rgis_layers::Plugin);
     // app.add_plugin(rgis_file_loader::Plugin);
     // app.add_plugin(rgis_renderer::Plugin);
+    app.add_plugin(houtu_scene::Plugin);
+    app.add_plugin(houtu_renderer::Plugin);
     // app.add_plugin(rgis_mouse::Plugin);
     // app.add_plugin(rgis_keyboard::Plugin);
     // app.add_plugin(rgis_network::Plugin);
@@ -46,23 +49,23 @@ pub fn run() {
     app.add_plugin(bevy::diagnostic::DiagnosticsPlugin);
     app.add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin);
 
-    #[cfg(target_arch = "wasm32")]
-    {
-        app.add_plugin(bevy_web_resizer::Plugin);
-    }
+    // #[cfg(target_arch = "wasm32")]
+    // {
+    //     app.add_plugin(bevy_web_resizer::Plugin);
+    // }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let cli_values = if let Ok(c) = rgis_cli::run() {
-            c
-        } else {
-            return;
-        };
-        app.insert_resource(Msaa {
-            samples: cli_values.msaa_sample_count,
-        })
-        .add_plugin(rgis_cli::Plugin(cli_values));
-    }
+    // #[cfg(not(target_arch = "wasm32"))]
+    // {
+    //     let cli_values = if let Ok(c) = rgis_cli::run() {
+    //         c
+    //     } else {
+    //         return;
+    //     };
+    //     app.insert_resource(Msaa {
+    //         samples: cli_values.msaa_sample_count,
+    //     })
+    //     .add_plugin(rgis_cli::Plugin(cli_values));
+    // }
 
     app.run();
 }

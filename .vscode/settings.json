@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.linkedProjects": [
+        ".\\houtu-renderer\\Cargo.toml"
+    ]
+}

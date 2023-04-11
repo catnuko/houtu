@@ -21,6 +21,9 @@ members = [
     "rgis-units",
     "rgis",
     "time-logger",
+    "houtu",
+    "houtu-renderer",
+    "houtu-scene"
 ]
 resolver = "2"
 

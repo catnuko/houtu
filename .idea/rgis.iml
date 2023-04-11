@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="CPP_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/geo-features/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/geo-file-loader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/geo-geom-type/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/geo-proj-js/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/geo-projected/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/houtu-renderer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/houtu-scene/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/houtu/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-camera/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-events/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-file-loader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-geo-ops/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-keyboard/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-layer-id/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-layers/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-library/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-mouse/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-network/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-renderer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-settings/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-transform/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis-units/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rgis/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/time-logger/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

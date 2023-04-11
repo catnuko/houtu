@@ -1,0 +1,12 @@
+[package]
+name = "rgis-geo-ops"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bevy_egui = "0.19"
+geo = "0.24"
+geo-features = { path = "../geo-features" }
+geo-geom-type = { path = "../geo-geom-type" }
+geo-projected = { path = "../geo-projected" }

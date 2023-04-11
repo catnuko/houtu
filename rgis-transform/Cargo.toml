@@ -1,0 +1,35 @@
+[package]
+name = "rgis-transform"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "0.9", default-features = false, features = [
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_ui",
+    "wayland",
+    "png",
+] }
+geo-features = { path = "../geo-features" }
+geo-projected = { path = "../geo-projected" }
+geo = "0.24"
+rgis-events = { path = "../rgis-events" }
+rgis-layer-id = { path = "../rgis-layer-id" }
+rgis-layers = { path = "../rgis-layers" }
+rgis-settings = { path = "../rgis-settings" }
+bevy_jobs = { git = "https://github.com/frewsxcv/bevy_jobs" }
+thiserror = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+geo = { version = "0.24", features = ["use-proj"] }
+proj = "0.27"
+proj-sys = "0.23"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+geo-proj-js = { path = "../geo-proj-js" }
+geo = "0.24"

@@ -1,0 +1,17 @@
+[package]
+name = "rgis-layer-id"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "0.9", default-features = false, features = [
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_ui",
+    "wayland",
+    "png",
+] }

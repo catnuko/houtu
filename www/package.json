@@ -1,0 +1,21 @@
+{
+  "name": "rgis-www",
+  "version": "0.1.0",
+  "description": "rgis-www",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server"
+  },
+  "keywords": [],
+  "license": "(MIT OR Apache-2.0)",
+  "devDependencies": {
+    "copy-webpack-plugin": "^11",
+    "hello-wasm-pack": "^0.1.0",
+    "webpack": "^5",
+    "webpack-cli": "^5",
+    "webpack-dev-server": "^4",
+    "proj4": "^2",
+    "proj4js-definitions": "^0.1.0"
+  }
+}

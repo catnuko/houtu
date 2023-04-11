@@ -1,0 +1,16 @@
+[package]
+name = "geo-file-loader"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+bytes = "1"
+time-logger = { path = "../time-logger" }
+geo = "0.24"
+geo-features = { path = "../geo-features" }
+geojson = { version = "0.24", features = ["geo-types"] }
+geozero = { version = "0.9", features = ["with-wkt"] }
+geozero-shp = "0.4"
+serde_json = "1"
+thiserror = "1"

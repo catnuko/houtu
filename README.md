@@ -5,12 +5,10 @@
   <strong>webgpu based high performance 3D region rendering engine inspired by <a href="https://github.com/frewsxcv/rgis">rgis</a>.</strong>
 
   <h3>
-    <a href="#">document</a>
+    <a href="#">Doc</a>
     <span> | </span>
-    <a href="#">online demo</a>
+    <a href="#">Demo</a>
   </h3>
-
-  <sub>Built by <a href="https://github.com/catnuko">catnuko</a></sub>
 </div>
 
 ## 🖼️screenshot
@@ -23,16 +21,17 @@
 5. plugin
 
 ## 🐪roadmap
-1. 3d globe and camera
-2. basic geometry
-3. raster tile
-4. vector tile
-5. 3d tile
+1. - [x] 3d globe
+2. - [ ] camera
+3. - [ ] basic geometry，poline，polygon，point，box，sphere等
+4. - [ ] raster tile
+5. - [ ] vector tile
+6. - [ ] 3d tile
+7. - [ ] terrain
 ## 📖document
 [中文文档](./README_zh.md)
 
 ## 💻development
 Welcome to contribute code
-
 
 ## 🐒test

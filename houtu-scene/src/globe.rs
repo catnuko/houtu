@@ -1,17 +1,11 @@
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use geodesy::preamble::*;
-use std::f32::consts::PI;
 
 use crate::ellipsoid::EllipsoidShape;
 #[derive(Component)]
 pub struct Shape;
-
-pub fn new_ellipsoid() -> Ellipsoid {
-    return Ellipsoid::named("wgs84").unwrap();
-}
 pub struct GlobePlugin {
-    // material:Handle<StandardMaterial>,
 }
 impl Default for GlobePlugin {
     fn default() -> Self {
@@ -24,18 +18,16 @@ impl bevy::app::Plugin for GlobePlugin {
         app.add_startup_system(setup);
     }
 }
-const X_EXTENT: f32 = 14.5;
-
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let debug_material = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(uv_debug_texture())),
-        ..default()
-    });
+    // let debug_material = materials.add(StandardMaterial {
+    //     base_color_texture: Some(images.add(uv_debug_texture())),
+    //     ..default()
+    // });
     let ellipsoid = Ellipsoid::named("WGS84").unwrap();
     let x = ellipsoid.semimajor_axis() as f32;
     let y = ellipsoid.semiminor_axis() as f32;
@@ -57,11 +49,6 @@ fn setup(
             ..default()
         },
         transform: Transform::from_xyz(x+1000., x+1000., x+1000.),
-        ..default()
-    });
-
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(x+10000000., x, x).looking_at(Vec3::new(0., 0., 0.), Vec3::Y),
         ..default()
     });
 }

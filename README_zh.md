@@ -10,6 +10,7 @@
     <a href="#">示例</a>
   </h3>
 </div>
+
 ## 截图
 ![wgs84-ellipsoid](./www/assets/wgs84-ellipsoid.png)
 ## 🚀特性
@@ -17,6 +18,15 @@
 2. webgpu
 3. rust
 4. desktop and web browser app
+
+## 路线
+1. - [x] 3d globe
+2. - [ ] camera
+3. - [ ] basic geometry，poline，polygon，point，box，sphere等
+4. - [ ] raster tile
+5. - [ ] vector tile
+6. - [ ] 3d tile
+7. - [ ] terrain
 ## 📖文档
 document
 

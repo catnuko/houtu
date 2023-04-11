@@ -23,7 +23,8 @@ members = [
     "time-logger",
     "houtu",
     "houtu-renderer",
-    "houtu-scene"
+    "houtu-scene",
+    "houtu-camera"
 ]
 resolver = "2"
 

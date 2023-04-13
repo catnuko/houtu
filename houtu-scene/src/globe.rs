@@ -24,10 +24,10 @@ fn setup(
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // let debug_material = materials.add(StandardMaterial {
-    //     base_color_texture: Some(images.add(uv_debug_texture())),
-    //     ..default()
-    // });
+    let debug_material = materials.add(StandardMaterial {
+        base_color_texture: Some(images.add(uv_debug_texture())),
+        ..default()
+    });
     let ellipsoid = Ellipsoid::named("WGS84").unwrap();
     let x = ellipsoid.semimajor_axis() as f32;
     let y = ellipsoid.semiminor_axis() as f32;
@@ -35,7 +35,8 @@ fn setup(
     commands.spawn((
         PbrBundle {
             mesh:  meshes.add(EllipsoidShape::from_ellipsoid(ellipsoid).into()),
-            material:  materials.add(Color::SILVER.into()),
+            // material:  materials.add(Color::SILVER.into()),
+            material: debug_material.into(),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
         },

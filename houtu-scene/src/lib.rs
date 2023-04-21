@@ -1,11 +1,32 @@
 use bevy::prelude::*;
-use std::f32::consts::PI;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use geodesy::preamble::*;
+use std::f32::consts::PI;
 
-mod globe;
 mod ellipsoid;
+mod globe;
 pub use globe::Shape;
+mod box3d;
+mod oriented_bounding_box;
+// mod geographic_projection;
+// mod geographic_tiling_scheme;
+// mod globe_surface_tile_provider;
+// mod imagery;
+// mod imagery_layer;
+// mod imagery_layer_collection;
+// mod imagery_layer_plugin;
+// mod imagery_provider;
+// mod layer_id;
+// mod load_file_system;
+// mod projection;
+// mod rectangle;
+// mod tile_boundingR_region;
+// mod tiling_scheme;
+// mod web_mercator_projection;
+// mod wmts_imagery_layer;
+// mod wmts_imagery_provider;
+mod tile;
+mod tile_key;
 pub struct Plugin;
 
 impl bevy::app::Plugin for Plugin {
@@ -13,5 +34,35 @@ impl bevy::app::Plugin for Plugin {
         app.add_plugin(bevy::pbr::PbrPlugin::default());
         app.add_plugin(houtu_camera::Plugin::default());
         app.add_plugin(globe::GlobePlugin::default());
+        app.add_plugin(houtu_events::Plugin);
+        app.add_plugin(oriented_bounding_box::OrientedBoundingBoxPlugin::default());
+        // app.add_plugin(imagery_layer_plugin::ImageryLayerPlugin::default());
     }
+}
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let mesh = shape::Icosphere::default().try_into().unwrap();
+    let sphere = meshes.add(mesh);
+    commands.spawn((
+        PbrBundle {
+            mesh: sphere,
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            ..Default::default()
+        },
+        // oriented_bounding_box::OrientedBoundingBox::fromPoints(
+        //     meshes
+        //         .get(&sphere)
+        //         .unwrap()
+        //         .attribute(Mesh::ATTRIBUTE_POSITION)
+        //         .unwrap()
+        //         .into()
+        //         .iter()
+        //         .map(|p| Vec3::from(*p))
+        //         .collect::<Vec<Vec3>>()
+        //         .as_slice(),
+        // ),
+    ));
 }

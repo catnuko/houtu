@@ -2488,6 +2488,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "houtu-events"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "geo",
+ "geo-features",
+ "geo-file-loader",
+ "geo-projected",
+ "rgis-layer-id",
+]
+
+[[package]]
+name = "houtu-math"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "geodesy",
+]
+
+[[package]]
 name = "houtu-renderer"
 version = "0.1.0"
 dependencies = [
@@ -2505,8 +2525,11 @@ name = "houtu-scene"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "geo-file-loader",
  "geodesy",
  "houtu-camera",
+ "houtu-events",
+ "houtu-math",
  "round",
  "wgpu",
 ]

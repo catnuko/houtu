@@ -35,8 +35,9 @@ impl bevy::app::Plugin for Plugin {
         app.add_plugin(houtu_camera::Plugin::default());
         app.add_plugin(globe::GlobePlugin::default());
         app.add_plugin(houtu_events::Plugin);
-        app.add_plugin(oriented_bounding_box::OrientedBoundingBoxPlugin::default());
+        // app.add_plugin(oriented_bounding_box::OrientedBoundingBoxPlugin::default());
         // app.add_plugin(imagery_layer_plugin::ImageryLayerPlugin::default());
+        // app.add_startup_system(setup);
     }
 }
 fn setup(
@@ -46,23 +47,24 @@ fn setup(
 ) {
     let mesh = shape::Icosphere::default().try_into().unwrap();
     let sphere = meshes.add(mesh);
+    let points = meshes
+        .get(&sphere)
+        .unwrap()
+        .attribute(Mesh::ATTRIBUTE_POSITION)
+        .unwrap()
+        .as_float3()
+        .unwrap()
+        .iter()
+        .map(|p| Vec3::from(*p))
+        .collect::<Vec<Vec3>>();
+    let obb = oriented_bounding_box::OrientedBoundingBox::fromPoints(points.as_slice());
+
     commands.spawn((
         PbrBundle {
             mesh: sphere,
             material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
             ..Default::default()
         },
-        // oriented_bounding_box::OrientedBoundingBox::fromPoints(
-        //     meshes
-        //         .get(&sphere)
-        //         .unwrap()
-        //         .attribute(Mesh::ATTRIBUTE_POSITION)
-        //         .unwrap()
-        //         .into()
-        //         .iter()
-        //         .map(|p| Vec3::from(*p))
-        //         .collect::<Vec<Vec3>>()
-        //         .as_slice(),
-        // ),
+        obb,
     ));
 }

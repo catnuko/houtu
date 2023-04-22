@@ -2,11 +2,12 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use geodesy::preamble::*;
 
+use crate::box3d::Box3d;
 use crate::ellipsoid::EllipsoidShape;
+use crate::oriented_bounding_box;
 #[derive(Component)]
 pub struct Shape;
-pub struct GlobePlugin {
-}
+pub struct GlobePlugin {}
 impl Default for GlobePlugin {
     fn default() -> Self {
         Self {}
@@ -32,9 +33,20 @@ fn setup(
     let x = ellipsoid.semimajor_axis() as f32;
     let y = ellipsoid.semiminor_axis() as f32;
     let z = ellipsoid.semiminor_axis() as f32;
+    let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
+
+    let points = houtu_utils::getPointsFromMesh(&mesh);
+    let obb = oriented_bounding_box::OrientedBoundingBox::fromPoints(points.as_slice());
+
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Box3d::frmo_obb(obb).into()),
+        material: materials.add(Color::WHITE.into()),
+        ..Default::default()
+    });
+
     commands.spawn((
         PbrBundle {
-            mesh:  meshes.add(EllipsoidShape::from_ellipsoid(ellipsoid).into()),
+            mesh: meshes.add(mesh),
             // material:  materials.add(Color::SILVER.into()),
             material: debug_material.into(),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
@@ -49,7 +61,7 @@ fn setup(
             shadows_enabled: true,
             ..default()
         },
-        transform: Transform::from_xyz(x+1000., x+1000., x+1000.),
+        transform: Transform::from_xyz(x + 1000., x + 1000., x + 1000.),
         ..default()
     });
 }

@@ -12,7 +12,9 @@ bevy = { version = "0.9", default-features = false, features = [
     "bevy_render",
     "bevy_sprite",
     "bevy_ui",
+    "bevy_text",
     "bevy_asset",
+    "bevy_pbr",
     "wayland",
     "png",
 ] }
@@ -21,6 +23,7 @@ round = "0.1.2"
 houtu-camera = { path = "../houtu-camera" }
 houtu-events = { path = "../houtu-events" }
 houtu-math = { path = "../houtu-math" }
+houtu-utils = { path = "../houtu-utils" }
 geo-file-loader = { path = "../geo-file-loader" }
 
 

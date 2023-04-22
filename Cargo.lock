@@ -535,6 +535,7 @@ dependencies = [
  "bevy_render",
  "bevy_sprite",
  "bevy_tasks",
+ "bevy_text",
  "bevy_time",
  "bevy_transform",
  "bevy_ui",
@@ -2530,8 +2531,21 @@ dependencies = [
  "houtu-camera",
  "houtu-events",
  "houtu-math",
+ "houtu-utils",
  "round",
  "wgpu",
+]
+
+[[package]]
+name = "houtu-test"
+version = "0.1.0"
+
+[[package]]
+name = "houtu-utils"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "geodesy",
 ]
 
 [[package]]

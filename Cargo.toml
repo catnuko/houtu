@@ -25,7 +25,9 @@ members = [
     "houtu-renderer",
     "houtu-scene",
     "houtu-camera",
-    "houtu-events"
+    "houtu-events",
+    "houtu-test",
+    "houtu-utils",
 ]
 resolver = "2"
 

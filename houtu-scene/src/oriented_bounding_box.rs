@@ -1,4 +1,6 @@
-use bevy::{ecs::system::Command, prelude::*};
+use std::f32::MAX;
+
+use bevy::prelude::*;
 
 use crate::box3d::Box3d;
 #[derive(Component)]
@@ -10,28 +12,85 @@ impl Default for OrientedBoundingBox {
     fn default() -> Self {
         Self {
             center: Vec3::ZERO,
-            halfAxes: Mat3::IDENTITY,
+            halfAxes: Mat3::ZERO,
         }
     }
 }
 impl OrientedBoundingBox {
-    pub fn fromPoints(points: &[Vec3]) -> Self {
-        //实现这个功能
-        let mut obb = Self::default();
-        let mut min = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
-        let mut max = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
-        for point in points {
-            min = min.min(*point);
-            max = max.max(*point);
+    pub fn fromPoints(positions: &[Vec3]) -> Self {
+        let mut result = Self::default();
+        let length = positions.len();
+        if length == 0 {
+            return result;
         }
-        obb.center = (min + max) / 2.0;
-        obb.halfAxes = Mat3::from_cols(
-            (max.x - min.x) / 2.0 * Vec3::X,
-            (max.y - min.y) / 2.0 * Vec3::Y,
-            (max.z - min.z) / 2.0 * Vec3::Z,
-        );
 
-        obb
+        let mut meanPoint = positions[0].clone();
+        for i in 1..length {
+            meanPoint = meanPoint + positions[i];
+        }
+        let invLength = 1.0 / length as f32;
+        meanPoint = meanPoint / invLength;
+
+        let mut exx = 0.0;
+        let mut exy = 0.0;
+        let mut exz = 0.0;
+        let mut eyy = 0.0;
+        let mut eyz = 0.0;
+        let mut ezz = 0.0;
+        let mut p;
+        for i in 0..length {
+            p = positions[i] - meanPoint;
+            exx += p.x * p.x;
+            exy += p.x * p.y;
+            exz += p.x * p.z;
+            eyy += p.y * p.y;
+            eyz += p.y * p.z;
+            ezz += p.z * p.z;
+        }
+
+        exx *= invLength;
+        exy *= invLength;
+        exz *= invLength;
+        eyy *= invLength;
+        eyz *= invLength;
+        ezz *= invLength;
+
+        let covarianceMatrixSlice = [exx, exy, exz, exy, eyy, eyz, exz, eyz, ezz];
+        let covarianceMatrix = Mat3::from_cols_array(&covarianceMatrixSlice);
+
+        let eigenDecomposition = houtu_math::computeEigenDecomposition(covarianceMatrix);
+        let rotation = eigenDecomposition.unitary.clone();
+        result.halfAxes = rotation.clone();
+
+        let mut v1 = rotation.col(0);
+        let mut v2 = rotation.col(1);
+        let mut v3 = rotation.col(2);
+
+        let mut u1 = -MAX;
+        let mut u2 = -MAX;
+        let mut u3 = -MAX;
+        let mut l1 = MAX;
+        let mut l2 = MAX;
+        let mut l3 = MAX;
+        for i in 0..length {
+            p = positions[i];
+            u1 = v1.dot(p).max(u1);
+            u2 = v2.dot(p).max(u2);
+            u3 = v3.dot(p).max(u3);
+
+            l1 = v1.dot(p).max(l1);
+            l2 = v2.dot(p).max(l2);
+            l3 = v3.dot(p).max(l3);
+        }
+        v1 = v1 * 0.5 * (l1 + u1);
+        v2 = v2 * 0.5 * (l2 + u2);
+        v3 = v3 * 0.5 * (l3 + u3);
+
+        result.center = v1 + v2 + v3;
+        let scale = Vec3::new(u1 - l1, u2 - l2, u3 - l3) * 0.5;
+        result.halfAxes = houtu_math::vec3::multiplyByScalar(result.halfAxes, scale);
+
+        result
     }
 }
 #[derive(Bundle)]
@@ -48,7 +107,7 @@ impl Default for OrientedBoundingBoxPlugin {
 
 impl bevy::app::Plugin for OrientedBoundingBoxPlugin {
     fn build(&self, app: &mut bevy::app::App) {
-        app.add_startup_system(setup);
+        // app.add_startup_system(setup);
     }
 }
 fn setup(
@@ -64,4 +123,45 @@ fn setup(
             ..Default::default()
         });
     }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const positions: [Vec3; 6] = [
+        Vec3::new(2.0, 0.0, 0.0),
+        Vec3::new(0.0, 3.0, 0.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        Vec3::new(-2.0, 0.0, 0.0),
+        Vec3::new(0.0, -3.0, 0.0),
+        Vec3::new(0.0, 0.0, -4.0),
+    ];
+
+    #[test]
+    fn init_work() {
+        let obb = OrientedBoundingBox::default();
+        assert_eq!(obb.center, Vec3::ZERO);
+        assert_eq!(obb.halfAxes, Mat3::ZERO);
+    }
+    #[test]
+    fn empty_points_work() {
+        let points = vec![];
+        let obb = OrientedBoundingBox::fromPoints(&points);
+        assert_eq!(obb.center, Vec3::ZERO);
+        assert_eq!(obb.halfAxes, Mat3::ZERO);
+    }
+    #[test]
+    fn fromPointsCorrectScale() {
+        let obb = OrientedBoundingBox::fromPoints(&positions);
+        let scale = Vec3::new(2.0, 3.0, 4.0);
+        let expect_mat3 = mat3_from_scale_vec3(obb.halfAxes, scale);
+        assert_eq!(obb.halfAxes, expect_mat3);
+        assert_eq!(obb.center, Vec3::ZERO);
+    }
+}
+pub fn mat3_from_scale_vec3(matrix: Mat3, scale: Vec3) -> Mat3 {
+    Mat3::from_cols(
+        Vec3::new(scale.x, 0.0, 0.0),
+        Vec3::new(0.0, scale.y, 0.0),
+        Vec3::new(0.0, 0.0, scale.z),
+    )
 }

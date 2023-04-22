@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use wgpu::PrimitiveTopology;
 
+use crate::oriented_bounding_box::OrientedBoundingBox;
+
 pub struct Box3d {
     minimum: Vec3,
     maximum: Vec3,
@@ -67,8 +69,7 @@ impl From<Box3d> for Mesh {
             vertices
                 .iter()
                 .map(|v| [v.x, v.y, v.z])
-                .flatten()
-                .collect::<Vec<f32>>(),
+                .collect::<Vec<[f32; 3]>>(),
         );
         mesh
     }
@@ -87,5 +88,8 @@ impl Box3d {
             minimum: center - halfaxes * Vec3::ONE,
             maximum: center + halfaxes * Vec3::ONE,
         }
+    }
+    pub fn frmo_obb(obb: OrientedBoundingBox) -> Self {
+        Box3d::from_center_halfaxes(obb.center, obb.halfAxes)
     }
 }

@@ -1,5 +1,5 @@
-mod epsilon;
-
+pub mod epsilon;
+pub mod vec3;
 use bevy::{ecs::system::Command, prelude::*};
 
 pub struct EigenDecompositionResult {
@@ -115,4 +115,25 @@ pub fn shurDecomposition(matrix: Mat3) -> Mat3 {
     slice[getElementIndex(q, p)] = s;
     slice[getElementIndex(p, q)] = -s;
     return Mat3::from_cols_array(&slice);
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn init_work() {
+        let a = Mat3::from_cols_array(&vec3::to_col_major(&[
+            4.0, -1.0, 1.0, -1.0, 3.0, -2.0, 1.0, -2.0, 3.0,
+        ]));
+        let expectedDiagonal = Mat3::from_cols_array(&vec3::to_col_major(&[
+            3.0, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 1.0,
+        ]));
+        let decomposition = computeEigenDecomposition(a);
+        assert_eq!(
+            decomposition
+                .diagonal
+                .abs_diff_eq(expectedDiagonal, epsilon::EPSILON14),
+            true
+        );
+    }
 }

@@ -26,6 +26,7 @@ mod oriented_bounding_box;
 // mod wmts_imagery_layer;
 // mod wmts_imagery_provider;
 mod bounding_shpere;
+mod coord;
 mod ellipsoid;
 mod height_map_terrain;
 mod tile;

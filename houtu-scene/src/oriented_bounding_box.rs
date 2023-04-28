@@ -1,23 +1,26 @@
-use std::f32::MAX;
+use std::f64::MAX;
 
-use bevy::prelude::*;
+use bevy::{
+    math::{DMat3, DVec3},
+    prelude::*,
+};
 
 use crate::box3d::Box3d;
 #[derive(Component)]
 pub struct OrientedBoundingBox {
-    pub center: Vec3,
-    pub halfAxes: Mat3,
+    pub center: DVec3,
+    pub halfAxes: DMat3,
 }
 impl Default for OrientedBoundingBox {
     fn default() -> Self {
         Self {
-            center: Vec3::ZERO,
-            halfAxes: Mat3::ZERO,
+            center: DVec3::ZERO,
+            halfAxes: DMat3::ZERO,
         }
     }
 }
 impl OrientedBoundingBox {
-    pub fn fromPoints(positions: &[Vec3]) -> Self {
+    pub fn fromPoints(positions: &[DVec3]) -> Self {
         let mut result = Self::default();
         let length = positions.len();
         if length == 0 {
@@ -28,7 +31,7 @@ impl OrientedBoundingBox {
         for i in 1..length {
             meanPoint = meanPoint + positions[i];
         }
-        let invLength = 1.0 / length as f32;
+        let invLength: f64 = 1.0 / length as f64;
         meanPoint = meanPoint / invLength;
 
         let mut exx = 0.0;
@@ -56,7 +59,7 @@ impl OrientedBoundingBox {
         ezz *= invLength;
 
         let covarianceMatrixSlice = [exx, exy, exz, exy, eyy, eyz, exz, eyz, ezz];
-        let covarianceMatrix = Mat3::from_cols_array(&covarianceMatrixSlice);
+        let covarianceMatrix = DMat3::from_cols_array(&covarianceMatrixSlice);
 
         let eigenDecomposition = houtu_math::computeEigenDecomposition(covarianceMatrix);
         let rotation = eigenDecomposition.unitary.clone();
@@ -87,7 +90,7 @@ impl OrientedBoundingBox {
         v3 = v3 * 0.5 * (l3 + u3);
 
         result.center = v1 + v2 + v3;
-        let scale = Vec3::new(u1 - l1, u2 - l2, u3 - l3) * 0.5;
+        let scale = DVec3::new(u1 - l1, u2 - l2, u3 - l3) * 0.5;
         result.halfAxes = houtu_math::vec3::multiplyByScalar(result.halfAxes, scale);
 
         result
@@ -127,41 +130,41 @@ fn setup(
 #[cfg(test)]
 mod tests {
     use super::*;
-    const positions: [Vec3; 6] = [
-        Vec3::new(2.0, 0.0, 0.0),
-        Vec3::new(0.0, 3.0, 0.0),
-        Vec3::new(0.0, 0.0, 4.0),
-        Vec3::new(-2.0, 0.0, 0.0),
-        Vec3::new(0.0, -3.0, 0.0),
-        Vec3::new(0.0, 0.0, -4.0),
+    const positions: [DVec3; 6] = [
+        DVec3::new(2.0, 0.0, 0.0),
+        DVec3::new(0.0, 3.0, 0.0),
+        DVec3::new(0.0, 0.0, 4.0),
+        DVec3::new(-2.0, 0.0, 0.0),
+        DVec3::new(0.0, -3.0, 0.0),
+        DVec3::new(0.0, 0.0, -4.0),
     ];
 
     #[test]
     fn init_work() {
         let obb = OrientedBoundingBox::default();
-        assert_eq!(obb.center, Vec3::ZERO);
-        assert_eq!(obb.halfAxes, Mat3::ZERO);
+        assert_eq!(obb.center, DVec3::ZERO);
+        assert_eq!(obb.halfAxes, DMat3::ZERO);
     }
     #[test]
     fn empty_points_work() {
         let points = vec![];
         let obb = OrientedBoundingBox::fromPoints(&points);
-        assert_eq!(obb.center, Vec3::ZERO);
-        assert_eq!(obb.halfAxes, Mat3::ZERO);
+        assert_eq!(obb.center, DVec3::ZERO);
+        assert_eq!(obb.halfAxes, DMat3::ZERO);
     }
     #[test]
     fn fromPointsCorrectScale() {
         let obb = OrientedBoundingBox::fromPoints(&positions);
-        let scale = Vec3::new(2.0, 3.0, 4.0);
-        let expect_mat3 = mat3_from_scale_vec3(obb.halfAxes, scale);
+        let scale = DVec3::new(2.0, 3.0, 4.0);
+        let expect_mat3 = mat3_from_scale_Dvec3(obb.halfAxes, scale);
         assert_eq!(obb.halfAxes, expect_mat3);
-        assert_eq!(obb.center, Vec3::ZERO);
+        assert_eq!(obb.center, DVec3::ZERO);
     }
 }
-pub fn mat3_from_scale_vec3(matrix: Mat3, scale: Vec3) -> Mat3 {
-    Mat3::from_cols(
-        Vec3::new(scale.x, 0.0, 0.0),
-        Vec3::new(0.0, scale.y, 0.0),
-        Vec3::new(0.0, 0.0, scale.z),
+pub fn mat3_from_scale_Dvec3(matrix: DMat3, scale: DVec3) -> DMat3 {
+    DMat3::from_cols(
+        DVec3::new(scale.x, 0.0, 0.0),
+        DVec3::new(0.0, scale.y, 0.0),
+        DVec3::new(0.0, 0.0, scale.z),
     )
 }

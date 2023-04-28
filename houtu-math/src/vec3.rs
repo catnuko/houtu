@@ -1,12 +1,12 @@
-use bevy::prelude::{Mat3, Vec3};
+use bevy::math::{DMat3, DVec3};
 
-pub fn multiplyByScalar(m: Mat3, v: Vec3) -> Mat3 {
-    Mat3::from_cols(m.x_axis * v.x, m.y_axis * v.y, m.z_axis * v.z)
+pub fn multiplyByScalar(m: DMat3, v: DVec3) -> DMat3 {
+    DMat3::from_cols(m.x_axis * v.x, m.y_axis * v.y, m.z_axis * v.z)
 }
-// pub fn equalEpsilon(m: Mat3, e: f32) -> bool {
+// pub fn equalEpsilon(m: DMat3, e: f64) -> bool {
 //     return m.abs_diff_eq(rhs, max_abs_diff)
 // }
-pub fn to_col_major(v: &[f32; 9]) -> [f32; 9] {
+pub fn to_col_major(v: &[f64; 9]) -> [f64; 9] {
     let mut result = [0.0; 9];
     result[0] = v[0];
     result[1] = v[3];

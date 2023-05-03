@@ -1,19 +1,23 @@
 pub mod epsilon;
 pub mod vec3;
-use bevy::{ecs::system::Command, prelude::*};
+use bevy::{
+    ecs::system::Command,
+    math::{DMat3, DVec3},
+    prelude::*,
+};
 
 pub struct EigenDecompositionResult {
-    pub unitary: Mat3,
-    pub diagonal: Mat3,
+    pub unitary: DMat3,
+    pub diagonal: DMat3,
 }
-pub fn computeEigenDecomposition(matrix: Mat3) -> EigenDecompositionResult {
+pub fn computeEigenDecomposition(matrix: DMat3) -> EigenDecompositionResult {
     let tolerance = epsilon::EPSILON20;
     let maxSweeps = 10;
 
     let mut count = 0;
     let mut sweep = 0;
 
-    let mut unitaryMatrix = Mat3::IDENTITY;
+    let mut unitaryMatrix = DMat3::IDENTITY;
     let mut diagMatrix = matrix.clone();
 
     let epsilon = tolerance * computeFrobeniusNorm(diagMatrix);
@@ -36,8 +40,8 @@ pub fn computeEigenDecomposition(matrix: Mat3) -> EigenDecompositionResult {
         diagonal: diagMatrix,
     };
 }
-pub fn computeFrobeniusNorm(matrix: Mat3) -> f32 {
-    let mut slice: [f32; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
+pub fn computeFrobeniusNorm(matrix: DMat3) -> f64 {
+    let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     matrix.write_cols_to_slice(&mut slice);
     let mut norm = 0.0;
     for i in 0..9 {
@@ -47,10 +51,10 @@ pub fn computeFrobeniusNorm(matrix: Mat3) -> f32 {
     return norm.sqrt();
 }
 
-pub fn offDiagonalFrobeniusNorm(matrix: Mat3) -> f32 {
+pub fn offDiagonalFrobeniusNorm(matrix: DMat3) -> f64 {
     let rowVal = [1, 0, 0];
     let colVal = [2, 2, 1];
-    let mut slice: [f32; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
+    let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     matrix.write_cols_to_slice(&mut slice);
 
     let mut norm = 0.0;
@@ -61,25 +65,25 @@ pub fn offDiagonalFrobeniusNorm(matrix: Mat3) -> f32 {
 
     return norm.sqrt();
 }
-pub fn getElementIndex(row: usize, col: usize) -> usize {
+pub fn getElementIndex(col: usize, row: usize) -> usize {
     return row + 3 * col;
 }
-pub fn shurDecomposition(matrix: Mat3) -> Mat3 {
+pub fn shurDecomposition(matrix: DMat3) -> DMat3 {
     let rowVal = [1, 0, 0];
     let colVal = [2, 2, 1];
 
     let tolerance = epsilon::EPSILON15;
-    // let mut slice: [f32; 16] = [
+    // let mut slice: [f64; 16] = [
     //     0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
     // ];
-    let mut slice: [f32; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
+    let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     matrix.write_cols_to_slice(&mut slice);
     let mut maxDiagonal = 0.0;
     let mut rotAxis = 1;
 
     // find pivot (rotAxis) based on max diagonal of matrix
     for i in 0..3 {
-        let temp = slice[getElementIndex(i, i)].abs();
+        let temp = slice[getElementIndex(colVal[i], rowVal[i])].abs();
         if temp > maxDiagonal {
             rotAxis = i;
             maxDiagonal = temp;
@@ -90,8 +94,8 @@ pub fn shurDecomposition(matrix: Mat3) -> Mat3 {
 
     let p = rowVal[rotAxis];
     let q = colVal[rotAxis];
-
-    if ((slice[getElementIndex(q, p)]).abs() > tolerance) {
+    let dif = slice[getElementIndex(q, p)].abs();
+    if (dif > tolerance) {
         let qq = slice[getElementIndex(q, q)];
         let pp = slice[getElementIndex(p, p)];
         let qp = slice[getElementIndex(q, p)];
@@ -108,13 +112,14 @@ pub fn shurDecomposition(matrix: Mat3) -> Mat3 {
         c = 1.0 / (1.0 + t * t).sqrt();
         s = t * c;
     }
-    let mut slice: [f32; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
+    let mut slice2: [f64; 9] = [0.; 9];
+    DMat3::IDENTITY.write_cols_to_slice(&mut slice2);
 
-    slice[getElementIndex(p, p)] = c;
-    slice[getElementIndex(q, q)] = c;
-    slice[getElementIndex(q, p)] = s;
-    slice[getElementIndex(p, q)] = -s;
-    return Mat3::from_cols_array(&slice);
+    slice2[getElementIndex(p, p)] = c;
+    slice2[getElementIndex(q, q)] = c;
+    slice2[getElementIndex(q, p)] = s;
+    slice2[getElementIndex(p, q)] = -s;
+    return DMat3::from_cols_array(&slice2);
 }
 #[cfg(test)]
 mod tests {
@@ -122,10 +127,10 @@ mod tests {
 
     #[test]
     fn init_work() {
-        let a = Mat3::from_cols_array(&vec3::to_col_major(&[
+        let a = DMat3::from_cols_array(&vec3::to_col_major(&[
             4.0, -1.0, 1.0, -1.0, 3.0, -2.0, 1.0, -2.0, 3.0,
         ]));
-        let expectedDiagonal = Mat3::from_cols_array(&vec3::to_col_major(&[
+        let expectedDiagonal = DMat3::from_cols_array(&vec3::to_col_major(&[
             3.0, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 1.0,
         ]));
         let decomposition = computeEigenDecomposition(a);

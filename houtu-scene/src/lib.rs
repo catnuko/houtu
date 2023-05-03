@@ -3,6 +3,7 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use geodesy::preamble::*;
 use std::f32::consts::PI;
 
+use bevy::math::{DMat3, DVec3};
 mod ellipsoid;
 mod globe;
 pub use globe::Shape;

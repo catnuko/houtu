@@ -2,13 +2,14 @@ use bevy::math::{DMat3, DVec3};
 use bevy::prelude::*;
 
 pub fn getPointsFromMesh(mesh: &Mesh) -> Vec<DVec3> {
-    mesh.attribute(Mesh::ATTRIBUTE_POSITION)
-        .unwrap()
-        .as_float3()
-        .unwrap()
-        .iter()
-        .map(|p| DVec3::from(*p))
-        .collect::<Vec<DVec3>>()
+    // mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+    //     .unwrap()
+    //     .as_float3()
+    //     .unwrap()
+    //     .iter()
+    //     .map(|p| DVec3::from(*p))
+    //     .collect::<Vec<DVec3>>()
+    return Vec::new();
 }
 pub fn arrayToFloat32x3(points: &Vec<f64>) -> Vec<[f64; 3]> {
     let mut endPositions: Vec<[f64; 3]> = Vec::new();

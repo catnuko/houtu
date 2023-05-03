@@ -5,7 +5,10 @@ use bevy::{
     prelude::*,
 };
 
-use crate::box3d::Box3d;
+use crate::{
+    box3d::Box3d,
+    math::{computeEigenDecomposition, multiplyByScalar},
+};
 #[derive(Component)]
 pub struct OrientedBoundingBox {
     pub center: DVec3,
@@ -61,7 +64,7 @@ impl OrientedBoundingBox {
         let covarianceMatrixSlice = [exx, exy, exz, exy, eyy, eyz, exz, eyz, ezz];
         let covarianceMatrix = DMat3::from_cols_array(&covarianceMatrixSlice);
 
-        let eigenDecomposition = houtu_math::computeEigenDecomposition(covarianceMatrix);
+        let eigenDecomposition = computeEigenDecomposition(covarianceMatrix);
         let rotation = eigenDecomposition.unitary.clone();
         result.halfAxes = rotation.clone();
 
@@ -91,7 +94,7 @@ impl OrientedBoundingBox {
 
         result.center = v1 + v2 + v3;
         let scale = DVec3::new(u1 - l1, u2 - l2, u3 - l3) * 0.5;
-        result.halfAxes = houtu_math::vec3::multiplyByScalar(result.halfAxes, scale);
+        result.halfAxes = multiplyByScalar(result.halfAxes, scale);
 
         result
     }

@@ -1,11 +1,13 @@
-pub mod epsilon;
-pub mod vec3;
+mod epsilon;
+mod vec3;
 use bevy::{
     ecs::system::Command,
     math::DMat3,
     // math::{DMat3, DVec3},
     prelude::*,
 };
+pub use epsilon::*;
+pub use vec3::*;
 
 pub struct EigenDecompositionResult {
     pub unitary: DMat3,

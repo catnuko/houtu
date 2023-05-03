@@ -1,7 +1,9 @@
 use std::f64::MAX;
 
-use bevy::math::{DMat3, DVec3};
-use bevy::prelude::*;
+use bevy::{
+    math::{DMat3, DVec3},
+    prelude::*,
+};
 
 use crate::box3d::Box3d;
 #[derive(Component)]
@@ -29,7 +31,7 @@ impl OrientedBoundingBox {
         for i in 1..length {
             meanPoint = meanPoint + positions[i];
         }
-        let invLength = 1.0 / length as f64;
+        let invLength: f64 = 1.0 / length as f64;
         meanPoint = meanPoint / invLength;
 
         let mut exx = 0.0;
@@ -154,12 +156,12 @@ mod tests {
     fn fromPointsCorrectScale() {
         let obb = OrientedBoundingBox::fromPoints(&positions);
         let scale = DVec3::new(2.0, 3.0, 4.0);
-        let expect_mat3 = mat3_from_scale_vec3(obb.halfAxes, scale);
+        let expect_mat3 = mat3_from_scale_Dvec3(obb.halfAxes, scale);
         assert_eq!(obb.halfAxes, expect_mat3);
         assert_eq!(obb.center, DVec3::ZERO);
     }
 }
-pub fn mat3_from_scale_vec3(matrix: DMat3, scale: DVec3) -> DMat3 {
+pub fn mat3_from_scale_Dvec3(matrix: DMat3, scale: DVec3) -> DMat3 {
     DMat3::from_cols(
         DVec3::new(scale.x, 0.0, 0.0),
         DVec3::new(0.0, scale.y, 0.0),

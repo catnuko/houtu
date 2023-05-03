@@ -26,6 +26,10 @@ mod oriented_bounding_box;
 // mod web_mercator_projection;
 // mod wmts_imagery_layer;
 // mod wmts_imagery_provider;
+mod bounding_shpere;
+mod coord;
+mod ellipsoid;
+mod height_map_terrain;
 mod tile;
 mod tile_key;
 pub struct Plugin;
@@ -58,7 +62,7 @@ fn setup(
         .iter()
         .map(|p| Vec3::from(*p))
         .collect::<Vec<Vec3>>();
-    let obb = oriented_bounding_box::OrientedBoundingBox::fromPoints(points.as_slice());
+    // let obb = oriented_bounding_box::OrientedBoundingBox::fromPoints(points.as_slice());
 
     commands.spawn((
         PbrBundle {

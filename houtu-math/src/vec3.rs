@@ -3,7 +3,7 @@ use bevy::math::{DMat3, DVec3};
 pub fn multiplyByScalar(m: DMat3, v: DVec3) -> DMat3 {
     DMat3::from_cols(m.x_axis * v.x, m.y_axis * v.y, m.z_axis * v.z)
 }
-// pub fn equalEpsilon(m: Mat3, e: f32) -> bool {
+// pub fn equalEpsilon(m: DMat3, e: f64) -> bool {
 //     return m.abs_diff_eq(rhs, max_abs_diff)
 // }
 pub fn to_col_major(v: &[f64; 9]) -> [f64; 9] {

@@ -25,6 +25,7 @@ houtu-events = { path = "../houtu-events" }
 houtu-math = { path = "../houtu-math" }
 houtu-utils = { path = "../houtu-utils" }
 geo-file-loader = { path = "../geo-file-loader" }
+bevy_jobs = { git = "https://github.com/frewsxcv/bevy_jobs" }
 
 
 [dependencies.wgpu]

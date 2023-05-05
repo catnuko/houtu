@@ -1,17 +1,20 @@
-use std::f32::consts::{PI, TAU};
+use std::f64::consts::{PI, TAU};
 use std::fmt;
 
 use bevy::prelude::{Mesh, Vec3};
 use bevy::render::mesh::Indices;
-use geodesy::Ellipsoid;
 use wgpu::PrimitiveTopology;
+
+use crate::coord::Cartesian3;
+
+use super::Ellipsoid;
 pub struct EllipsoidShape {
-    pub radii: Vec3,
-    pub inner_radii: Vec3,
-    pub minimum_clock: f32,
-    pub maximum_clock: f32,
-    pub minimum_cone: f32,
-    pub maximum_cone: f32,
+    pub radii: Cartesian3,
+    pub inner_radii: Cartesian3,
+    pub minimum_clock: f64,
+    pub maximum_clock: f64,
+    pub minimum_cone: f64,
+    pub maximum_cone: f64,
     pub stack_partitions: i32,
     pub slice_partitions: i32,
 }
@@ -30,7 +33,7 @@ impl Default for EllipsoidShape {
     }
 }
 impl EllipsoidShape {
-    pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
+    pub fn from_xyz(x: f64, y: f64, z: f64) -> Self {
         let options = EllipsoidShape::default();
         Self {
             radii: [x, y, z].into(),
@@ -43,17 +46,17 @@ impl EllipsoidShape {
             slice_partitions: options.slice_partitions,
         }
     }
-    pub fn from_vec3(vec3: Vec3) -> Self {
+    pub fn from_vec3(vec3: Cartesian3) -> Self {
         EllipsoidShape::from_xyz(vec3.x, vec3.y, vec3.z)
     }
     pub fn from_ellipsoid(ellipsoid: Ellipsoid) -> Self {
         let a = ellipsoid.semimajor_axis();
         let c = ellipsoid.semiminor_axis();
         let b = a;
-        EllipsoidShape::from_xyz(a as f32, b as f32, c as f32)
+        EllipsoidShape::from_xyz(a as f64, b as f64, c as f64)
     }
     pub fn from_WGS84() -> Self {
-        let ellipsoid = Ellipsoid::named("WGS84").unwrap();
+        let ellipsoid = Ellipsoid::WGS84;
         EllipsoidShape::from_ellipsoid(ellipsoid)
     }
 }
@@ -71,16 +74,16 @@ impl From<EllipsoidShape> for Mesh {
         let mut slicePartitions = sp.slice_partitions + 1;
         let TWO_PI = TAU;
 
-        slicePartitions = (((slicePartitions as f32) * (maximumClock - minimumClock).abs())
+        slicePartitions = (((slicePartitions as f64) * (maximumClock - minimumClock).abs())
             / TWO_PI)
             .round() as i32;
         stackPartitions =
-            (((stackPartitions as f32) * (maximumCone - minimumCone).abs()) / PI).round() as i32;
+            (((stackPartitions as f64) * (maximumCone - minimumCone).abs()) / PI).round() as i32;
 
-        if (slicePartitions < 2) {
+        if slicePartitions < 2 {
             slicePartitions = 2;
         }
-        if (stackPartitions < 2) {
+        if stackPartitions < 2 {
             stackPartitions = 2;
         }
 
@@ -97,15 +100,15 @@ impl From<EllipsoidShape> for Mesh {
         for i in 0..(stackPartitions) {
             phis.push(
                 minimumCone
-                    + ((i as f32) * (maximumCone - minimumCone)) / ((stackPartitions as f32) - 1.),
+                    + ((i as f64) * (maximumCone - minimumCone)) / ((stackPartitions as f64) - 1.),
             );
         }
         phis.push(maximumCone);
         for j in 0..(slicePartitions as i32) {
             thetas.push(
                 minimumClock
-                    + ((j as f32) * (maximumClock - minimumClock))
-                        / ((slicePartitions as f32) - 1.),
+                    + ((j as f64) * (maximumClock - minimumClock))
+                        / ((slicePartitions as f64) - 1.),
             );
         }
         thetas.push(maximumClock);
@@ -121,17 +124,17 @@ impl From<EllipsoidShape> for Mesh {
         let mut isTopOpen = false;
         let mut isBotOpen = false;
         let mut isClockOpen = false;
-        if (hasInnerSurface) {
+        if hasInnerSurface {
             vertexMultiplier = 2;
-            if (minimumCone > 0.0) {
+            if minimumCone > 0.0 {
                 isTopOpen = true;
                 extraIndices += slicePartitions - 1;
             }
-            if (maximumCone < PI) {
+            if maximumCone < PI {
                 isBotOpen = true;
                 extraIndices += slicePartitions - 1;
             }
-            if ((maximumClock - minimumClock) % TWO_PI > 0.) {
+            if (maximumClock - minimumClock) % TWO_PI > 0. {
                 isClockOpen = true;
                 extraIndices += (stackPartitions - 1) * 2 + 1;
             } else {
@@ -139,9 +142,9 @@ impl From<EllipsoidShape> for Mesh {
             }
         }
         let vertexCount = (numThetas * numPhis * vertexMultiplier) as i32;
-        let mut positions = (0..vertexCount * 3).map(|i| 0.).collect::<Vec<f32>>();
-        let mut normals = (0..vertexCount * 3).map(|i| 0.).collect::<Vec<f32>>();
-        let mut st = (0..vertexCount * 2).map(|i| 0.).collect::<Vec<f32>>();
+        let mut positions = (0..vertexCount * 3).map(|i| 0.).collect::<Vec<f64>>();
+        let mut normals = (0..vertexCount * 3).map(|i| 0.).collect::<Vec<f64>>();
+        let mut st = (0..vertexCount * 2).map(|i| 0.).collect::<Vec<f64>>();
         let mut isInner = (0..vertexCount).map(|i| false).collect::<Vec<bool>>();
         let mut negateNormal = (0..vertexCount).map(|i| false).collect::<Vec<bool>>();
 
@@ -152,14 +155,14 @@ impl From<EllipsoidShape> for Mesh {
                 - (slicePartitions + stackPartitions) * vertexMultiplier);
         let mut indices = (0..numIndices).map(|i| 0).collect::<Vec<i32>>();
 
-        let mut sinPhi = (0..numPhis).map(|i| 0.).collect::<Vec<f32>>();
-        let mut cosPhi = (0..numPhis).map(|i| 0.).collect::<Vec<f32>>();
+        let mut sinPhi = (0..numPhis).map(|i| 0.).collect::<Vec<f64>>();
+        let mut cosPhi = (0..numPhis).map(|i| 0.).collect::<Vec<f64>>();
         for i in 0..numPhis {
             sinPhi[i as usize] = (phis[i as usize].sin());
             cosPhi[i as usize] = (phis[i as usize]).cos();
         }
-        let mut sinTheta = (0..numThetas).map(|i| 0.).collect::<Vec<f32>>();
-        let mut cosTheta = (0..numThetas).map(|i| 0.).collect::<Vec<f32>>();
+        let mut sinTheta = (0..numThetas).map(|i| 0.).collect::<Vec<f64>>();
+        let mut cosTheta = (0..numThetas).map(|i| 0.).collect::<Vec<f64>>();
         for j in 0..numThetas {
             cosTheta[j as usize] = (thetas[j as usize]).cos();
             sinTheta[j as usize] = (thetas[j as usize].sin());
@@ -177,7 +180,7 @@ impl From<EllipsoidShape> for Mesh {
         }
         // Create inner surface
         let mut vertexIndex = vertexCount / 2;
-        if (hasInnerSurface) {
+        if hasInnerSurface {
             for i in 0..numPhis {
                 for j in 0..numThetas {
                     positions[index] = innerRadii.x * sinPhi[i as usize] * cosTheta[j as usize];
@@ -189,7 +192,7 @@ impl From<EllipsoidShape> for Mesh {
                     // Keep track of which vertices are the inner and which ones
                     // need the normal to be negated
                     isInner[vertexIndex as usize] = true;
-                    if (i > 0 && i != numPhis - 1 && j != 0 && j != numThetas - 1) {
+                    if i > 0 && i != numPhis - 1 && j != 0 && j != numThetas - 1 {
                         negateNormal[vertexIndex as usize] = true;
                     }
                     vertexIndex += 1;
@@ -221,7 +224,7 @@ impl From<EllipsoidShape> for Mesh {
         }
 
         // Create indices for inner surface
-        if (hasInnerSurface) {
+        if hasInnerSurface {
             let offset = numPhis * numThetas;
             for i in 1..numPhis - 2 {
                 topOffset = offset + i * numThetas;
@@ -263,8 +266,8 @@ impl From<EllipsoidShape> for Mesh {
 
         let mut outerOffset;
         let mut innerOffset;
-        if (hasInnerSurface) {
-            if (isTopOpen) {
+        if hasInnerSurface {
+            if isTopOpen {
                 // Connect the top of the inner surface to the top of the outer surface
                 innerOffset = numPhis * numThetas;
                 for i in 1..numThetas - 2 {
@@ -283,7 +286,7 @@ impl From<EllipsoidShape> for Mesh {
                 }
             }
 
-            if (isBotOpen) {
+            if isBotOpen {
                 // Connect the bottom of the inner surface to the bottom of the outer surface
                 outerOffset = numPhis * numThetas - numThetas;
                 innerOffset = numPhis * numThetas * vertexMultiplier - numThetas;
@@ -305,7 +308,7 @@ impl From<EllipsoidShape> for Mesh {
         }
 
         // Connect the edges if clock is not closed
-        if (isClockOpen) {
+        if isClockOpen {
             for i in 1..numPhis - 2 {
                 innerOffset = numThetas * numPhis + numThetas * i;
                 outerOffset = numThetas * i;
@@ -340,29 +343,28 @@ impl From<EllipsoidShape> for Mesh {
                 index += 1;
             }
         }
-        let ellipsoidOuter = Ellipsoid::new(radii.x as f64, ((radii.x - radii.z) / radii.x) as f64);
-        let ellipsoidInner = Ellipsoid::new(
-            innerRadii.x as f64,
-            ((innerRadii.x - innerRadii.z) / radii.x) as f64,
-        );
+        let ellipsoid_outer = Ellipsoid::new(radii.x, radii.y, radii.z);
+        let ellipsoid_inner = Ellipsoid::new(innerRadii.x, innerRadii.y, innerRadii.z);
         let mut stIndex = 0;
         let mut normalIndex = 0;
         for i in 0..vertexCount {
-            let ellipsoid;
-            if (isInner[i as usize]) {
-                ellipsoid = radii
-            } else {
-                ellipsoid = innerRadii
-            }
+            let ellipsoid: Ellipsoid = {
+                if isInner[i as usize] {
+                    ellipsoid_outer.clone()
+                } else {
+                    ellipsoid_inner.clone()
+                }
+            };
+
             let x = positions[(i * 3) as usize];
             let y = positions[(i * 3 + 1) as usize];
             let z = positions[(i * 3 + 2) as usize];
-            let position = Vec3::new(x, y, z);
-            let mut normal: Vec3 = geodeticSurfaceNormal(position, ellipsoid);
-            if (negateNormal[i as usize]) {
-                normal = negate(normal)
+            let position = Cartesian3::new(x, y, z);
+            let mut normal: Cartesian3 = ellipsoid.geodeticSurfaceNormal(&position).unwrap();
+            if negateNormal[i as usize] {
+                normal = normal.negate();
             }
-            let normalST = negate(normal);
+            let normalST = normal.negate();
             st[stIndex] = normalST.y.atan2(normalST.x) / TWO_PI + 0.5;
             stIndex += 1;
             st[stIndex] = normal.z.asin() / PI + 0.5;
@@ -375,9 +377,9 @@ impl From<EllipsoidShape> for Mesh {
             normalIndex += 1;
         }
 
-        let mut endPositions: Vec<[f32; 3]> = Vec::new();
-        let mut endNormals: Vec<[f32; 3]> = Vec::new();
-        let mut endST: Vec<[f32; 2]> = Vec::new();
+        let mut endPositions: Vec<[f64; 3]> = Vec::new();
+        let mut endNormals: Vec<[f64; 3]> = Vec::new();
+        let mut endST: Vec<[f64; 2]> = Vec::new();
         positions.iter().enumerate().step_by(3).for_each(|(i, x)| {
             endPositions.push([positions[i], positions[i + 1], positions[i + 2]])
         });
@@ -389,9 +391,9 @@ impl From<EllipsoidShape> for Mesh {
         });
         let indices2 = Indices::U32(indices.iter().map(|&x| x as u32).collect());
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, endPositions);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, endNormals);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, endST);
+        // mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, endPositions);
+        // mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, endNormals);
+        // mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, endST);
         mesh.set_indices(Some(indices2));
         mesh
     }

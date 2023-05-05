@@ -38,17 +38,17 @@ impl Cartographic {
             height: self.height,
         }
     }
-    pub fn from_cartesian(cartesian: &Cartesian3, ellipsoid: Option<Ellipsoid>) -> Option<Self> {
+    pub fn from_cartesian(cartesian: Cartesian3, ellipsoid: Option<Ellipsoid>) -> Option<Self> {
         let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
         let one_over_radii = ellipsoid.oneOverRadii;
         let one_over_radii_squared = ellipsoid.oneOverRadiiSquared;
         let centerToleranceSquared = ellipsoid.centerToleranceSquared;
         if let Some(p) = ellipsoid.scaleToGeodeticSurface(cartesian) {
             let n = p.multiply_components(&one_over_radii_squared).normalize();
-            let h = cartesian - p;
+            let h = cartesian - &p;
             let longitude = n.y.atan2(n.x);
             let latitude = n.z.asin();
-            let height = h.dot(&cartesian).sign() * h.magnitude();
+            let height = h.dot(&cartesian).sin() * h.magnitude();
             return Some(Cartographic {
                 longitude,
                 latitude,
@@ -59,12 +59,13 @@ impl Cartographic {
         }
     }
     pub fn to_cartesian(&self, ellipsoid: Option<Ellipsoid>) -> Cartesian3 {
-        return Cartesian3::from_radians(
-            self.longitude,
-            self.latitude,
-            Some(self.height),
-            ellipsoid,
-        );
+        return Cartesian3::from_radians(self.longitude, self.latitude, Some(self.height), {
+            if let Some(e) = ellipsoid {
+                Some(e.radiiSquared)
+            } else {
+                None
+            }
+        });
     }
     pub fn equals(&self, right: &Cartographic) -> bool {
         return self.longitude == right.longitude

@@ -1,4 +1,5 @@
 use std::{
+    f64::consts::PI,
     fmt::{Debug, Formatter},
     ops::{Add, Div, Mul, Sub},
 };
@@ -6,7 +7,7 @@ use std::{
 use bevy::math::DVec3;
 
 use crate::{ellipsoid::Ellipsoid, math::equals_epsilon};
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone)]
 pub struct Cartesian3 {
     pub x: f64,
     pub y: f64,
@@ -44,7 +45,7 @@ impl Cartesian3 {
         y: 0.0,
         z: 1.0,
     };
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Cartesian3 { x, y, z }
     }
     pub fn from_vec3(vec3: DVec3) -> Self {
@@ -77,41 +78,41 @@ impl Cartesian3 {
     pub fn minimum_component(&self) -> f64 {
         return self.x.min(self.y).min(self.z);
     }
-    pub fn minimum_by_component(&self, other: Cartesian3) -> Cartesian3 {
+    pub fn minimum_by_component(&self, other: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(
             self.x.min(other.x),
             self.y.min(other.y),
             self.z.min(other.z),
         );
     }
-    pub fn maximum_by_component(&self, other: Cartesian3) -> Cartesian3 {
+    pub fn maximum_by_component(&self, other: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(
             self.x.max(other.x),
             self.y.max(other.y),
             self.z.max(other.z),
         );
     }
-    pub fn clamp(&self, min: Cartesian3, max: Cartesian3) -> Cartesian3 {
+    pub fn clamp(&self, min: &Cartesian3, max: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(
             self.x.max(min.x).min(max.x),
             self.y.max(min.y).min(max.y),
             self.z.max(min.z).min(max.z),
         );
     }
-    pub fn magitude_squared(&self) -> f64 {
+    pub fn magnitude_squared(&self) -> f64 {
         return self.x * self.x + self.y * self.y + self.z * self.z;
     }
     pub fn magnitude(&self) -> f64 {
-        return self.magitude_squared().sqrt();
+        return self.magnitude_squared().sqrt();
     }
-    pub fn distance_squared(&self, cartesian: Cartesian3) -> f64 {
+    pub fn distance_squared(&self, cartesian: &Cartesian3) -> f64 {
         let x = self.x - cartesian.x;
         let y = self.y - cartesian.y;
         let z = self.z - cartesian.z;
         return x * x + y * y + z * z;
     }
-    pub fn distance(&self, right: Cartesian3) -> f64 {
-        return (self - right).magnitude();
+    pub fn distance(&self, right: &Cartesian3) -> f64 {
+        return (*self - right).magnitude();
     }
     pub fn normalize(&self) -> Cartesian3 {
         let magnitude = self.magnitude();
@@ -120,10 +121,10 @@ impl Cartesian3 {
         }
         return Cartesian3::new(self.x / magnitude, self.y / magnitude, self.z / magnitude);
     }
-    pub fn dot(&self, right: Cartesian3) -> f64 {
+    pub fn dot(&self, right: &Cartesian3) -> f64 {
         return self.x * right.x + self.y * right.y + self.z * right.z;
     }
-    pub fn cross(&self, right: Cartesian3) -> Cartesian3 {
+    pub fn cross(&self, right: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(
             self.y * right.z - self.z * right.y,
             self.z * right.x - self.x * right.z,
@@ -133,30 +134,33 @@ impl Cartesian3 {
     pub fn negate(&self) -> Cartesian3 {
         return Cartesian3::new(-self.x, -self.y, -self.z);
     }
-    pub fn subtract(&self, right: Cartesian3) -> Cartesian3 {
+    pub fn subtract(&self, right: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(self.x - right.x, self.y - right.y, self.z - right.z);
     }
-    pub fn multiply_components(&self, right: Cartesian3) -> Cartesian3 {
+    pub fn multiply_components(&self, right: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(self.x * right.x, self.y * right.y, self.z * right.z);
     }
     pub fn multiply_by_scalar(&self, scalar: f64) -> Cartesian3 {
         return Cartesian3::new(self.x * scalar, self.y * scalar, self.z * scalar);
     }
-    pub fn add(&self, right: Cartesian3) -> Cartesian3 {
+    pub fn add(&self, right: &Cartesian3) -> Cartesian3 {
         return Cartesian3::new(self.x + right.x, self.y + right.y, self.z + right.z);
     }
     pub fn divide_by_scalar(&self, scalar: f64) -> Cartesian3 {
         return Cartesian3::new(self.x / scalar, self.y / scalar, self.z / scalar);
     }
+    pub fn devide_components(&self, right: &Cartesian3) -> Cartesian3 {
+        return Cartesian3::new(self.x / right.x, self.y / right.y, self.z / right.z);
+    }
     pub fn abs(&self) -> Cartesian3 {
         return Cartesian3::new(self.x.abs(), self.y.abs(), self.z.abs());
     }
-    pub fn lerp(&self, end: Cartesian3, t: f64) -> Cartesian3 {
+    pub fn lerp(&self, end: &Cartesian3, t: f64) -> Cartesian3 {
         let a = self.multiply_by_scalar(1.0 - t);
         let b = end.multiply_by_scalar(t);
-        return b.add(a);
+        return b.add(&a);
     }
-    pub fn angle_between(&self, right: Cartesian3) -> f64 {
+    pub fn angle_between(&self, right: &Cartesian3) -> f64 {
         let mag = self.magnitude() * right.magnitude();
         if mag == 0.0 {
             return 0.0;
@@ -164,7 +168,7 @@ impl Cartesian3 {
         let cosine = self.dot(right) / mag;
         return cosine.acos();
     }
-    pub fn equals(&self, right: Cartesian3) -> bool {
+    pub fn equals(&self, right: &Cartesian3) -> bool {
         return self.x == right.x && self.y == right.y && self.z == right.z;
     }
     pub fn equals_array(&self, right: [f64; 3]) -> bool {
@@ -172,7 +176,7 @@ impl Cartesian3 {
     }
     pub fn equals_epsilon(
         &self,
-        right: Cartesian3,
+        right: &Cartesian3,
         relative_epsilon: Option<f64>,
         absolute_epsilon: Option<f64>,
     ) -> bool {
@@ -181,7 +185,7 @@ impl Cartesian3 {
                 && equals_epsilon(self.y, self.y, relative_epsilon, absolute_epsilon)
                 && equals_epsilon(self.z, self.z, relative_epsilon, absolute_epsilon);
     }
-    pub fn midpoint(&self, right: Cartesian3) -> Cartesian3 {
+    pub fn midpoint(&self, right: &Cartesian3) -> Cartesian3 {
         return self.add(right).multiply_by_scalar(0.5);
     }
     pub fn from_degrees(
@@ -209,19 +213,19 @@ impl Cartesian3 {
         scratchN.x = cosLatitude * longitude.cos();
         scratchN.y = cosLatitude * longitude.sin();
         scratchN.z = latitude.sin();
-        scratchK = radii_squared.multiply_components(scratchN);
-        let gamma = scratchN.dot(scratchK).sqrt();
+        scratchK = radii_squared.multiply_components(&scratchN);
+        let gamma = scratchN.dot(&scratchK).sqrt();
         scratchK = scratchK.divide_by_scalar(gamma);
         scratchN = scratchN.multiply_by_scalar(height);
-        return scratchK.add(scratchN);
+        return scratchK.add(&scratchN);
     }
     pub fn from_degrees_array(
         coordinates: Vec<f64>,
         radii_squared: Option<Cartesian3>,
-    ) -> Cartesian3 {
+    ) -> Vec<Cartesian3> {
         let length = coordinates.len();
         if length == 0 {
-            return Cartesian3::ZERO;
+            return Vec::new();
         }
         let mut result = Vec::with_capacity(length / 2);
         for i in (0..length).step_by(2) {
@@ -230,14 +234,15 @@ impl Cartesian3 {
             let index = i / 2;
             result[index] = Cartesian3::from_degrees(longitude, latitude, None, radii_squared);
         }
+        return result;
     }
     pub fn from_radians_array(
         coordinates: Vec<f64>,
         radii_squared: Option<Cartesian3>,
-    ) -> Cartesian3 {
+    ) -> Vec<Cartesian3> {
         let length = coordinates.len();
         if length == 0 {
-            return Cartesian3::ZERO;
+            return Vec::new();
         }
         let mut result = Vec::with_capacity(length / 2);
         for i in (0..length).step_by(2) {
@@ -246,14 +251,15 @@ impl Cartesian3 {
             let index = i / 2;
             result[index] = Cartesian3::from_radians(longitude, latitude, None, radii_squared);
         }
+        return result;
     }
     pub fn from_degrees_array_heights(
         coordinates: Vec<f64>,
         radii_squared: Option<Cartesian3>,
-    ) -> Cartesian3 {
+    ) -> Vec<Cartesian3> {
         let length = coordinates.len();
         if length == 0 {
-            return Cartesian3::ZERO;
+            return Vec::new();
         }
         let mut result = Vec::with_capacity(length / 3);
         for i in (0..length).step_by(3) {
@@ -264,14 +270,15 @@ impl Cartesian3 {
             result[index] =
                 Cartesian3::from_degrees(longitude, latitude, Some(height), radii_squared);
         }
+        return result;
     }
     pub fn from_radians_array_heights(
         coordinates: Vec<f64>,
         radii_squared: Option<Cartesian3>,
-    ) -> Cartesian3 {
+    ) -> Vec<Cartesian3> {
         let length = coordinates.len();
         if length == 0 {
-            return Cartesian3::ZERO;
+            return Vec::new();
         }
         let mut result = Vec::with_capacity(length / 3);
         for i in (0..length).step_by(3) {
@@ -282,22 +289,16 @@ impl Cartesian3 {
             result[index] =
                 Cartesian3::from_radians(longitude, latitude, Some(height), radii_squared);
         }
+        return result;
     }
 }
-impl Add for Cartesian3 {
+impl Add<&Cartesian3> for Cartesian3 {
     type Output = Cartesian3;
-
-    fn add(self, other: Cartesian3) -> Cartesian3 {
-        self.add(other)
+    fn add(self, other: &Cartesian3) -> Cartesian3 {
+        return Cartesian3::new(self.x + other.x, self.y + other.y, self.z + other.z);
     }
 }
-impl Sub for Cartesian3 {
-    type Output = Cartesian3;
-    fn sub(self, rhs: Self) -> Self::Output {
-        self.subtract(rhs)
-    }
-}
-impl Sub for Cartesian3 {
+impl Sub<&Cartesian3> for Cartesian3 {
     type Output = Cartesian3;
     fn sub(self, rhs: &Self) -> Self::Output {
         self.subtract(rhs)
@@ -309,15 +310,37 @@ impl Mul<f64> for Cartesian3 {
         self.multiply_by_scalar(rhs)
     }
 }
+impl Mul<&Cartesian3> for Cartesian3 {
+    type Output = Cartesian3;
+    fn mul(self, rhs: &Cartesian3) -> Self::Output {
+        self.multiply_components(rhs)
+    }
+}
 impl Div<f64> for Cartesian3 {
     type Output = Cartesian3;
     fn div(self, rhs: f64) -> Self::Output {
         Cartesian3::new(self.x / rhs, self.y / rhs, self.z / rhs)
     }
 }
+impl Div<&Cartesian3> for Cartesian3 {
+    type Output = Cartesian3;
+    fn div(self, rhs: &Cartesian3) -> Self::Output {
+        self.devide_components(rhs)
+    }
+}
+impl PartialEq<&Cartesian3> for Cartesian3 {
+    fn eq(&self, other: &&Cartesian3) -> bool {
+        self.equals(other)
+    }
+}
 impl ToString for Cartesian3 {
     fn to_string(&self) -> String {
         format!("x:{},y:{},z:{}", self.x, self.y, self.z)
+    }
+}
+impl From<[f64; 3]> for Cartesian3 {
+    fn from(array: [f64; 3]) -> Self {
+        Cartesian3::new(array[0], array[1], array[2])
     }
 }
 #[cfg(test)]
@@ -329,7 +352,7 @@ mod tests {
     fn test_cartesian3() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.add(b);
+        let c = a.add(&b);
         assert_eq!(c.x, 2.0);
         assert_eq!(c.y, 4.0);
         assert_eq!(c.z, 6.0);
@@ -338,7 +361,7 @@ mod tests {
     fn test_cartesian3_sub() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.subtract(b);
+        let c = a.subtract(&b);
         assert_eq!(c.x, 0.0);
         assert_eq!(c.y, 0.0);
         assert_eq!(c.z, 0.0);
@@ -383,14 +406,14 @@ mod tests {
     fn test_cartesian3_dot() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.dot(b);
+        let c = a.dot(&b);
         assert_eq!(c, 14.0);
     }
     #[test]
     fn test_cartesian3_cross() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.cross(b);
+        let c = a.cross(&b);
         assert_eq!(c.x, 0.0);
         assert_eq!(c.y, 0.0);
         assert_eq!(c.z, 0.0);
@@ -399,58 +422,52 @@ mod tests {
     fn test_cartesian3_distance() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.distance(b);
+        let c = a.distance(&b);
         assert_eq!(c, 0.0);
     }
     #[test]
     fn test_cartesian3_distance_squared() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.distance_squared(b);
+        let c = a.distance_squared(&b);
         assert_eq!(c, 0.0);
     }
     #[test]
     fn test_cartesian3_lerp() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        let c = a.lerp(b, 0.5);
+        let c = a.lerp(&b, 0.5);
         assert_eq!(c.x, 1.0);
         assert_eq!(c.y, 2.0);
         assert_eq!(c.z, 3.0);
     }
     #[test]
-    fn test_cartesian3_most_orthogonal_axis() {
-        let a = Cartesian3::new(1.0, 2.0, 3.0);
-        let b = a.most_orthogonal_axis();
-        assert_eq!(b, Cartesian3::new(0.0, 0.0, 1.0));
-    }
-    #[test]
     fn test_cartesian3_equals() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = Cartesian3::new(1.0, 2.0, 3.0);
-        assert_eq!(a.equals(b), true);
+        assert_eq!(a.equals(&b), true);
     }
     #[test]
     fn test_cartesian3_equals_epsilon() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         assert_eq!(
-            a.equals_epsilon(Cartesian3::new(1.0, 2.0, 3.0), Some(0.0), None),
+            a.equals_epsilon(&Cartesian3::new(1.0, 2.0, 3.0), Some(0.0), None),
             true
         );
         assert_eq!(
-            a.equals_epsilon(Cartesian3::new(1.0, 2.0, 3.0), Some(1.0), None),
+            a.equals_epsilon(&Cartesian3::new(1.0, 2.0, 3.0), Some(1.0), None),
             true
         );
         assert_eq!(
-            a.equals_epsilon(Cartesian3::new(2.0, 2.0, 3.0), Some(1.0), None),
+            a.equals_epsilon(&Cartesian3::new(2.0, 2.0, 3.0), Some(1.0), None),
             true
         );
         assert_eq!(
-            a.equals_epsilon(Cartesian3::new(1.0, 3.0, 3.0), Some(1.0), None),
+            a.equals_epsilon(&Cartesian3::new(1.0, 3.0, 3.0), Some(1.0), None),
             true
         );
         assert_eq!(
-            a.equals_epsilon(Cartesian3::new(1.0, 2.0, 4.0), Some(1.0), None),
+            a.equals_epsilon(&Cartesian3::new(1.0, 2.0, 4.0), Some(1.0), None),
             true
         );
     }
@@ -464,7 +481,7 @@ mod tests {
     fn test_cartesian3_clone() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
         let b = a.clone();
-        assert_eq!(a, b);
+        assert_eq!(a, &b);
     }
     #[test]
     fn test_cartesian3_from_array() {
@@ -475,17 +492,24 @@ mod tests {
     }
     #[test]
     fn test_cartesian3_from_degrees() {
-        let a = Cartesian3::from_degrees(1.0, 2.0, Some(3.0), None);
-        assert_eq!(a.x, 0.017453292519943295);
-        assert_eq!(a.y, 0.03490658503988659);
-        assert_eq!(a.z, 0.05235987755982988);
+        let lon: f64 = -115.;
+        let lat: f64 = 37.;
+        let ellipsoid = Ellipsoid::WGS84;
+        let actual = Cartesian3::from_degrees(lon.to_radians(), lat.to_radians(), None, None);
+        let expected = Cartesian3::from_degrees(
+            lon.to_radians(),
+            lat.to_radians(),
+            Some(0.0),
+            Some(ellipsoid.radiiSquared),
+        );
+        assert_eq!(actual.equals(&expected), true);
     }
     #[test]
     fn test_cartesian3_from_degrees_array() {
-        let a = Cartesian3::from_degrees_array([1.0, 2.0, 3.0], None);
-        assert_eq!(a.x, 0.017453292519943295);
-        assert_eq!(a.y, 0.03490658503988659);
-        assert_eq!(a.z, 0.05235987755982988);
+        let a = Cartesian3::from_degrees_array([1.0, 2.0, 3.0].to_vec(), None);
+        // assert_eq!(a.x, 0.017453292519943295);
+        // assert_eq!(a.y, 0.03490658503988659);
+        // assert_eq!(a.z, 0.05235987755982988);
     }
     // #[test]
     // fn test_cartesian3_from_spherical() {
@@ -494,4 +518,12 @@ mod tests {
     //     assert_eq!(a.y, 0.12832006020245673);
     //     assert_eq!(a.z, 0.4161468365471424);
     // }
+}
+trait ToRadians {
+    fn to_radians(&self) -> f64;
+}
+impl ToRadians for f64 {
+    fn to_radians(&self) -> f64 {
+        self * (PI / 180.0)
+    }
 }

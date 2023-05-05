@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use geodesy::preamble::*;
 
 use crate::box3d::Box3d;
-use crate::ellipsoid::EllipsoidShape;
+use crate::ellipsoid::{Ellipsoid, EllipsoidShape};
 use crate::oriented_bounding_box;
 #[derive(Component)]
 pub struct Shape;
@@ -29,7 +28,7 @@ fn setup(
         base_color_texture: Some(images.add(uv_debug_texture())),
         ..default()
     });
-    let ellipsoid = Ellipsoid::named("WGS84").unwrap();
+    let ellipsoid = Ellipsoid::WGS84;
     let x = ellipsoid.semimajor_axis() as f32;
     let y = ellipsoid.semiminor_axis() as f32;
     let z = ellipsoid.semiminor_axis() as f32;

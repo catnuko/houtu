@@ -65,13 +65,13 @@ impl From<Box3d> for Mesh {
             DVec3::new(value.maximum.x, value.minimum.y, value.maximum.z),
         );
         mesh.set_indices(Some(bevy::render::mesh::Indices::U32(indices)));
-        mesh.insert_attribute(
-            bevy::render::mesh::Mesh::ATTRIBUTE_POSITION,
-            vertices
-                .iter()
-                .map(|v| [v.x, v.y, v.z])
-                .collect::<Vec<[f64; 3]>>(),
-        );
+        // mesh.insert_attribute(
+        //     bevy::render::mesh::Mesh::ATTRIBUTE_POSITION,
+        //     vertices
+        //         .iter()
+        //         .map(|v| [v.x, v.y, v.z])
+        //         .collect::<Vec<[f64; 3]>>(),
+        // );
         mesh
     }
 }

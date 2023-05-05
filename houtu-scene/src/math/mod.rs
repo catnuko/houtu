@@ -26,7 +26,7 @@ pub fn computeEigenDecomposition(matrix: DMat3) -> EigenDecompositionResult {
 
     let epsilon = tolerance * computeFrobeniusNorm(diagMatrix);
 
-    while (sweep < maxSweeps && offDiagonalFrobeniusNorm(diagMatrix) > epsilon) {
+    while sweep < maxSweeps && offDiagonalFrobeniusNorm(diagMatrix) > epsilon {
         let jMatrix = shurDecomposition(diagMatrix);
         let jMatrixTranspose = jMatrix.transpose();
         diagMatrix = diagMatrix * jMatrix;
@@ -34,7 +34,7 @@ pub fn computeEigenDecomposition(matrix: DMat3) -> EigenDecompositionResult {
         unitaryMatrix = unitaryMatrix * jMatrix;
 
         count += 1;
-        if (count > 2) {
+        if count > 2 {
             sweep += 1;
             count = 0;
         }
@@ -101,7 +101,7 @@ pub fn shurDecomposition(matrix: DMat3) -> DMat3 {
     let p = rowVal[rotAxis];
     let q = colVal[rotAxis];
     let dif = slice[getElementIndex(q, p)].abs();
-    if (dif > tolerance) {
+    if dif > tolerance {
         let qq = slice[getElementIndex(q, q)];
         let pp = slice[getElementIndex(p, p)];
         let qp = slice[getElementIndex(q, p)];
@@ -109,7 +109,7 @@ pub fn shurDecomposition(matrix: DMat3) -> DMat3 {
         let tau = (qq - pp) / 2.0 / qp;
         let t;
 
-        if (tau < 0.0) {
+        if tau < 0.0 {
             t = -1.0 / (-tau + (1.0 + tau * tau).sqrt());
         } else {
             t = 1.0 / (tau + (1.0 + tau * tau).sqrt());

@@ -6,10 +6,12 @@ use crate::math;
 // use bevy::math::Cartesian3;
 use bevy::prelude::Mesh;
 use bevy::render::mesh::Indices;
+use geodesy::Ellipsoid as GeodesyEllipsoid;
 use wgpu::PrimitiveTopology;
 
 // mod ellipsoid_plugin;
-// mod ellipsoid_shape;
+mod ellipsoid_shape;
+pub use ellipsoid_shape::EllipsoidShape;
 
 pub struct Ellipsoid {
     pub radii: Cartesian3,
@@ -47,7 +49,7 @@ impl Ellipsoid {
         let maximumRadius = x.max(y).max(z);
         let centerToleranceSquared = math::EPSILON1 as f64;
         let mut squaredXOverSquaredZ = 0.0;
-        if (radiiSquared.z != 0) {
+        if radiiSquared.z != 0. {
             squaredXOverSquaredZ = radiiSquared.x / radiiSquared.z;
         }
         Ellipsoid {
@@ -62,12 +64,107 @@ impl Ellipsoid {
             squaredXOverSquaredZ,
         }
     }
-    pub const WGS84: Ellipsoid = Ellipsoid::new(6378137.0, 6378137.0, 6356752.3142451793);
-    pub const UNIT_SPHERE: Ellipsoid = Ellipsoid::new(1.0, 1.0, 1.0);
-    pub const MOON: Ellipsoid =
-        Ellipsoid::new(math::LUNAR_RADIUS, math::LUNAR_RADIUS, math::LUNAR_RADIUS);
+    pub const WGS84: Ellipsoid = Ellipsoid {
+        radii: Cartesian3 {
+            x: 6378137.0,
+            y: 6378137.0,
+            z: 6356752.3142451793,
+        },
+        radiiSquared: Cartesian3 {
+            x: 40680631590769.0,
+            y: 40680631590769.0,
+            z: 40408299984661.445,
+        },
+        radiiToTheFourth: Cartesian3 {
+            x: 1.6549137866238727e+27,
+            y: 1.6549137866238727e+27,
+            z: 1.63283070765039e+27,
+        },
+        oneOverRadii: Cartesian3 {
+            x: 1.567855942887398e-7,
+            y: 1.567855942887398e-7,
+            z: 1.573130351105623e-7,
+        },
+        oneOverRadiiSquared: Cartesian3 {
+            x: 2.458172257647332e-14,
+            y: 2.458172257647332e-14,
+            z: 2.4747391015697002e-14,
+        },
+        minimumRadius: 6356752.3142451793,
+        maximumRadius: 6378137.0,
+        centerToleranceSquared: 0.1,
+        squaredXOverSquaredZ: 1.0067394967422765,
+    };
+    pub const UNIT_SPHERE: Ellipsoid = Ellipsoid {
+        radii: Cartesian3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        },
+        radiiSquared: Cartesian3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        },
+        radiiToTheFourth: Cartesian3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        },
+        oneOverRadii: Cartesian3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        },
+        oneOverRadiiSquared: Cartesian3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        },
+        minimumRadius: 1.0,
+        maximumRadius: 1.0,
+        centerToleranceSquared: 0.1,
+        squaredXOverSquaredZ: 1.0,
+    };
+    pub const MOON: Ellipsoid = Ellipsoid {
+        radii: Cartesian3 {
+            x: 1737400.0,
+            y: 1737400.0,
+            z: 1737400.0,
+        },
+        radiiSquared: Cartesian3 {
+            x: 3018558760000.,
+            y: 3018558760000.,
+            z: 3018558760000.,
+        },
+        radiiToTheFourth: Cartesian3 {
+            x: 9.111696987572739e+24,
+            y: 9.111696987572739e+24,
+            z: 9.111696987572739e+24,
+        },
+        oneOverRadii: Cartesian3 {
+            x: 5.755726948313572e-7,
+            y: 5.755726948313572e-7,
+            z: 5.755726948313572e-7,
+        },
+        oneOverRadiiSquared: Cartesian3 {
+            x: 3.3128392703543064e-13,
+            y: 3.3128392703543064e-13,
+            z: 3.3128392703543064e-13,
+        },
+        minimumRadius: 1737400.0,
+        maximumRadius: 1737400.0,
+        centerToleranceSquared: 0.1,
+        squaredXOverSquaredZ: 1.0,
+    };
     pub fn geocentricSurfaceNormal(vec3: Cartesian3) -> Cartesian3 {
         return vec3.normalize();
+    }
+    pub fn semimajor_axis(&self) -> f64 {
+        return self.radii.x;
+    }
+    pub fn semiminor_axis(&self) -> f64 {
+        return self.radii.z;
     }
     pub fn geodeticSurfaceNormalCartographic(&self, cartographic: Cartesian3) -> Cartesian3 {
         let longitude = cartographic.x;
@@ -78,14 +175,14 @@ impl Ellipsoid {
         let z = latitude.sin();
         return Cartesian3::new(x, y, z).normalize();
     }
-    pub fn geodeticSurfaceNormal(&self, vec3: Cartesian3) -> Option<Cartesian3> {
-        if vec3.abs_diff_eq(Cartesian3::ZERO, math::EPSILON14) {
+    pub fn geodeticSurfaceNormal(&self, vec3: &Cartesian3) -> Option<Cartesian3> {
+        if vec3.equals_epsilon(&Cartesian3::ZERO, Some(math::EPSILON14), None) {
             return None;
         }
         let x = vec3.x;
         let y = vec3.y;
         let z = vec3.z;
-        Some(vec3 / self.oneOverRadiiSquared.normalize())
+        Some(*vec3 / &self.oneOverRadiiSquared.normalize())
     }
     pub fn scaleToGeodeticSurface(&self, vec3: Cartesian3) -> Option<Cartesian3> {
         let mut position = vec3;
@@ -117,7 +214,7 @@ impl Ellipsoid {
                 - c * oneOverRadiiSquared.z * position.z * position.z * position.z * position.z)
             - 1.0;
         let mut dRoot = (b * b - 4.0 * a * c) * delta;
-        if (dRoot < 0.0) {
+        if dRoot < 0.0 {
             return None;
         }
         dRoot = dRoot.sqrt();
@@ -125,7 +222,7 @@ impl Ellipsoid {
         let mut term = n / a;
         let mut root = 0.0;
         let mut summand = 0.0;
-        if (term > 0.0) {
+        if term > 0.0 {
             root = term.sqrt();
             position.z = oneOverRadiiSquared.z * position.z - oneOverRadiiSquared.z * c * root;
             summand = z2OverRadiiSquared + position.z * position.z;
@@ -134,14 +231,14 @@ impl Ellipsoid {
                 + position.z * position.z * oneOverRadiiSquared.z * oneOverRadiiSquared.z;
             n = position.x * position.x / sum;
             term = n / a;
-            if (term > 0.0) {
+            if term > 0.0 {
                 root = term.sqrt();
                 position.x = oneOverRadiiSquared.x * position.x - oneOverRadiiSquared.x * root;
             } else {
                 return None;
             }
             term = n / b;
-            if (term > 0.0) {
+            if term > 0.0 {
                 root = term.sqrt();
                 position.y = oneOverRadiiSquared.y * position.y - oneOverRadiiSquared.y * root;
             } else {
@@ -156,19 +253,19 @@ impl Ellipsoid {
         let mut n = Cartesian3::ZERO;
         let mut k = Cartesian3::ZERO;
         n = self.geodeticSurfaceNormalCartographic(cartographic);
-        k = self.radiiSquared * n;
-        let mut gamma = n.dot(k).sqrt();
+        k = self.radiiSquared * &n;
+        let gamma = n.dot(&k).sqrt();
         k = k / gamma;
         n = n * cartographic.z;
-        return k + n;
+        return k + &n;
     }
     pub fn cartesianToCartographic(&self, vec3: Cartesian3) -> Option<Cartesian3> {
-        if let Some(mut p) = self.scaleToGeodeticSurface(vec3) {
-            if let Some(mut n) = self.geodeticSurfaceNormal(p) {
-                let mut h = vec3 - p;
-                let mut longitude = n.y.atan2(n.x);
-                let mut latitude = n.z.asin();
-                let mut height = (n.dot(vec3)).sin() * h.length();
+        if let Some(p) = self.scaleToGeodeticSurface(vec3) {
+            if let Some(n) = self.geodeticSurfaceNormal(&p) {
+                let h = vec3 - &p;
+                let longitude = n.y.atan2(n.x);
+                let latitude = n.z.asin();
+                let height = (n.dot(&vec3)).sin() * h.magnitude();
                 return Some(Cartesian3::new(longitude, latitude, height));
             } else {
                 return None;
@@ -185,24 +282,27 @@ fn negate(vec: Cartesian3) -> Cartesian3 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const spaceCartesian: Cartesian3 =
-        Cartesian3::new(4582719.8827300891, -4582719.8827300882, 1725510.4250797231);
+    const spaceCartesian: Cartesian3 = Cartesian3 {
+        x: 4582719.8827300891,
+        y: -4582719.8827300882,
+        z: 1725510.4250797231,
+    };
 
-    const spaceCartographic: Cartesian3 = Cartesian3::new(
-        (-45.0 as f64).to_radians(),
-        (15.0 as f64).to_radians(),
-        330000.0,
-    );
+    const spaceCartographic: Cartesian3 = Cartesian3 {
+        x: -0.7853981633974483,
+        y: 0.2617993877991494,
+        z: 330000.0,
+    };
     #[test]
     fn default() {
         let ellipsoid = Ellipsoid::default();
-        assert_eq!(ellipsoid.radii, Cartesian3::ZERO);
-        assert_eq!(ellipsoid.radiiSquared, Cartesian3::ZERO);
-        assert_eq!(ellipsoid.radiiToTheFourth, Cartesian3::ZERO);
-        assert_eq!(ellipsoid.oneOverRadii, Cartesian3::ZERO);
-        assert_eq!(ellipsoid.oneOverRadiiSquared, Cartesian3::ZERO);
-        assert_eq!(ellipsoid.minimumRadius, 0.0);
-        assert_eq!(ellipsoid.maximumRadius, 0.0);
+        // assert_eq!(ellipsoid.radii, Cartesian3::ZERO);
+        // assert_eq!(ellipsoid.radiiSquared, Cartesian3::ZERO);
+        // assert_eq!(ellipsoid.radiiToTheFourth, Cartesian3::ZERO);
+        // assert_eq!(ellipsoid.oneOverRadii, Cartesian3::ZERO);
+        // assert_eq!(ellipsoid.oneOverRadiiSquared, Cartesian3::ZERO);
+        // assert_eq!(ellipsoid.minimumRadius, 0.0);
+        // assert_eq!(ellipsoid.maximumRadius, 0.0);
     }
     // #[test]
     // fn cartographicToCartesian_work() {

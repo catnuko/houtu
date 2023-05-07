@@ -70,8 +70,6 @@ impl bevy::app::Plugin for Plugin {
 }
 
 pub fn create_vertice() {
-    
-    
     let cos = Math.cos;
     let sin = Math.sin;
     let sqrt = Math.sqrt;
@@ -137,7 +135,8 @@ pub fn create_vertice() {
 
     let structure = defaultValue(
         options.structure,
-        HeightmapTessellator.DEFAULT_STRUCTURE
+        HeightmapTessellator.
+        
     );
     let heightScale = defaultValue(
         structure.heightScale,

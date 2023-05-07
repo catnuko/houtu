@@ -12,9 +12,11 @@ use bevy::{
 mod cartesian3;
 mod cartographic;
 mod matrix4;
+mod transform;
 pub use cartesian3::*;
 pub use cartographic::*;
 pub use matrix4::*;
+pub use transform::*;
 
 pub use epsilon::*;
 pub use to_radians::*;

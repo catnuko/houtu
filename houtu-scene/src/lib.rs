@@ -23,7 +23,6 @@ pub use globe::Shape;
 // mod web_mercator_projection;
 // mod wmts_imagery_layer;
 // mod wmts_imagery_provider;
-mod bounding_shpere;
 mod ellipsoid;
 mod geometry;
 mod height_map_terrain;

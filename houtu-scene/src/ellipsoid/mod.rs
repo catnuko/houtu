@@ -1,8 +1,10 @@
 use std::f32::consts::{PI, TAU};
 use std::fmt;
+use std::ops::Sub;
 
-use crate::coord::Cartesian3;
+use crate::coord::{Cartesian3, Cartographic};
 use crate::math;
+use crate::math::ToRadians;
 // use bevy::math::Cartesian3;
 use bevy::prelude::Mesh;
 use bevy::render::mesh::Indices;
@@ -157,7 +159,7 @@ impl Ellipsoid {
         centerToleranceSquared: 0.1,
         squaredXOverSquaredZ: 1.0,
     };
-    pub fn geocentricSurfaceNormal(vec3: Cartesian3) -> Cartesian3 {
+    pub fn geocentricSurfaceNormal(vec3: &Cartesian3) -> Cartesian3 {
         return vec3.normalize();
     }
     pub fn semimajor_axis(&self) -> f64 {
@@ -166,9 +168,9 @@ impl Ellipsoid {
     pub fn semiminor_axis(&self) -> f64 {
         return self.radii.z;
     }
-    pub fn geodeticSurfaceNormalCartographic(&self, cartographic: Cartesian3) -> Cartesian3 {
-        let longitude = cartographic.x;
-        let latitude = cartographic.y;
+    pub fn geodeticSurfaceNormalCartographic(&self, cartographic: &Cartographic) -> Cartesian3 {
+        let longitude = cartographic.longitude;
+        let latitude = cartographic.latitude;
         let cosLatitude = latitude.cos();
         let x = cosLatitude * longitude.cos();
         let y = cosLatitude * longitude.sin();
@@ -179,100 +181,154 @@ impl Ellipsoid {
         if vec3.equals_epsilon(&Cartesian3::ZERO, Some(math::EPSILON14), None) {
             return None;
         }
-        let x = vec3.x;
-        let y = vec3.y;
-        let z = vec3.z;
-        Some(*vec3 / &self.oneOverRadiiSquared.normalize())
+        Some(
+            vec3.multiply_components(&self.oneOverRadiiSquared)
+                .normalize(),
+        )
     }
-    pub fn scaleToGeodeticSurface(&self, vec3: Cartesian3) -> Option<Cartesian3> {
-        let mut position = vec3;
-        let mut positionX2 = position.x * position.x;
-        let mut positionY2 = position.y * position.y;
-        let mut positionZ2 = position.z * position.z;
-        let mut oneOverRadiiSquared = self.oneOverRadiiSquared;
-        let mut x2OverRadiiSquared = positionX2 * oneOverRadiiSquared.x;
-        let mut y2OverRadiiSquared = positionY2 * oneOverRadiiSquared.y;
-        let mut z2OverRadiiSquared = positionZ2 * oneOverRadiiSquared.z;
-        let mut sum = x2OverRadiiSquared + y2OverRadiiSquared + z2OverRadiiSquared;
-        let mut a = 1.0;
-        let mut b = 0.5;
-        let mut c = 0.0625;
-        let mut d = 0.03125;
-        let mut x2y2 = positionX2 + positionY2;
-        let mut x2z2 = positionX2 + positionZ2;
-        let mut y2z2 = positionY2 + positionZ2;
-        let mut alpha = 1.0
-            - (b * y2z2 + c * z2OverRadiiSquared) * position.y * position.y * oneOverRadiiSquared.y;
-        let mut beta =
-            (b * x2z2 + c * z2OverRadiiSquared) * position.x * position.x * oneOverRadiiSquared.x;
-        let mut gamma =
-            (b * x2y2 + c * y2OverRadiiSquared) * position.z * position.z * oneOverRadiiSquared.z;
-        let mut delta = 2.0
-            * (a * (x2OverRadiiSquared + y2OverRadiiSquared + z2OverRadiiSquared)
-                + beta * position.x * position.y
-                + gamma * position.z * position.z
-                - c * oneOverRadiiSquared.z * position.z * position.z * position.z * position.z)
-            - 1.0;
-        let mut dRoot = (b * b - 4.0 * a * c) * delta;
-        if dRoot < 0.0 {
-            return None;
-        }
-        dRoot = dRoot.sqrt();
-        let mut n = 0.5 * (-b * delta - dRoot);
-        let mut term = n / a;
-        let mut root = 0.0;
-        let mut summand = 0.0;
-        if term > 0.0 {
-            root = term.sqrt();
-            position.z = oneOverRadiiSquared.z * position.z - oneOverRadiiSquared.z * c * root;
-            summand = z2OverRadiiSquared + position.z * position.z;
-            sum = x2OverRadiiSquared / (summand * summand)
-                + y2OverRadiiSquared / (summand * summand)
-                + position.z * position.z * oneOverRadiiSquared.z * oneOverRadiiSquared.z;
-            n = position.x * position.x / sum;
-            term = n / a;
-            if term > 0.0 {
-                root = term.sqrt();
-                position.x = oneOverRadiiSquared.x * position.x - oneOverRadiiSquared.x * root;
-            } else {
+    pub fn scaleToGeodeticSurface(&self, cartesian: &Cartesian3) -> Option<Cartesian3> {
+        let oneOverRadii = self.oneOverRadii;
+        let oneOverRadiiSquared = self.oneOverRadiiSquared;
+        let centerToleranceSquared = self.centerToleranceSquared;
+        let positionX = cartesian.x;
+        let positionY = cartesian.y;
+        let positionZ = cartesian.z;
+        let oneOverRadiiX = oneOverRadii.x;
+        let oneOverRadiiY = oneOverRadii.y;
+        let oneOverRadiiZ = oneOverRadii.z;
+
+        let x2 = positionX * positionX * oneOverRadiiX * oneOverRadiiX;
+        let y2 = positionY * positionY * oneOverRadiiY * oneOverRadiiY;
+        let z2 = positionZ * positionZ * oneOverRadiiZ * oneOverRadiiZ;
+        let mut squaredNorm = x2 + y2 + z2;
+
+        // Compute the squared ellipsoid norm.
+
+        let ratio = (1.0 / squaredNorm).sqrt();
+
+        // As an initial approximation, assume that the radial intersection is the projection point.
+        let intersection = cartesian.multiply_by_scalar(ratio);
+        // If the position is near the center, the iteration will not converge.
+        if (squaredNorm < centerToleranceSquared) {
+            if !ratio.is_infinite() {
                 return None;
-            }
-            term = n / b;
-            if term > 0.0 {
-                root = term.sqrt();
-                position.y = oneOverRadiiSquared.y * position.y - oneOverRadiiSquared.y * root;
             } else {
-                return None;
+                return Some(intersection);
             }
-        } else {
-            return None;
         }
-        return Some(position);
+
+        let oneOverRadiiSquaredX = oneOverRadiiSquared.x;
+        let oneOverRadiiSquaredY = oneOverRadiiSquared.y;
+        let oneOverRadiiSquaredZ = oneOverRadiiSquared.z;
+
+        // Use the gradient at the intersection point in place of the true unit normal.
+        // The difference in magnitude will be absorbed in the multiplier.
+        let mut gradient = intersection;
+        gradient.x = intersection.x * oneOverRadiiSquaredX * 2.0;
+        gradient.y = intersection.y * oneOverRadiiSquaredY * 2.0;
+        gradient.z = intersection.z * oneOverRadiiSquaredZ * 2.0;
+
+        // Compute the initial guess at the normal vector multiplier, lambda.
+        let mut lambda = ((1.0 - ratio) * cartesian.magnitude()) / (0.5 * gradient.magnitude());
+        let mut correction = 0.0;
+
+        let mut func: f64 = 0.;
+        let mut denominator: f64 = 0.;
+        let mut xMultiplier: f64 = 0.;
+        let mut yMultiplier: f64 = 0.;
+        let mut zMultiplier: f64 = 0.;
+        let mut xMultiplier2: f64 = 0.;
+        let mut yMultiplier2: f64 = 0.;
+        let mut zMultiplier2: f64 = 0.;
+        let mut xMultiplier3: f64 = 0.;
+        let mut yMultiplier3: f64 = 0.;
+        let mut zMultiplier3: f64 = 0.;
+        loop {
+            lambda -= correction;
+
+            xMultiplier = 1.0 / (1.0 + lambda * oneOverRadiiSquaredX);
+            yMultiplier = 1.0 / (1.0 + lambda * oneOverRadiiSquaredY);
+            zMultiplier = 1.0 / (1.0 + lambda * oneOverRadiiSquaredZ);
+
+            xMultiplier2 = xMultiplier * xMultiplier;
+            yMultiplier2 = yMultiplier * yMultiplier;
+            zMultiplier2 = zMultiplier * zMultiplier;
+
+            xMultiplier3 = xMultiplier2 * xMultiplier;
+            yMultiplier3 = yMultiplier2 * yMultiplier;
+            zMultiplier3 = zMultiplier2 * zMultiplier;
+
+            func = x2 * xMultiplier2 + y2 * yMultiplier2 + z2 * zMultiplier2 - 1.0;
+
+            // "denominator" here refers to the use of this expression in the velocity and acceleration
+            // computations in the sections to follow.
+            denominator = x2 * xMultiplier3 * oneOverRadiiSquaredX
+                + y2 * yMultiplier3 * oneOverRadiiSquaredY
+                + z2 * zMultiplier3 * oneOverRadiiSquaredZ;
+
+            let derivative = -2.0 * denominator;
+
+            correction = func / derivative;
+            if func.abs() < math::EPSILON12 {
+                break;
+            }
+        }
+
+        return Some(Cartesian3::new(
+            positionX * xMultiplier,
+            positionY * yMultiplier,
+            positionZ * zMultiplier,
+        ));
     }
-    pub fn cartographicToCartesian(&self, cartographic: Cartesian3) -> Cartesian3 {
+    pub fn cartographicToCartesian(&self, cartographic: &Cartographic) -> Cartesian3 {
         let mut n = Cartesian3::ZERO;
         let mut k = Cartesian3::ZERO;
         n = self.geodeticSurfaceNormalCartographic(cartographic);
         k = self.radiiSquared * &n;
         let gamma = n.dot(&k).sqrt();
         k = k / gamma;
-        n = n * cartographic.z;
+        n = n * cartographic.height;
         return k + &n;
     }
-    pub fn cartesianToCartographic(&self, vec3: Cartesian3) -> Option<Cartesian3> {
+    pub fn cartesianToCartographic(&self, vec3: &Cartesian3) -> Option<Cartographic> {
         if let Some(p) = self.scaleToGeodeticSurface(vec3) {
             if let Some(n) = self.geodeticSurfaceNormal(&p) {
-                let h = vec3 - &p;
+                let h = vec3.subtract(&p);
                 let longitude = n.y.atan2(n.x);
                 let latitude = n.z.asin();
-                let height = (n.dot(&vec3)).sin() * h.magnitude();
-                return Some(Cartesian3::new(longitude, latitude, height));
+                let b = h.dot(&vec3);
+                let c = b.signum();
+                let d = c * h.magnitude();
+                let height = d;
+                return Some(Cartographic::from_radians(longitude, latitude, height));
             } else {
                 return None;
             }
         } else {
             return None;
         }
+    }
+    pub fn cartographicArrayToCartesianArray(
+        &self,
+        cartographics: Vec<&Cartographic>,
+    ) -> Vec<Cartesian3> {
+        let mut result = Vec::with_capacity(cartographics.len());
+        for cartographic in cartographics {
+            result.push(self.cartographicToCartesian(cartographic));
+        }
+        return result;
+    }
+    pub fn cartesianArrayToCartographicArray(
+        &self,
+        cartesians: Vec<&Cartesian3>,
+    ) -> Vec<Cartographic> {
+        let mut result = Vec::with_capacity(cartesians.len());
+        for cartesian in cartesians {
+            if let Some(cartographic) = self.cartesianToCartographic(cartesian) {
+                result.push(cartographic);
+            }
+        }
+        return result;
     }
 }
 fn negate(vec: Cartesian3) -> Cartesian3 {
@@ -281,6 +337,8 @@ fn negate(vec: Cartesian3) -> Cartesian3 {
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::PI;
+
     use super::*;
     const spaceCartesian: Cartesian3 = Cartesian3 {
         x: 4582719.8827300891,
@@ -288,27 +346,85 @@ mod tests {
         z: 1725510.4250797231,
     };
 
-    const spaceCartographic: Cartesian3 = Cartesian3 {
-        x: -0.7853981633974483,
-        y: 0.2617993877991494,
-        z: 330000.0,
+    const spaceCartographic: Cartographic = Cartographic {
+        longitude: -0.7853981633974483,
+        latitude: 0.2617993877991494,
+        height: 330000.0,
+    };
+    const surfaceCartographic: Cartographic = Cartographic {
+        longitude: 25.0 * PI / 180.0,
+        latitude: 45.0 * PI / 180.0,
+        height: 0.0,
+    };
+
+    const surfaceCartesian: Cartesian3 = Cartesian3 {
+        x: 4094327.7921465295,
+        y: 1909216.4044747739,
+        z: 4487348.4088659193,
     };
     #[test]
-    fn default() {
-        let ellipsoid = Ellipsoid::default();
-        // assert_eq!(ellipsoid.radii, Cartesian3::ZERO);
-        // assert_eq!(ellipsoid.radiiSquared, Cartesian3::ZERO);
-        // assert_eq!(ellipsoid.radiiToTheFourth, Cartesian3::ZERO);
-        // assert_eq!(ellipsoid.oneOverRadii, Cartesian3::ZERO);
-        // assert_eq!(ellipsoid.oneOverRadiiSquared, Cartesian3::ZERO);
-        // assert_eq!(ellipsoid.minimumRadius, 0.0);
-        // assert_eq!(ellipsoid.maximumRadius, 0.0);
+    fn test_cartographicToCartesian() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let cartographic = Cartesian3::new(0.0, 0.0, 0.0);
+        let result = ellipsoid.cartographicToCartesian(&spaceCartographic);
+        assert_eq!(
+            result.equals_epsilon(&spaceCartesian, Some(math::EPSILON7), None),
+            true
+        );
     }
-    // #[test]
-    // fn cartographicToCartesian_work() {
-    //     let ellipsoid = Ellipsoid::WGS84;
-    //     let cartographic = Cartesian3::new(0.0, 0.0, 0.0);
-    //     let result = ellipsoid.cartographicToCartesian(spaceCartographic);
-    //     assert_eq!(result - spaceCartesian, math::EPSILON7);
-    // }
+    #[test]
+    fn test_cartographicArrayToCartesianArray() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let cartographic = Cartesian3::new(0.0, 0.0, 0.0);
+        let result = ellipsoid
+            .cartographicArrayToCartesianArray(vec![&spaceCartographic, &surfaceCartographic]);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(
+            result[0].equals_epsilon(&spaceCartesian, Some(math::EPSILON7), None),
+            true
+        );
+        assert_eq!(
+            result[1].equals_epsilon(&surfaceCartesian, Some(math::EPSILON7), None),
+            true
+        );
+    }
+    #[test]
+    fn test_cartesianToCartographic() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let result = ellipsoid.cartesianToCartographic(&surfaceCartesian);
+        assert_eq!(
+            result
+                .unwrap()
+                .equals_epsilon(&surfaceCartographic, math::EPSILON8),
+            true
+        );
+        let result = ellipsoid.cartesianToCartographic(&spaceCartesian);
+        assert_eq!(
+            result.unwrap().equals_epsilon(&spaceCartographic, 1.0),
+            true
+        );
+    }
+    #[test]
+    fn test_cartesianArrayToCartographicArray() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let result =
+            ellipsoid.cartesianArrayToCartographicArray(vec![&surfaceCartesian, &spaceCartesian]);
+        assert_eq!(result.len(), 2);
+        assert_eq!(
+            result[0].equals_epsilon(&surfaceCartographic, math::EPSILON7),
+            true
+        );
+        assert_eq!(
+            result[1].equals_epsilon(&spaceCartographic, math::EPSILON7),
+            true
+        );
+    }
+    #[test]
+    fn test_cartesianToCartographic_close_to_center() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let expected = Cartographic::new(9.999999999999999e-11, 1.0067394967422763e-20, -6378137.0);
+        let result = ellipsoid.cartesianToCartographic(&Cartesian3::new(1e-50, 1e-60, 1e-70));
+        assert_eq!(result.is_none(), true);
+    }
 }

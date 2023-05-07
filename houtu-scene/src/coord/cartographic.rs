@@ -1,8 +1,8 @@
 use std::{fmt::Formatter, ops::Add};
 
-use crate::ellipsoid::Ellipsoid;
-
 use super::cartesian3::Cartesian3;
+use crate::ellipsoid::Ellipsoid;
+use crate::math::ToRadians;
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Cartographic {
     pub longitude: f64,
@@ -10,17 +10,20 @@ pub struct Cartographic {
     pub height: f64,
 }
 impl Cartographic {
+    pub fn new(longitude: f64, latitude: f64, height: f64) -> Self {
+        Cartographic::from_radians(longitude, latitude, height)
+    }
     pub fn from_radians(longitude: f64, latitude: f64, height: f64) -> Self {
         Cartographic {
-            longitude: longitude.to_degrees(),
-            latitude: latitude.to_degrees(),
+            longitude: longitude,
+            latitude: latitude,
             height,
         }
     }
     pub fn from_degrees(longitude: f64, latitude: f64, height: f64) -> Self {
         Cartographic {
-            longitude,
-            latitude,
+            longitude: longitude.to_radians(),
+            latitude: latitude.to_radians(),
             height,
         }
     }
@@ -38,14 +41,14 @@ impl Cartographic {
             height: self.height,
         }
     }
-    pub fn from_cartesian(cartesian: Cartesian3, ellipsoid: Option<Ellipsoid>) -> Option<Self> {
-        let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
+    pub fn from_cartesian(cartesian: &Cartesian3, ellipsoid: Option<&Ellipsoid>) -> Option<Self> {
+        let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let one_over_radii = ellipsoid.oneOverRadii;
         let one_over_radii_squared = ellipsoid.oneOverRadiiSquared;
         let centerToleranceSquared = ellipsoid.centerToleranceSquared;
         if let Some(p) = ellipsoid.scaleToGeodeticSurface(cartesian) {
             let n = p.multiply_components(&one_over_radii_squared).normalize();
-            let h = cartesian - &p;
+            let h = *cartesian - &p;
             let longitude = n.y.atan2(n.x);
             let latitude = n.z.asin();
             let height = h.dot(&cartesian).sin() * h.magnitude();
@@ -94,5 +97,34 @@ impl ToString for Cartographic {
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::PI;
+
     use super::*;
+    const surfaceCartographic: Cartographic = Cartographic {
+        longitude: 25.0 * PI / 180.0,
+        latitude: 45.0 * PI / 180.0,
+        height: 0.0,
+    };
+
+    const surfaceCartesian: Cartesian3 = Cartesian3 {
+        x: 4094327.7921465295,
+        y: 1909216.4044747739,
+        z: 4487348.4088659193,
+    };
+    #[test]
+    fn test_to_cartesian() {
+        let lon = 150.0.to_radians();
+        let lat = -40.0.to_radians();
+        let height = 100000.0;
+        let ellipsoid = Ellipsoid::WGS84;
+        let actual = Cartographic::new(lon, lat, height).to_cartesian(None);
+        let expected = ellipsoid.cartographicToCartesian(&Cartographic::new(lon, lat, height));
+        assert!(actual.equals(&expected));
+    }
+    #[test]
+    fn test_from_cartesian() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let c = Cartographic::from_cartesian(&surfaceCartesian, None).unwrap();
+        assert!(c.equals_epsilon(&surfaceCartographic, 1e-5));
+    }
 }

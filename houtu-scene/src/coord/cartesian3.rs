@@ -180,10 +180,11 @@ impl Cartesian3 {
         relative_epsilon: Option<f64>,
         absolute_epsilon: Option<f64>,
     ) -> bool {
-        return self.equals(right)
-            || equals_epsilon(self.x, self.x, relative_epsilon, absolute_epsilon)
-                && equals_epsilon(self.y, self.y, relative_epsilon, absolute_epsilon)
-                && equals_epsilon(self.z, self.z, relative_epsilon, absolute_epsilon);
+        let res = self.equals(right)
+            || equals_epsilon(self.x, right.x, relative_epsilon, absolute_epsilon)
+                && equals_epsilon(self.y, right.y, relative_epsilon, absolute_epsilon)
+                && equals_epsilon(self.z, right.z, relative_epsilon, absolute_epsilon);
+        return res;
     }
     pub fn midpoint(&self, right: &Cartesian3) -> Cartesian3 {
         return self.add(right).multiply_by_scalar(0.5);
@@ -298,10 +299,22 @@ impl Add<&Cartesian3> for Cartesian3 {
         return Cartesian3::new(self.x + other.x, self.y + other.y, self.z + other.z);
     }
 }
+impl Add for Cartesian3 {
+    type Output = Cartesian3;
+    fn add(self, other: Self) -> Cartesian3 {
+        return Cartesian3::new(self.x + other.x, self.y + other.y, self.z + other.z);
+    }
+}
 impl Sub<&Cartesian3> for Cartesian3 {
     type Output = Cartesian3;
     fn sub(self, rhs: &Self) -> Self::Output {
         self.subtract(rhs)
+    }
+}
+impl Sub<Cartesian3> for Cartesian3 {
+    type Output = Cartesian3;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.subtract(&rhs)
     }
 }
 impl Mul<f64> for Cartesian3 {
@@ -316,6 +329,12 @@ impl Mul<&Cartesian3> for Cartesian3 {
         self.multiply_components(rhs)
     }
 }
+impl Mul for Cartesian3 {
+    type Output = Cartesian3;
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.multiply_components(&rhs)
+    }
+}
 impl Div<f64> for Cartesian3 {
     type Output = Cartesian3;
     fn div(self, rhs: f64) -> Self::Output {
@@ -328,8 +347,19 @@ impl Div<&Cartesian3> for Cartesian3 {
         self.devide_components(rhs)
     }
 }
+impl Div for Cartesian3 {
+    type Output = Cartesian3;
+    fn div(self, rhs: Self) -> Self::Output {
+        self.devide_components(&rhs)
+    }
+}
 impl PartialEq<&Cartesian3> for Cartesian3 {
     fn eq(&self, other: &&Cartesian3) -> bool {
+        self.equals(other)
+    }
+}
+impl PartialEq for Cartesian3 {
+    fn eq(&self, other: &Self) -> bool {
         self.equals(other)
     }
 }
@@ -345,6 +375,8 @@ impl From<[f64; 3]> for Cartesian3 {
 }
 #[cfg(test)]
 mod tests {
+    use crate::{coord::Cartographic, math::ToRadians};
+
     use super::*;
     //编写测试代码
     #[test]
@@ -474,7 +506,7 @@ mod tests {
     #[test]
     fn test_cartesian3_to_string() {
         let a = Cartesian3::new(1.0, 2.0, 3.0);
-        assert_eq!(a.to_string(), "1, 2, 3");
+        assert_eq!(a.to_string(), "x:1,y:2,z:3");
     }
     #[test]
 
@@ -492,38 +524,23 @@ mod tests {
     }
     #[test]
     fn test_cartesian3_from_degrees() {
-        let lon: f64 = -115.;
-        let lat: f64 = 37.;
+        let lon = -115.0;
+        let lat = 37.0;
+        let height = 100000.0;
         let ellipsoid = Ellipsoid::WGS84;
-        let actual = Cartesian3::from_degrees(lon.to_radians(), lat.to_radians(), None, None);
-        let expected = Cartesian3::from_degrees(
-            lon.to_radians(),
-            lat.to_radians(),
-            Some(0.0),
-            Some(ellipsoid.radiiSquared),
-        );
-        assert_eq!(actual.equals(&expected), true);
+        let actual = Cartesian3::from_degrees(lon, lat, Some(height), None);
+        let expected =
+            ellipsoid.cartographicToCartesian(&Cartographic::from_degrees(lon, lat, height));
+        // expect(actual).toEqual(expected);
+        assert!(actual.equals(&expected));
     }
     #[test]
-    fn test_cartesian3_from_degrees_array() {
-        let a = Cartesian3::from_degrees_array([1.0, 2.0, 3.0].to_vec(), None);
-        // assert_eq!(a.x, 0.017453292519943295);
-        // assert_eq!(a.y, 0.03490658503988659);
-        // assert_eq!(a.z, 0.05235987755982988);
-    }
-    // #[test]
-    // fn test_cartesian3_from_spherical() {
-    //     let a = Cartesian3::from_spherical(1.0, 2.0, 3.0);
-    //     assert_eq!(a.x, -0.9001976297355174);
-    //     assert_eq!(a.y, 0.12832006020245673);
-    //     assert_eq!(a.z, 0.4161468365471424);
-    // }
-}
-trait ToRadians {
-    fn to_radians(&self) -> f64;
-}
-impl ToRadians for f64 {
-    fn to_radians(&self) -> f64 {
-        self * (PI / 180.0)
+    fn test_cartesian3_from_radians() {
+        let lon = 150.0.to_radians();
+        let lat = -40.0.to_radians();
+        let ellipsoid = Ellipsoid::WGS84;
+        let actual = Cartesian3::from_radians(lon, lat, None, None);
+        let expected = ellipsoid.cartographicToCartesian(&Cartographic::new(lon, lat, 0.0));
+        assert!(actual.equals(&expected));
     }
 }

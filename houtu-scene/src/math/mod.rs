@@ -1,4 +1,5 @@
 mod epsilon;
+mod to_radians;
 mod vec3;
 use bevy::{
     ecs::system::Command,
@@ -7,6 +8,7 @@ use bevy::{
     prelude::*,
 };
 pub use epsilon::*;
+pub use to_radians::*;
 pub use vec3::*;
 
 pub struct EigenDecompositionResult {

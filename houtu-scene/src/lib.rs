@@ -24,7 +24,6 @@ pub use globe::Shape;
 // mod wmts_imagery_layer;
 // mod wmts_imagery_provider;
 mod bounding_shpere;
-mod coord;
 mod ellipsoid;
 mod geometry;
 mod height_map_terrain;

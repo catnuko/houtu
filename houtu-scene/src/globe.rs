@@ -34,7 +34,7 @@ fn setup(
     let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
     let points = houtu_utils::getPointsFromMesh(&mesh);
-    let obb = OrientedBoundingBox::fromPoints(points.as_slice());
+    let obb = OrientedBoundingBox::fromPoints(&points);
 
     commands.spawn(PbrBundle {
         mesh: meshes.add(Box3d::frmo_obb(obb).into()),

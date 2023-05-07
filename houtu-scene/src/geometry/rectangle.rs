@@ -1,13 +1,8 @@
-use std::f64::{
-    consts::FRAC_PI_2,
-    lets::{FRAC_PI_2, PI},
-};
+use std::f64::consts::{FRAC_PI_2, PI};
 
-use crate::{
-    coord::{Cartesian3, Cartographic},
-    ellipsoid::{self, Ellipsoid},
-    math::{self, equals_epsilon, nagetive_pi_to_pi},
-};
+use bevy::math::DVec3;
+
+use crate::{ellipsoid::Ellipsoid, math::*};
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Rectangle {
@@ -53,7 +48,7 @@ impl Rectangle {
             && self.east == other.east
             && self.north == other.north;
     }
-    pub fn equals_epsilon(&self, right: &Rectangle, absoluteEpsilon: f64) -> bool {
+    pub fn equals_epsilon(self, right: &Rectangle, absoluteEpsilon: f64) -> bool {
         return self.equals(right)
             || (self.west - right.west).abs() <= absoluteEpsilon
                 && (self.south - right.south).abs() <= absoluteEpsilon
@@ -193,9 +188,8 @@ impl Rectangle {
                 longitude += FRAC_PI_2;
             }
         }
-        return ((longitude > west
-            || equals_epsilon(longitude, west, Some(math::EPSILON14), None))
-            && (longitude < east || equals_epsilon(longitude, east, Some(math::EPSILON14), None))
+        return ((longitude > west || equals_epsilon(longitude, west, Some(EPSILON14), None))
+            && (longitude < east || equals_epsilon(longitude, east, Some(EPSILON14), None))
             && latitude >= rectangle.south
             && latitude <= rectangle.north);
     }
@@ -203,11 +197,11 @@ impl Rectangle {
         &self,
         ellipsoid: Option<&Ellipsoid>,
         surfaceHeight: Option<f64>,
-    ) -> Vec<Cartesian3> {
+    ) -> Vec<DVec3> {
         let rectangle = self;
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let surfaceHeight = surfaceHeight.unwrap_or(0.0);
-        let mut result: Vec<Cartesian3> = vec![];
+        let mut result: Vec<DVec3> = vec![];
         let mut length = 0;
 
         let north = rectangle.north;
@@ -243,7 +237,7 @@ impl Rectangle {
             lla.latitude = 0.0;
         }
         for i in 1..8 {
-            lla.longitude = west + i * FRAC_PI_2;
+            lla.longitude = west + (i as f64) * FRAC_PI_2;
             if (rectangle.contains(&lla)) {
                 result[length] = ellipsoid.cartographicToCartesian(&lla);
                 length += 1;

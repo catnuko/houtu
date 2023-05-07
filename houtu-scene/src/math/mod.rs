@@ -11,8 +11,10 @@ use bevy::{
 };
 mod cartesian3;
 mod cartographic;
+mod matrix4;
 pub use cartesian3::*;
 pub use cartographic::*;
+pub use matrix4::*;
 
 pub use epsilon::*;
 pub use to_radians::*;
@@ -143,7 +145,7 @@ pub fn nagetive_pi_to_pi(angle: f64) -> f64 {
     return zero_to_two_pi(angle + PI) - PI;
 }
 pub fn zero_to_two_pi(angle: f64) -> f64 {
-    if (angle >= 0. && angle <= TAU) {
+    if angle >= 0. && angle <= TAU {
         return angle;
     }
     let mode = angle % TAU;

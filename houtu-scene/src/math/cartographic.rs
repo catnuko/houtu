@@ -1,8 +1,9 @@
 use std::{fmt::Formatter, ops::Add};
 
-use super::cartesian3::Cartesian3;
+use bevy::math::DVec3;
+
 use crate::ellipsoid::Ellipsoid;
-use crate::math::ToRadians;
+use crate::math::*;
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Cartographic {
     pub longitude: f64,
@@ -41,17 +42,17 @@ impl Cartographic {
             height: self.height,
         }
     }
-    pub fn from_cartesian(cartesian: &Cartesian3, ellipsoid: Option<&Ellipsoid>) -> Option<Self> {
+    pub fn from_cartesian(cartesian: DVec3, ellipsoid: Option<&Ellipsoid>) -> Option<Self> {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let one_over_radii = ellipsoid.oneOverRadii;
         let one_over_radii_squared = ellipsoid.oneOverRadiiSquared;
         let centerToleranceSquared = ellipsoid.centerToleranceSquared;
-        if let Some(p) = ellipsoid.scaleToGeodeticSurface(cartesian) {
-            let n = p.multiply_components(&one_over_radii_squared).normalize();
-            let h = *cartesian - &p;
+        if let Some(p) = ellipsoid.scaleToGeodeticSurface(&cartesian) {
+            let n = p * one_over_radii_squared.normalize();
+            let h = cartesian - p;
             let longitude = n.y.atan2(n.x);
             let latitude = n.z.asin();
-            let height = h.dot(&cartesian).sin() * h.magnitude();
+            let height = h.dot(cartesian).sin() * h.magnitude();
             return Some(Cartographic {
                 longitude,
                 latitude,
@@ -61,8 +62,8 @@ impl Cartographic {
             return None;
         }
     }
-    pub fn to_cartesian(&self, ellipsoid: Option<Ellipsoid>) -> Cartesian3 {
-        return Cartesian3::from_radians(self.longitude, self.latitude, Some(self.height), {
+    pub fn to_cartesian(&self, ellipsoid: Option<Ellipsoid>) -> DVec3 {
+        return DVec3::from_radians(self.longitude, self.latitude, Some(self.height), {
             if let Some(e) = ellipsoid {
                 Some(e.radiiSquared)
             } else {
@@ -75,7 +76,7 @@ impl Cartographic {
             && self.latitude == right.latitude
             && self.height == right.height;
     }
-    pub fn equals_epsilon(&self, right: &Cartographic, epsilon: f64) -> bool {
+    pub fn equals_epsilon(self, right: Cartographic, epsilon: f64) -> bool {
         return (self.longitude - right.longitude).abs() <= epsilon
             && (self.latitude - right.latitude).abs() <= epsilon
             && (self.height - right.height).abs() <= epsilon;
@@ -106,7 +107,7 @@ mod tests {
         height: 0.0,
     };
 
-    const surfaceCartesian: Cartesian3 = Cartesian3 {
+    const surfaceCartesian: DVec3 = DVec3 {
         x: 4094327.7921465295,
         y: 1909216.4044747739,
         z: 4487348.4088659193,
@@ -119,12 +120,12 @@ mod tests {
         let ellipsoid = Ellipsoid::WGS84;
         let actual = Cartographic::new(lon, lat, height).to_cartesian(None);
         let expected = ellipsoid.cartographicToCartesian(&Cartographic::new(lon, lat, height));
-        assert!(actual.equals(&expected));
+        assert!(actual.equals(expected));
     }
     #[test]
     fn test_from_cartesian() {
         let ellipsoid = Ellipsoid::WGS84;
-        let c = Cartographic::from_cartesian(&surfaceCartesian, None).unwrap();
-        assert!(c.equals_epsilon(&surfaceCartographic, 1e-5));
+        let c = Cartographic::from_cartesian(surfaceCartesian, None).unwrap();
+        assert!(c.equals_epsilon(surfaceCartographic, 1e-5));
     }
 }

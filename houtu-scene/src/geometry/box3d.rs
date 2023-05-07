@@ -1,13 +1,12 @@
-use bevy::math::DMat3;
+use bevy::math::{DMat3, DVec3};
 use bevy::prelude::*;
 use wgpu::PrimitiveTopology;
 
 use super::OrientedBoundingBox;
-use crate::coord::Cartesian3;
 
 pub struct Box3d {
-    minimum: Cartesian3,
-    maximum: Cartesian3,
+    minimum: DVec3,
+    maximum: DVec3,
 }
 impl From<Box3d> for Mesh {
     fn from(value: Box3d) -> Self {
@@ -15,8 +14,8 @@ impl From<Box3d> for Mesh {
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
-        let mut add_face = |a: Cartesian3, b: Cartesian3, c: Cartesian3, d: Cartesian3| {
-            let n = (b - a).cross(&(c - &a)).normalize();
+        let mut add_face = |a: DVec3, b: DVec3, c: DVec3, d: DVec3| {
+            let n = (b - a).cross(c - a).normalize();
             vertices.push(a);
             vertices.push(b);
             vertices.push(c);
@@ -30,40 +29,40 @@ impl From<Box3d> for Mesh {
             indices.push(i + 3);
         };
         add_face(
-            Cartesian3::new(value.minimum.x, value.minimum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.minimum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.maximum.y, value.minimum.z),
-            Cartesian3::new(value.minimum.x, value.maximum.y, value.minimum.z),
+            DVec3::new(value.minimum.x, value.minimum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.minimum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.maximum.y, value.minimum.z),
+            DVec3::new(value.minimum.x, value.maximum.y, value.minimum.z),
         );
         add_face(
-            Cartesian3::new(value.minimum.x, value.minimum.y, value.maximum.z),
-            Cartesian3::new(value.maximum.x, value.minimum.y, value.maximum.z),
-            Cartesian3::new(value.maximum.x, value.maximum.y, value.maximum.z),
-            Cartesian3::new(value.minimum.x, value.maximum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.minimum.y, value.maximum.z),
+            DVec3::new(value.maximum.x, value.minimum.y, value.maximum.z),
+            DVec3::new(value.maximum.x, value.maximum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.maximum.y, value.maximum.z),
         );
         add_face(
-            Cartesian3::new(value.minimum.x, value.minimum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.minimum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.minimum.y, value.maximum.z),
-            Cartesian3::new(value.minimum.x, value.minimum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.minimum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.minimum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.minimum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.minimum.y, value.maximum.z),
         );
         add_face(
-            Cartesian3::new(value.minimum.x, value.maximum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.maximum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.maximum.y, value.maximum.z),
-            Cartesian3::new(value.minimum.x, value.maximum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.maximum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.maximum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.maximum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.maximum.y, value.maximum.z),
         );
         add_face(
-            Cartesian3::new(value.minimum.x, value.minimum.y, value.minimum.z),
-            Cartesian3::new(value.minimum.x, value.maximum.y, value.minimum.z),
-            Cartesian3::new(value.minimum.x, value.maximum.y, value.maximum.z),
-            Cartesian3::new(value.minimum.x, value.minimum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.minimum.y, value.minimum.z),
+            DVec3::new(value.minimum.x, value.maximum.y, value.minimum.z),
+            DVec3::new(value.minimum.x, value.maximum.y, value.maximum.z),
+            DVec3::new(value.minimum.x, value.minimum.y, value.maximum.z),
         );
         add_face(
-            Cartesian3::new(value.maximum.x, value.minimum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.maximum.y, value.minimum.z),
-            Cartesian3::new(value.maximum.x, value.maximum.y, value.maximum.z),
-            Cartesian3::new(value.maximum.x, value.minimum.y, value.maximum.z),
+            DVec3::new(value.maximum.x, value.minimum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.maximum.y, value.minimum.z),
+            DVec3::new(value.maximum.x, value.maximum.y, value.maximum.z),
+            DVec3::new(value.maximum.x, value.minimum.y, value.maximum.z),
         );
         mesh.set_indices(Some(bevy::render::mesh::Indices::U32(indices)));
         // mesh.insert_attribute(
@@ -78,17 +77,17 @@ impl From<Box3d> for Mesh {
 }
 impl Box3d {
     // pub fn fromAxisAlignedBoundingBox(value: bevy::render::primitives::Aabb) -> Self {}
-    pub fn fromDimensions(dimensions: Cartesian3) -> Self {
+    pub fn fromDimensions(dimensions: DVec3) -> Self {
         let corner = dimensions * 0.5;
         Box3d {
             minimum: -corner,
             maximum: corner,
         }
     }
-    pub fn from_center_halfaxes(center: Cartesian3, halfaxes: DMat3) -> Self {
+    pub fn from_center_halfaxes(center: DVec3, halfaxes: DMat3) -> Self {
         Box3d {
-            minimum: center - halfaxes * Cartesian3::ONE.into(),
-            maximum: center + halfaxes * Cartesian3::ONE.into(),
+            minimum: center - halfaxes * DVec3::ONE,
+            maximum: center + halfaxes * DVec3::ONE,
         }
     }
     pub fn frmo_obb(obb: OrientedBoundingBox) -> Self {

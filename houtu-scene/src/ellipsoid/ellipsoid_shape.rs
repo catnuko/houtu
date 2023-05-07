@@ -1,16 +1,16 @@
 use std::f64::consts::{PI, TAU};
 use std::fmt;
 
+use bevy::math::DVec3;
 use bevy::prelude::{Mesh, Vec3};
 use bevy::render::mesh::Indices;
 use wgpu::PrimitiveTopology;
 
-use crate::coord::Cartesian3;
-
 use super::Ellipsoid;
+use crate::math::*;
 pub struct EllipsoidShape {
-    pub radii: Cartesian3,
-    pub inner_radii: Cartesian3,
+    pub radii: DVec3,
+    pub inner_radii: DVec3,
     pub minimum_clock: f64,
     pub maximum_clock: f64,
     pub minimum_cone: f64,
@@ -46,7 +46,7 @@ impl EllipsoidShape {
             slice_partitions: options.slice_partitions,
         }
     }
-    pub fn from_vec3(vec3: Cartesian3) -> Self {
+    pub fn from_vec3(vec3: DVec3) -> Self {
         EllipsoidShape::from_xyz(vec3.x, vec3.y, vec3.z)
     }
     pub fn from_ellipsoid(ellipsoid: Ellipsoid) -> Self {
@@ -359,8 +359,8 @@ impl From<EllipsoidShape> for Mesh {
             let x = positions[(i * 3) as usize];
             let y = positions[(i * 3 + 1) as usize];
             let z = positions[(i * 3 + 2) as usize];
-            let position = Cartesian3::new(x, y, z);
-            let mut normal: Cartesian3 = ellipsoid.geodeticSurfaceNormal(&position).unwrap();
+            let position = DVec3::new(x, y, z);
+            let mut normal: DVec3 = ellipsoid.geodeticSurfaceNormal(&position).unwrap();
             if negateNormal[i as usize] {
                 normal = normal.negate();
             }

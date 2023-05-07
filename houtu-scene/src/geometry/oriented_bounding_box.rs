@@ -1,24 +1,27 @@
 use std::f64::MAX;
 
-use crate::math::{computeEigenDecomposition, multiplyByScalar, Cartesian3};
-use bevy::{math::DMat3, prelude::*};
+use crate::math::*;
+use bevy::{
+    math::{DMat3, DVec3},
+    prelude::*,
+};
 
 use super::Box3d;
 #[derive(Component)]
 pub struct OrientedBoundingBox {
-    pub center: Cartesian3,
+    pub center: DVec3,
     pub halfAxes: DMat3,
 }
 impl Default for OrientedBoundingBox {
     fn default() -> Self {
         Self {
-            center: Cartesian3::ZERO,
+            center: DVec3::ZERO,
             halfAxes: DMat3::ZERO,
         }
     }
 }
 impl OrientedBoundingBox {
-    pub fn fromPoints(positions: &[Cartesian3]) -> Self {
+    pub fn fromPoints(positions: &[DVec3]) -> Self {
         let mut result = Self::default();
         let length = positions.len();
         if length == 0 {
@@ -63,9 +66,9 @@ impl OrientedBoundingBox {
         let rotation = eigenDecomposition.unitary.clone();
         result.halfAxes = rotation.clone();
 
-        let mut v1: Cartesian3 = rotation.col(0).into();
-        let mut v2: Cartesian3 = rotation.col(1).into();
-        let mut v3: Cartesian3 = rotation.col(2).into();
+        let mut v1: DVec3 = rotation.col(0).into();
+        let mut v2: DVec3 = rotation.col(1).into();
+        let mut v3: DVec3 = rotation.col(2).into();
 
         let mut u1 = -MAX;
         let mut u2 = -MAX;
@@ -75,21 +78,21 @@ impl OrientedBoundingBox {
         let mut l3 = MAX;
         for i in 0..length {
             p = positions[i];
-            u1 = v1.dot(&p).max(u1);
-            u2 = v2.dot(&p).max(u2);
-            u3 = v3.dot(&p).max(u3);
+            u1 = v1.dot(p).max(u1);
+            u2 = v2.dot(p).max(u2);
+            u3 = v3.dot(p).max(u3);
 
-            l1 = v1.dot(&p).max(l1);
-            l2 = v2.dot(&p).max(l2);
-            l3 = v3.dot(&p).max(l3);
+            l1 = v1.dot(p).min(l1);
+            l2 = v2.dot(p).min(l2);
+            l3 = v3.dot(p).min(l3);
         }
         v1 = v1 * 0.5 * (l1 + u1);
         v2 = v2 * 0.5 * (l2 + u2);
         v3 = v3 * 0.5 * (l3 + u3);
 
         result.center = v1 + v2 + v3;
-        let scale = Cartesian3::new(u1 - l1, u2 - l2, u3 - l3) * 0.5;
-        result.halfAxes = result.halfAxes * scale;
+        let scale = DVec3::new(u1 - l1, u2 - l2, u3 - l3) * 0.5;
+        result.halfAxes = result.halfAxes.multiply_by_scale(scale);
 
         result
     }
@@ -127,44 +130,35 @@ fn setup(
 }
 #[cfg(test)]
 mod tests {
-    use crate::math::Cartesian3;
+    use bevy::math::DVec3;
 
     use super::*;
-    const positions: [Cartesian3; 6] = [
-        Cartesian3::new(2.0, 0.0, 0.0),
-        Cartesian3::new(0.0, 3.0, 0.0),
-        Cartesian3::new(0.0, 0.0, 4.0),
-        Cartesian3::new(-2.0, 0.0, 0.0),
-        Cartesian3::new(0.0, -3.0, 0.0),
-        Cartesian3::new(0.0, 0.0, -4.0),
+    const positions: [DVec3; 6] = [
+        DVec3::new(2.0, 0.0, 0.0),
+        DVec3::new(0.0, 3.0, 0.0),
+        DVec3::new(0.0, 0.0, 4.0),
+        DVec3::new(-2.0, 0.0, 0.0),
+        DVec3::new(0.0, -3.0, 0.0),
+        DVec3::new(0.0, 0.0, -4.0),
     ];
 
     #[test]
     fn init_work() {
         let obb = OrientedBoundingBox::default();
-        assert_eq!(obb.center, Cartesian3::ZERO);
+        assert_eq!(obb.center, DVec3::ZERO);
         assert_eq!(obb.halfAxes, DMat3::ZERO);
     }
     #[test]
     fn empty_points_work() {
         let points = vec![];
         let obb = OrientedBoundingBox::fromPoints(&points);
-        assert_eq!(obb.center, Cartesian3::ZERO);
+        assert_eq!(obb.center, DVec3::ZERO);
         assert_eq!(obb.halfAxes, DMat3::ZERO);
     }
     #[test]
     fn fromPointsCorrectScale() {
         let obb = OrientedBoundingBox::fromPoints(&positions);
-        let scale = Cartesian3::new(2.0, 3.0, 4.0);
-        let expect_mat3 = mat3_from_scale_Cartesian3(obb.halfAxes, scale);
-        assert_eq!(obb.halfAxes, expect_mat3);
-        assert_eq!(obb.center, Cartesian3::ZERO);
+        assert_eq!(obb.halfAxes, DMat3::from_scale3(DVec3::new(2.0, 3.0, 4.0)));
+        assert_eq!(obb.center, DVec3::ZERO);
     }
-}
-pub fn mat3_from_scale_Cartesian3(matrix: DMat3, scale: Cartesian3) -> DMat3 {
-    DMat3::from_cols(
-        Cartesian3::new(scale.x, 0.0, 0.0).into(),
-        Cartesian3::new(0.0, scale.y, 0.0).into(),
-        Cartesian3::new(0.0, 0.0, scale.z).into(),
-    )
 }

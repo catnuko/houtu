@@ -2,10 +2,9 @@ use std::f32::consts::{PI, TAU};
 use std::fmt;
 use std::ops::Sub;
 
-use crate::coord::{Cartesian3, Cartographic};
-use crate::math;
-use crate::math::ToRadians;
-// use bevy::math::Cartesian3;
+use crate::math::*;
+use bevy::math::DVec3;
+// use bevy::DVec3;
 use bevy::prelude::Mesh;
 use bevy::render::mesh::Indices;
 use geodesy::Ellipsoid as GeodesyEllipsoid;
@@ -16,11 +15,11 @@ mod ellipsoid_shape;
 pub use ellipsoid_shape::EllipsoidShape;
 
 pub struct Ellipsoid {
-    pub radii: Cartesian3,
-    pub radiiSquared: Cartesian3,
-    pub radiiToTheFourth: Cartesian3,
-    pub oneOverRadii: Cartesian3,
-    pub oneOverRadiiSquared: Cartesian3,
+    pub radii: DVec3,
+    pub radiiSquared: DVec3,
+    pub radiiToTheFourth: DVec3,
+    pub oneOverRadii: DVec3,
+    pub oneOverRadiiSquared: DVec3,
     pub minimumRadius: f64,
     pub maximumRadius: f64,
     pub centerToleranceSquared: f64,
@@ -28,7 +27,7 @@ pub struct Ellipsoid {
 }
 impl Default for Ellipsoid {
     fn default() -> Self {
-        let radii = Cartesian3::ZERO;
+        let radii = DVec3::ZERO;
         return Ellipsoid::from_vec3(radii);
     }
 }
@@ -38,18 +37,18 @@ impl Clone for Ellipsoid {
     }
 }
 impl Ellipsoid {
-    pub fn from_vec3(radii: Cartesian3) -> Self {
+    pub fn from_vec3(radii: DVec3) -> Self {
         return Ellipsoid::new(radii.x, radii.y, radii.z);
     }
     pub fn new(x: f64, y: f64, z: f64) -> Self {
-        let radii = Cartesian3::new(x, y, z);
-        let radiiSquared = Cartesian3::new(x * x, y * y, z * z);
-        let radiiToTheFourth = Cartesian3::new(x * x * x * x, y * y * y * y, z * z * z * z);
-        let oneOverRadii = Cartesian3::new(1.0 / x, 1.0 / y, 1.0 / z);
-        let oneOverRadiiSquared = Cartesian3::new(1.0 / (x * x), 1.0 / (y * y), 1.0 / (z * z));
+        let radii = DVec3::new(x, y, z);
+        let radiiSquared = DVec3::new(x * x, y * y, z * z);
+        let radiiToTheFourth = DVec3::new(x * x * x * x, y * y * y * y, z * z * z * z);
+        let oneOverRadii = DVec3::new(1.0 / x, 1.0 / y, 1.0 / z);
+        let oneOverRadiiSquared = DVec3::new(1.0 / (x * x), 1.0 / (y * y), 1.0 / (z * z));
         let minimumRadius = x.min(y).min(z);
         let maximumRadius = x.max(y).max(z);
-        let centerToleranceSquared = math::EPSILON1 as f64;
+        let centerToleranceSquared = EPSILON1;
         let mut squaredXOverSquaredZ = 0.0;
         if radiiSquared.z != 0. {
             squaredXOverSquaredZ = radiiSquared.x / radiiSquared.z;
@@ -67,27 +66,27 @@ impl Ellipsoid {
         }
     }
     pub const WGS84: Ellipsoid = Ellipsoid {
-        radii: Cartesian3 {
+        radii: DVec3 {
             x: 6378137.0,
             y: 6378137.0,
             z: 6356752.3142451793,
         },
-        radiiSquared: Cartesian3 {
+        radiiSquared: DVec3 {
             x: 40680631590769.0,
             y: 40680631590769.0,
             z: 40408299984661.445,
         },
-        radiiToTheFourth: Cartesian3 {
+        radiiToTheFourth: DVec3 {
             x: 1.6549137866238727e+27,
             y: 1.6549137866238727e+27,
             z: 1.63283070765039e+27,
         },
-        oneOverRadii: Cartesian3 {
+        oneOverRadii: DVec3 {
             x: 1.567855942887398e-7,
             y: 1.567855942887398e-7,
             z: 1.573130351105623e-7,
         },
-        oneOverRadiiSquared: Cartesian3 {
+        oneOverRadiiSquared: DVec3 {
             x: 2.458172257647332e-14,
             y: 2.458172257647332e-14,
             z: 2.4747391015697002e-14,
@@ -98,27 +97,27 @@ impl Ellipsoid {
         squaredXOverSquaredZ: 1.0067394967422765,
     };
     pub const UNIT_SPHERE: Ellipsoid = Ellipsoid {
-        radii: Cartesian3 {
+        radii: DVec3 {
             x: 1.0,
             y: 1.0,
             z: 1.0,
         },
-        radiiSquared: Cartesian3 {
+        radiiSquared: DVec3 {
             x: 1.0,
             y: 1.0,
             z: 1.0,
         },
-        radiiToTheFourth: Cartesian3 {
+        radiiToTheFourth: DVec3 {
             x: 1.0,
             y: 1.0,
             z: 1.0,
         },
-        oneOverRadii: Cartesian3 {
+        oneOverRadii: DVec3 {
             x: 1.0,
             y: 1.0,
             z: 1.0,
         },
-        oneOverRadiiSquared: Cartesian3 {
+        oneOverRadiiSquared: DVec3 {
             x: 1.0,
             y: 1.0,
             z: 1.0,
@@ -129,27 +128,27 @@ impl Ellipsoid {
         squaredXOverSquaredZ: 1.0,
     };
     pub const MOON: Ellipsoid = Ellipsoid {
-        radii: Cartesian3 {
+        radii: DVec3 {
             x: 1737400.0,
             y: 1737400.0,
             z: 1737400.0,
         },
-        radiiSquared: Cartesian3 {
+        radiiSquared: DVec3 {
             x: 3018558760000.,
             y: 3018558760000.,
             z: 3018558760000.,
         },
-        radiiToTheFourth: Cartesian3 {
+        radiiToTheFourth: DVec3 {
             x: 9.111696987572739e+24,
             y: 9.111696987572739e+24,
             z: 9.111696987572739e+24,
         },
-        oneOverRadii: Cartesian3 {
+        oneOverRadii: DVec3 {
             x: 5.755726948313572e-7,
             y: 5.755726948313572e-7,
             z: 5.755726948313572e-7,
         },
-        oneOverRadiiSquared: Cartesian3 {
+        oneOverRadiiSquared: DVec3 {
             x: 3.3128392703543064e-13,
             y: 3.3128392703543064e-13,
             z: 3.3128392703543064e-13,
@@ -159,7 +158,7 @@ impl Ellipsoid {
         centerToleranceSquared: 0.1,
         squaredXOverSquaredZ: 1.0,
     };
-    pub fn geocentricSurfaceNormal(vec3: &Cartesian3) -> Cartesian3 {
+    pub fn geocentricSurfaceNormal(vec3: &DVec3) -> DVec3 {
         return vec3.normalize();
     }
     pub fn semimajor_axis(&self) -> f64 {
@@ -168,25 +167,25 @@ impl Ellipsoid {
     pub fn semiminor_axis(&self) -> f64 {
         return self.radii.z;
     }
-    pub fn geodeticSurfaceNormalCartographic(&self, cartographic: &Cartographic) -> Cartesian3 {
+    pub fn geodeticSurfaceNormalCartographic(&self, cartographic: &Cartographic) -> DVec3 {
         let longitude = cartographic.longitude;
         let latitude = cartographic.latitude;
         let cosLatitude = latitude.cos();
         let x = cosLatitude * longitude.cos();
         let y = cosLatitude * longitude.sin();
         let z = latitude.sin();
-        return Cartesian3::new(x, y, z).normalize();
+        return DVec3::new(x, y, z).normalize();
     }
-    pub fn geodeticSurfaceNormal(&self, vec3: &Cartesian3) -> Option<Cartesian3> {
-        if vec3.equals_epsilon(&Cartesian3::ZERO, Some(math::EPSILON14), None) {
+    pub fn geodeticSurfaceNormal(&self, vec3: &DVec3) -> Option<DVec3> {
+        if vec3.equals_epsilon(DVec3::ZERO, Some(EPSILON14), None) {
             return None;
         }
         Some(
-            vec3.multiply_components(&self.oneOverRadiiSquared)
+            vec3.multiply_components(self.oneOverRadiiSquared)
                 .normalize(),
         )
     }
-    pub fn scaleToGeodeticSurface(&self, cartesian: &Cartesian3) -> Option<Cartesian3> {
+    pub fn scaleToGeodeticSurface(&self, cartesian: &DVec3) -> Option<DVec3> {
         let oneOverRadii = self.oneOverRadii;
         let oneOverRadiiSquared = self.oneOverRadiiSquared;
         let centerToleranceSquared = self.centerToleranceSquared;
@@ -269,34 +268,34 @@ impl Ellipsoid {
             let derivative = -2.0 * denominator;
 
             correction = func / derivative;
-            if func.abs() < math::EPSILON12 {
+            if func.abs() < EPSILON12 {
                 break;
             }
         }
 
-        return Some(Cartesian3::new(
+        return Some(DVec3::new(
             positionX * xMultiplier,
             positionY * yMultiplier,
             positionZ * zMultiplier,
         ));
     }
-    pub fn cartographicToCartesian(&self, cartographic: &Cartographic) -> Cartesian3 {
-        let mut n = Cartesian3::ZERO;
-        let mut k = Cartesian3::ZERO;
+    pub fn cartographicToCartesian(&self, cartographic: &Cartographic) -> DVec3 {
+        let mut n = DVec3::ZERO;
+        let mut k = DVec3::ZERO;
         n = self.geodeticSurfaceNormalCartographic(cartographic);
-        k = self.radiiSquared * &n;
-        let gamma = n.dot(&k).sqrt();
+        k = self.radiiSquared * n;
+        let gamma = n.dot(k).sqrt();
         k = k / gamma;
         n = n * cartographic.height;
-        return k + &n;
+        return k + n;
     }
-    pub fn cartesianToCartographic(&self, vec3: &Cartesian3) -> Option<Cartographic> {
-        if let Some(p) = self.scaleToGeodeticSurface(vec3) {
+    pub fn cartesianToCartographic(&self, vec3: DVec3) -> Option<Cartographic> {
+        if let Some(p) = self.scaleToGeodeticSurface(&vec3) {
             if let Some(n) = self.geodeticSurfaceNormal(&p) {
-                let h = vec3.subtract(&p);
+                let h = vec3.subtract(p);
                 let longitude = n.y.atan2(n.x);
                 let latitude = n.z.asin();
-                let b = h.dot(&vec3);
+                let b = h.dot(vec3);
                 let c = b.signum();
                 let d = c * h.magnitude();
                 let height = d;
@@ -311,17 +310,14 @@ impl Ellipsoid {
     pub fn cartographicArrayToCartesianArray(
         &self,
         cartographics: Vec<&Cartographic>,
-    ) -> Vec<Cartesian3> {
+    ) -> Vec<DVec3> {
         let mut result = Vec::with_capacity(cartographics.len());
         for cartographic in cartographics {
             result.push(self.cartographicToCartesian(cartographic));
         }
         return result;
     }
-    pub fn cartesianArrayToCartographicArray(
-        &self,
-        cartesians: Vec<&Cartesian3>,
-    ) -> Vec<Cartographic> {
+    pub fn cartesianArrayToCartographicArray(&self, cartesians: Vec<DVec3>) -> Vec<Cartographic> {
         let mut result = Vec::with_capacity(cartesians.len());
         for cartesian in cartesians {
             if let Some(cartographic) = self.cartesianToCartographic(cartesian) {
@@ -331,16 +327,12 @@ impl Ellipsoid {
         return result;
     }
 }
-fn negate(vec: Cartesian3) -> Cartesian3 {
-    Cartesian3::new(-vec.x, -vec.y, -vec.z)
-}
-
 #[cfg(test)]
 mod tests {
     use std::f64::consts::PI;
 
     use super::*;
-    const spaceCartesian: Cartesian3 = Cartesian3 {
+    const spaceCartesian: DVec3 = DVec3 {
         x: 4582719.8827300891,
         y: -4582719.8827300882,
         z: 1725510.4250797231,
@@ -357,7 +349,7 @@ mod tests {
         height: 0.0,
     };
 
-    const surfaceCartesian: Cartesian3 = Cartesian3 {
+    const surfaceCartesian: DVec3 = DVec3 {
         x: 4094327.7921465295,
         y: 1909216.4044747739,
         z: 4487348.4088659193,
@@ -365,43 +357,38 @@ mod tests {
     #[test]
     fn test_cartographicToCartesian() {
         let ellipsoid = Ellipsoid::WGS84;
-        let cartographic = Cartesian3::new(0.0, 0.0, 0.0);
+        let cartographic = DVec3::new(0.0, 0.0, 0.0);
         let result = ellipsoid.cartographicToCartesian(&spaceCartographic);
         assert_eq!(
-            result.equals_epsilon(&spaceCartesian, Some(math::EPSILON7), None),
+            result.equals_epsilon(spaceCartesian, Some(EPSILON7), None),
             true
         );
     }
     #[test]
     fn test_cartographicArrayToCartesianArray() {
         let ellipsoid = Ellipsoid::WGS84;
-        let cartographic = Cartesian3::new(0.0, 0.0, 0.0);
+        let cartographic = DVec3::new(0.0, 0.0, 0.0);
         let result = ellipsoid
             .cartographicArrayToCartesianArray(vec![&spaceCartographic, &surfaceCartographic]);
 
         assert_eq!(result.len(), 2);
         assert_eq!(
-            result[0].equals_epsilon(&spaceCartesian, Some(math::EPSILON7), None),
+            result[0].equals_epsilon(spaceCartesian, Some(EPSILON7), None),
             true
         );
         assert_eq!(
-            result[1].equals_epsilon(&surfaceCartesian, Some(math::EPSILON7), None),
+            result[1].equals_epsilon(surfaceCartesian, Some(EPSILON7), None),
             true
         );
     }
     #[test]
     fn test_cartesianToCartographic() {
         let ellipsoid = Ellipsoid::WGS84;
-        let result = ellipsoid.cartesianToCartographic(&surfaceCartesian);
+        let result = ellipsoid.cartesianToCartographic(surfaceCartesian);
         assert_eq!(
             result
                 .unwrap()
-                .equals_epsilon(&surfaceCartographic, math::EPSILON8),
-            true
-        );
-        let result = ellipsoid.cartesianToCartographic(&spaceCartesian);
-        assert_eq!(
-            result.unwrap().equals_epsilon(&spaceCartographic, 1.0),
+                .equals_epsilon(surfaceCartographic, EPSILON8),
             true
         );
     }
@@ -409,22 +396,19 @@ mod tests {
     fn test_cartesianArrayToCartographicArray() {
         let ellipsoid = Ellipsoid::WGS84;
         let result =
-            ellipsoid.cartesianArrayToCartographicArray(vec![&surfaceCartesian, &spaceCartesian]);
+            ellipsoid.cartesianArrayToCartographicArray(vec![surfaceCartesian, spaceCartesian]);
         assert_eq!(result.len(), 2);
         assert_eq!(
-            result[0].equals_epsilon(&surfaceCartographic, math::EPSILON7),
+            result[0].equals_epsilon(surfaceCartographic, EPSILON7),
             true
         );
-        assert_eq!(
-            result[1].equals_epsilon(&spaceCartographic, math::EPSILON7),
-            true
-        );
+        assert_eq!(result[1].equals_epsilon(spaceCartographic, EPSILON7), true);
     }
     #[test]
     fn test_cartesianToCartographic_close_to_center() {
         let ellipsoid = Ellipsoid::WGS84;
         let expected = Cartographic::new(9.999999999999999e-11, 1.0067394967422763e-20, -6378137.0);
-        let result = ellipsoid.cartesianToCartographic(&Cartesian3::new(1e-50, 1e-60, 1e-70));
+        let result = ellipsoid.cartesianToCartographic(DVec3::new(1e-50, 1e-60, 1e-70));
         assert_eq!(result.is_none(), true);
     }
 }

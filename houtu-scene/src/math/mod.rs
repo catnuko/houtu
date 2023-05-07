@@ -1,12 +1,19 @@
 mod epsilon;
 mod to_radians;
 mod vec3;
+use std::f64::consts::{PI, TAU};
+
 use bevy::{
     ecs::system::Command,
     math::DMat3,
     // math::{DMat3, DVec3},
     prelude::*,
 };
+mod cartesian3;
+mod cartographic;
+pub use cartesian3::*;
+pub use cartographic::*;
+
 pub use epsilon::*;
 pub use to_radians::*;
 pub use vec3::*;
@@ -128,6 +135,22 @@ pub fn shurDecomposition(matrix: DMat3) -> DMat3 {
     slice2[getElementIndex(q, p)] = s;
     slice2[getElementIndex(p, q)] = -s;
     return DMat3::from_cols_array(&slice2);
+}
+pub fn nagetive_pi_to_pi(angle: f64) -> f64 {
+    if angle >= -PI && angle <= PI {
+        return angle;
+    }
+    return zero_to_two_pi(angle + PI) - PI;
+}
+pub fn zero_to_two_pi(angle: f64) -> f64 {
+    if (angle >= 0. && angle <= TAU) {
+        return angle;
+    }
+    let mode = angle % TAU;
+    if mode.abs() < epsilon::EPSILON14 && angle.abs() > epsilon::EPSILON14 {
+        return TAU;
+    }
+    return mode;
 }
 #[cfg(test)]
 mod tests {

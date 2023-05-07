@@ -72,27 +72,27 @@ impl bevy::app::Plugin for Plugin {
 pub fn create_vertice() {
     
     
-    const cos = Math.cos;
-    const sin = Math.sin;
-    const sqrt = Math.sqrt;
-    const atan = Math.atan;
-    const exp = Math.exp;
-    const piOverTwo = CesiumMath.PI_OVER_TWO;
-    const toRadians = CesiumMath.toRadians;
+    let cos = Math.cos;
+    let sin = Math.sin;
+    let sqrt = Math.sqrt;
+    let atan = Math.atan;
+    let exp = Math.exp;
+    let piOverTwo = CesiumMath.PI_OVER_TWO;
+    let toRadians = CesiumMath.toRadians;
 
-    const heightmap = options.heightmap;
-    const width = options.width;
-    const height = options.height;
-    const skirtHeight = options.skirtHeight;
-    const hasSkirts = skirtHeight > 0.0;
+    let heightmap = options.heightmap;
+    let width = options.width;
+    let height = options.height;
+    let skirtHeight = options.skirtHeight;
+    let hasSkirts = skirtHeight > 0.0;
 
-    const isGeographic = defaultValue(options.isGeographic, true);
-    const ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84);
+    let isGeographic = defaultValue(options.isGeographic, true);
+    let ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84);
 
-    const oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
+    let oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
 
-    const nativeRectangle = Rectangle.clone(options.nativeRectangle);
-    const rectangle = Rectangle.clone(options.rectangle);
+    let nativeRectangle = Rectangle.clone(options.nativeRectangle);
+    let rectangle = Rectangle.clone(options.rectangle);
 
     let geographicWest;
     let geographicSouth;
@@ -123,43 +123,43 @@ pub fn create_vertice() {
     }
 
     let relativeToCenter = options.relativeToCenter;
-    const hasRelativeToCenter = defined(relativeToCenter);
+    let hasRelativeToCenter = defined(relativeToCenter);
     relativeToCenter = hasRelativeToCenter ? relativeToCenter : Cartesian3.ZERO;
-    const includeWebMercatorT = defaultValue(options.includeWebMercatorT, false);
+    let includeWebMercatorT = defaultValue(options.includeWebMercatorT, false);
 
-    const exaggeration = defaultValue(options.exaggeration, 1.0);
-    const exaggerationRelativeHeight = defaultValue(
+    let exaggeration = defaultValue(options.exaggeration, 1.0);
+    let exaggerationRelativeHeight = defaultValue(
         options.exaggerationRelativeHeight,
         0.0
     );
-    const hasExaggeration = exaggeration !== 1.0;
-    const includeGeodeticSurfaceNormals = hasExaggeration;
+    let hasExaggeration = exaggeration !== 1.0;
+    let includeGeodeticSurfaceNormals = hasExaggeration;
 
-    const structure = defaultValue(
+    let structure = defaultValue(
         options.structure,
         HeightmapTessellator.DEFAULT_STRUCTURE
     );
-    const heightScale = defaultValue(
+    let heightScale = defaultValue(
         structure.heightScale,
         HeightmapTessellator.DEFAULT_STRUCTURE.heightScale
     );
-    const heightOffset = defaultValue(
+    let heightOffset = defaultValue(
         structure.heightOffset,
         HeightmapTessellator.DEFAULT_STRUCTURE.heightOffset
     );
-    const elementsPerHeight = defaultValue(
+    let elementsPerHeight = defaultValue(
         structure.elementsPerHeight,
         HeightmapTessellator.DEFAULT_STRUCTURE.elementsPerHeight
     );
-    const stride = defaultValue(
+    let stride = defaultValue(
         structure.stride,
         HeightmapTessellator.DEFAULT_STRUCTURE.stride
     );
-    const elementMultiplier = defaultValue(
+    let elementMultiplier = defaultValue(
         structure.elementMultiplier,
         HeightmapTessellator.DEFAULT_STRUCTURE.elementMultiplier
     );
-    const isBigEndian = defaultValue(
+    let isBigEndian = defaultValue(
         structure.isBigEndian,
         HeightmapTessellator.DEFAULT_STRUCTURE.isBigEndian
     );
@@ -167,27 +167,27 @@ pub fn create_vertice() {
     let rectangleWidth = Rectangle.computeWidth(nativeRectangle);
     let rectangleHeight = Rectangle.computeHeight(nativeRectangle);
 
-    const granularityX = rectangleWidth / (width - 1);
-    const granularityY = rectangleHeight / (height - 1);
+    let granularityX = rectangleWidth / (width - 1);
+    let granularityY = rectangleHeight / (height - 1);
 
     if (!isGeographic) {
         rectangleWidth *= oneOverGlobeSemimajorAxis;
         rectangleHeight *= oneOverGlobeSemimajorAxis;
     }
 
-    const radiiSquared = ellipsoid.radiiSquared;
-    const radiiSquaredX = radiiSquared.x;
-    const radiiSquaredY = radiiSquared.y;
-    const radiiSquaredZ = radiiSquared.z;
+    let radiiSquared = ellipsoid.radiiSquared;
+    let radiiSquaredX = radiiSquared.x;
+    let radiiSquaredY = radiiSquared.y;
+    let radiiSquaredZ = radiiSquared.z;
 
     let minimumHeight = 65536.0;
     let maximumHeight = -65536.0;
 
-    const fromENU = Transforms.eastNorthUpToFixedFrame(
+    let fromENU = Transforms.eastNorthUpToFixedFrame(
         relativeToCenter,
         ellipsoid
     );
-    const toENU = Matrix4.inverseTransformation(fromENU, matrix4Scratch);
+    let toENU = Matrix4.inverseTransformation(fromENU, matrix4Scratch);
 
     let southMercatorY;
     let oneOverMercatorHeight;
@@ -201,43 +201,43 @@ pub fn create_vertice() {
             southMercatorY);
     }
 
-    const minimum = minimumScratch;
+    let mut minimum = minimumScratch;
     minimum.x = Number.POSITIVE_INFINITY;
     minimum.y = Number.POSITIVE_INFINITY;
     minimum.z = Number.POSITIVE_INFINITY;
 
-    const maximum = maximumScratch;
+    let mut maximum = maximumScratch;
     maximum.x = Number.NEGATIVE_INFINITY;
     maximum.y = Number.NEGATIVE_INFINITY;
     maximum.z = Number.NEGATIVE_INFINITY;
 
     let hMin = Number.POSITIVE_INFINITY;
 
-    const gridVertexCount = width * height;
-    const edgeVertexCount = skirtHeight > 0.0 ? width * 2 + height * 2 : 0;
-    const vertexCount = gridVertexCount + edgeVertexCount;
+    let gridVertexCount = width * height;
+    let edgeVertexCount = skirtHeight > 0.0 ? width * 2 + height * 2 : 0;
+    let vertexCount = gridVertexCount + edgeVertexCount;
 
-    const positions = new Array(vertexCount);
-    const heights = new Array(vertexCount);
-    const uvs = new Array(vertexCount);
-    const webMercatorTs = includeWebMercatorT ? new Array(vertexCount) : [];
-    const geodeticSurfaceNormals = includeGeodeticSurfaceNormals
+    let positions = new Array(vertexCount);
+    let heights = new Array(vertexCount);
+    let uvs = new Array(vertexCount);
+    let webMercatorTs = includeWebMercatorT ? new Array(vertexCount) : [];
+    let geodeticSurfaceNormals = includeGeodeticSurfaceNormals
         ? new Array(vertexCount)
         : [];
 
-    let startRow = 0;
-    let endRow = height;
-    let startCol = 0;
-    let endCol = width;
+    let mut startRow = 0;
+    let mut endRow = height;
+    let mut startCol = 0;
+    let mut endCol = width;
 
     if (hasSkirts) {
-        --startRow;
-        ++endRow;
-        --startCol;
-        ++endCol;
+        startRow-=1;
+        endRow+=1;
+        startCol-=1;
+        endCol+=1;
     }
 
-    const skirtOffsetPercentage = 0.00001;
+    let skirtOffsetPercentage = 0.00001;
 
     for (let rowIndex = startRow; rowIndex < endRow; ++rowIndex) {
         let row = rowIndex;
@@ -260,8 +260,8 @@ pub fn create_vertice() {
         let v = (latitude - geographicSouth) / (geographicNorth - geographicSouth);
         v = CesiumMath.clamp(v, 0.0, 1.0);
 
-        const isNorthEdge = rowIndex === startRow;
-        const isSouthEdge = rowIndex === endRow - 1;
+        let isNorthEdge = rowIndex === startRow;
+        let isSouthEdge = rowIndex === endRow - 1;
         if (skirtHeight > 0.0) {
         if (isNorthEdge) {
             latitude += skirtOffsetPercentage * rectangleHeight;
@@ -270,9 +270,9 @@ pub fn create_vertice() {
         }
         }
 
-        const cosLatitude = cos(latitude);
-        const nZ = sin(latitude);
-        const kZ = radiiSquaredZ * nZ;
+        let cosLatitude = cos(latitude);
+        let nZ = sin(latitude);
+        let kZ = radiiSquaredZ * nZ;
 
         let webMercatorT;
         if (includeWebMercatorT) {
@@ -291,7 +291,7 @@ pub fn create_vertice() {
             col = width - 1;
         }
 
-        const terrainOffset = row * (width * stride) + col * stride;
+        let terrainOffset = row * (width * stride) + col * stride;
 
         let heightSample;
         if (elementsPerHeight === 1) {
@@ -342,10 +342,10 @@ pub fn create_vertice() {
         let index = row * width + col;
 
         if (skirtHeight > 0.0) {
-            const isWestEdge = colIndex === startCol;
-            const isEastEdge = colIndex === endCol - 1;
-            const isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
-            const isCorner =
+            let isWestEdge = colIndex === startCol;
+            let isEastEdge = colIndex === endCol - 1;
+            let isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
+            let isCorner =
             (isNorthEdge || isSouthEdge) && (isWestEdge || isEastEdge);
             if (isCorner) {
             // Don't generate skirts on the corners.
@@ -371,20 +371,20 @@ pub fn create_vertice() {
             }
         }
 
-        const nX = cosLatitude * cos(longitude);
-        const nY = cosLatitude * sin(longitude);
+        let nX = cosLatitude * cos(longitude);
+        let nY = cosLatitude * sin(longitude);
 
-        const kX = radiiSquaredX * nX;
-        const kY = radiiSquaredY * nY;
+        let kX = radiiSquaredX * nX;
+        let kY = radiiSquaredY * nY;
 
-        const gamma = sqrt(kX * nX + kY * nY + kZ * nZ);
-        const oneOverGamma = 1.0 / gamma;
+        let gamma = sqrt(kX * nX + kY * nY + kZ * nZ);
+        let oneOverGamma = 1.0 / gamma;
 
-        const rSurfaceX = kX * oneOverGamma;
-        const rSurfaceY = kY * oneOverGamma;
-        const rSurfaceZ = kZ * oneOverGamma;
+        let rSurfaceX = kX * oneOverGamma;
+        let rSurfaceY = kY * oneOverGamma;
+        let rSurfaceZ = kZ * oneOverGamma;
 
-        const position = new Cartesian3();
+        let position = new Cartesian3();
         position.x = rSurfaceX + nX * heightSample;
         position.y = rSurfaceY + nY * heightSample;
         position.z = rSurfaceZ + nZ * heightSample;
@@ -410,7 +410,7 @@ pub fn create_vertice() {
         }
     }
 
-    const boundingSphere3D = BoundingSphere.fromPoints(positions);
+    let boundingSphere3D = BoundingSphere.fromPoints(positions);
     let orientedBoundingBox;
     if (defined(rectangle)) {
         orientedBoundingBox = OrientedBoundingBox.fromRectangle(
@@ -423,7 +423,7 @@ pub fn create_vertice() {
 
     let occludeePointInScaledSpace;
     if (hasRelativeToCenter) {
-        const occluder = new EllipsoidalOccluder(ellipsoid);
+        let occluder = new EllipsoidalOccluder(ellipsoid);
         occludeePointInScaledSpace = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
         relativeToCenter,
         positions,
@@ -431,8 +431,8 @@ pub fn create_vertice() {
         );
     }
 
-    const aaBox = new AxisAlignedBoundingBox(minimum, maximum, relativeToCenter);
-    const encoding = new TerrainEncoding(
+    let aaBox = new AxisAlignedBoundingBox(minimum, maximum, relativeToCenter);
+    let encoding = new TerrainEncoding(
         relativeToCenter,
         aaBox,
         hMin,
@@ -444,7 +444,7 @@ pub fn create_vertice() {
         exaggeration,
         exaggerationRelativeHeight
     );
-    const vertices = new Float32Array(vertexCount * encoding.stride);
+    let vertices = new Float32Array(vertexCount * encoding.stride);
 
     let bufferIndex = 0;
     for (let j = 0; j < vertexCount; ++j) {

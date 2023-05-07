@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
-use crate::box3d::Box3d;
 use crate::ellipsoid::{Ellipsoid, EllipsoidShape};
-use crate::oriented_bounding_box;
+use crate::geometry::{Box3d, OrientedBoundingBox};
 #[derive(Component)]
 pub struct Shape;
 pub struct GlobePlugin {}
@@ -35,7 +34,7 @@ fn setup(
     let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
     let points = houtu_utils::getPointsFromMesh(&mesh);
-    let obb = oriented_bounding_box::OrientedBoundingBox::fromPoints(points.as_slice());
+    let obb = OrientedBoundingBox::fromPoints(points.as_slice());
 
     commands.spawn(PbrBundle {
         mesh: meshes.add(Box3d::frmo_obb(obb).into()),

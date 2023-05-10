@@ -1,10 +1,9 @@
 use std::{
-    f64::consts::PI,
     fmt::{Debug, Formatter},
     ops::{Add, Div, Mul, Sub},
 };
 
-use bevy::math::{DMat3, DVec3};
+use bevy::math::{DMat3, DMat4, DVec3};
 
 use crate::{ellipsoid::Ellipsoid, math::*};
 pub trait Matrix3 {
@@ -25,5 +24,75 @@ impl Matrix3 for DMat3 {
             DVec3::new(0.0, scale.y, 0.0),
             DVec3::new(0.0, 0.0, scale.z),
         )
+    }
+}
+pub trait Matrix4 {
+    fn inverse_transformation(&self) -> DMat4;
+    fn multiply_by_point(&self, cartesian: DVec3) -> DVec3;
+}
+impl Matrix4 for DMat4 {
+    fn inverse_transformation(&self) -> DMat4 {
+        let mut slice: [f64; 16] = [
+            0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        ];
+        self.write_cols_to_slice(&mut slice);
+        let matrix0 = slice[0];
+        let matrix1 = slice[1];
+        let matrix2 = slice[2];
+        let matrix4 = slice[4];
+        let matrix5 = slice[5];
+        let matrix6 = slice[6];
+        let matrix8 = slice[8];
+        let matrix9 = slice[9];
+        let matrix10 = slice[10];
+
+        let vX = slice[12];
+        let vY = slice[13];
+        let vZ = slice[14];
+
+        let x = -matrix0 * vX - matrix1 * vY - matrix2 * vZ;
+        let y = -matrix4 * vX - matrix5 * vY - matrix6 * vZ;
+        let z = -matrix8 * vX - matrix9 * vY - matrix10 * vZ;
+        let mut slice2: [f64; 16] = [0.; 16];
+        slice2[0] = matrix0;
+        slice2[1] = matrix4;
+        slice2[2] = matrix8;
+        slice2[3] = 0.0;
+        slice2[4] = matrix1;
+        slice2[5] = matrix5;
+        slice2[6] = matrix9;
+        slice2[7] = 0.0;
+        slice2[8] = matrix2;
+        slice2[9] = matrix6;
+        slice2[10] = matrix10;
+        slice2[11] = 0.0;
+        slice2[12] = x;
+        slice2[13] = y;
+        slice2[14] = z;
+        slice2[15] = 1.0;
+        return DMat4::from_cols_array(&slice2);
+    }
+
+    fn multiply_by_point(&self, cartesian: DVec3) -> DVec3 {
+        let mut slice: [f64; 16] = [0.; 16];
+        self.write_cols_to_slice(&mut slice);
+        let matrix0 = slice[0];
+        let matrix1 = slice[1];
+        let matrix2 = slice[2];
+        let matrix4 = slice[4];
+        let matrix5 = slice[5];
+        let matrix6 = slice[6];
+        let matrix8 = slice[8];
+        let matrix9 = slice[9];
+        let matrix10 = slice[10];
+
+        let vX = cartesian.x;
+        let vY = cartesian.y;
+        let vZ = cartesian.z;
+
+        let x = matrix0 * vX + matrix1 * vY + matrix2 * vZ + slice[12];
+        let y = matrix4 * vX + matrix5 * vY + matrix6 * vZ + slice[13];
+        let z = matrix8 * vX + matrix9 * vY + matrix10 * vZ + slice[14];
+        return DVec3::new(x, y, z);
     }
 }

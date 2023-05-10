@@ -326,6 +326,9 @@ impl Ellipsoid {
         }
         return result;
     }
+    pub fn transformPositionToScaledSpace(&self, position: DVec3) -> DVec3 {
+        return position.multiply_components(self.oneOverRadii);
+    }
 }
 #[cfg(test)]
 mod tests {

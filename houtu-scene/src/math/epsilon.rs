@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 pub const EPSILON1: f64 = 0.1;
 
 pub const EPSILON2: f64 = 0.01;
@@ -49,3 +51,7 @@ pub const LUNAR_RADIUS: f64 = 1737400.0;
 pub const SIXTY_FOUR_KILOBYTES: u64 = 64 * 1024;
 
 pub const FOUR_GIGABYTES: u64 = 4 * 1024 * 1024 * 1024;
+
+pub const RADIANS_PER_DEGREE: f64 = PI / 180.0;
+
+pub const DEGREES_PER_RADIAN: f64 = 180.0 / PI;

@@ -1,14 +1,10 @@
-use bevy::prelude::*;
-use geodesy::preamble::*;
+use bevy::{math::DVec3, prelude::*};
+
+use crate::{ellipsoid::Ellipsoid, math::Cartographic};
 
 pub trait Projection {
-    fn project(&self, coord: Coord) -> Vec3;
-    fn un_project(&self, vec: Vec3) -> Coord;
-    fn from_ellipsoid(&self, ellipsoid: Ellipsoid) -> Self {
-        Self {
-            ellipsoid: ellipsoid,
-            semimajor_axis: ellipsoid.semimajor_axis(),
-            one_over_semimajor_axis: 1.0 / ellipsoid.semimajor_axis(),
-        }
-    }
+    type Output;
+    fn project(&self, coord: Cartographic) -> DVec3;
+    fn un_project(&self, vec: DVec3) -> Cartographic;
+    fn from_ellipsoid(&self, ellipsoid: Ellipsoid) -> Self::Output;
 }

@@ -4,7 +4,7 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use bevy::math::DVec3;
+use bevy::math::{DVec3, DVec4};
 
 use crate::{ellipsoid::Ellipsoid, math::*};
 pub trait Cartesian3 {
@@ -77,6 +77,7 @@ pub trait Cartesian3 {
     fn magnitude_squared(&self) -> f64;
     fn magnitude(&self) -> f64;
     fn negate(&self) -> DVec3;
+    fn from_cartesian4(vec4: DVec4) -> DVec3;
 }
 impl Cartesian3 for DVec3 {
     fn negate(&self) -> DVec3 {
@@ -241,6 +242,9 @@ impl Cartesian3 for DVec3 {
             result[index] = DVec3::from_radians(longitude, latitude, Some(height), radii_squared);
         }
         return result;
+    }
+    fn from_cartesian4(vec4: DVec4) -> DVec3 {
+        return DVec3::new(vec4.x, vec4.y, vec4.z);
     }
 }
 #[cfg(test)]

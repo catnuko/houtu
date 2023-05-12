@@ -7,14 +7,18 @@
 )]
 use crate::{
     ellipsoidal_occluder::EllipsoidalOccluder,
+    geometry::{AxisAlignedBoundingBox, OrientedBoundingBox},
     math::{eastNorthUpToFixedFrame, Cartesian3, Matrix4},
     web_mercator_projection::WebMercatorProjection,
 };
 
 use super::*;
-use bevy::math::{DVec2, DVec3};
+use bevy::{
+    math::{DVec2, DVec3},
+    render::primitives::Aabb,
+};
 use std::{
-    f64::{MAX, MIN_POSITIVE},
+    f64::{consts::FRAC_PI_2, MAX, MIN_POSITIVE},
     io,
 };
 pub struct CreateMeshJobOutput {
@@ -80,121 +84,121 @@ impl bevy::app::Plugin for Plugin {
 }
 
 pub fn create_vertice(options: CreateVerticeOptions) {
-    // let piOverTwo = FRAC_PI_2;
-    // let heightmap = options.heightmap;
-    // let width = options.width;
-    // let height = options.height;
-    // let skirtHeight = options.skirtHeight;
-    // let hasSkirts = skirtHeight > 0.0;
-    // let isGeographic = options.isGeographic.unwrap_or(true);
-    // let ellipsoid = options.ellipsoid.unwrap_or(Ellipsoid::WGS84);
+    let piOverTwo = FRAC_PI_2;
+    let heightmap = options.heightmap;
+    let width = options.width;
+    let height = options.height;
+    let skirtHeight = options.skirtHeight;
+    let hasSkirts = skirtHeight > 0.0;
+    let isGeographic = options.isGeographic.unwrap_or(true);
+    let ellipsoid = options.ellipsoid.unwrap_or(Ellipsoid::WGS84);
 
-    // let oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
+    let oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
 
-    // let nativeRectangle = options.nativeRectangle.clone();
-    // let rectangleOption = options.rectangle;
+    let nativeRectangle = options.nativeRectangle.clone();
+    let rectangleOption = options.rectangle;
 
-    // let mut geographicWest: f64;
-    // let mut geographicSouth: f64;
-    // let mut geographicEast: f64;
-    // let mut geographicNorth: f64;
-    // if let Some(rectangle) = rectangleOption {
-    //     geographicWest = rectangle.west;
-    //     geographicSouth = rectangle.south;
-    //     geographicEast = rectangle.east;
-    //     geographicNorth = rectangle.north;
-    // } else {
-    //     if isGeographic {
-    //         geographicWest = nativeRectangle.west.to_radians();
-    //         geographicSouth = nativeRectangle.south.to_radians();
-    //         geographicEast = nativeRectangle.east.to_radians();
-    //         geographicNorth = nativeRectangle.north.to_radians();
-    //     } else {
-    //         geographicWest = nativeRectangle.west * oneOverGlobeSemimajorAxis;
-    //         // geographicSouth =
-    //         //     piOverTwo - 2.0 * atan(exp(-nativeRectangle.south * oneOverGlobeSemimajorAxis));
-    //         geographicSouth = piOverTwo
-    //             - 2.0
-    //                 * (-nativeRectangle.south * oneOverGlobeSemimajorAxis)
-    //                     .exp()
-    //                     .atan();
-    //         geographicEast = nativeRectangle.east * oneOverGlobeSemimajorAxis;
-    //         geographicNorth = piOverTwo
-    //             - 2.0
-    //                 * (-nativeRectangle.north * oneOverGlobeSemimajorAxis)
-    //                     .exp()
-    //                     .atan();
-    //     }
-    // }
-    // let mut relativeToCenter = options.relativeToCenter.unwrap_or(DVec3::ZERO);
-    // let hasRelativeToCenter = options.relativeToCenter.is_some();
-    // let includeWebMercatorT = options.includeWebMercatorT.unwrap_or(false);
-    // let exaggeration = options.exaggeration.unwrap_or(1.0);
-    // let exaggerationRelativeHeight = options.exaggerationRelativeHeight.unwrap_or(0.0);
-    // let hasExaggeration = exaggeration != 1.0;
-    // let includeGeodeticSurfaceNormals = hasExaggeration;
-    // let structore = options
-    //     .structure
-    //     .unwrap_or(HeightmapTerrainStructure::default());
+    let mut geographicWest: f64;
+    let mut geographicSouth: f64;
+    let mut geographicEast: f64;
+    let mut geographicNorth: f64;
+    if let Some(rectangle) = rectangleOption {
+        geographicWest = rectangle.west;
+        geographicSouth = rectangle.south;
+        geographicEast = rectangle.east;
+        geographicNorth = rectangle.north;
+    } else {
+        if isGeographic {
+            geographicWest = nativeRectangle.west.to_radians();
+            geographicSouth = nativeRectangle.south.to_radians();
+            geographicEast = nativeRectangle.east.to_radians();
+            geographicNorth = nativeRectangle.north.to_radians();
+        } else {
+            geographicWest = nativeRectangle.west * oneOverGlobeSemimajorAxis;
+            // geographicSouth =
+            //     piOverTwo - 2.0 * atan(exp(-nativeRectangle.south * oneOverGlobeSemimajorAxis));
+            geographicSouth = piOverTwo
+                - 2.0
+                    * (-nativeRectangle.south * oneOverGlobeSemimajorAxis)
+                        .exp()
+                        .atan();
+            geographicEast = nativeRectangle.east * oneOverGlobeSemimajorAxis;
+            geographicNorth = piOverTwo
+                - 2.0
+                    * (-nativeRectangle.north * oneOverGlobeSemimajorAxis)
+                        .exp()
+                        .atan();
+        }
+    }
+    let mut relativeToCenter = options.relativeToCenter.unwrap_or(DVec3::ZERO);
+    let hasRelativeToCenter = options.relativeToCenter.is_some();
+    let includeWebMercatorT = options.includeWebMercatorT.unwrap_or(false);
+    let exaggeration = options.exaggeration.unwrap_or(1.0);
+    let exaggerationRelativeHeight = options.exaggerationRelativeHeight.unwrap_or(0.0);
+    let hasExaggeration = exaggeration != 1.0;
+    let includeGeodeticSurfaceNormals = hasExaggeration;
+    let structore = options
+        .structure
+        .unwrap_or(HeightmapTerrainStructure::default());
 
-    // let heightScale = structore.heightScale;
-    // let heightOffset = structore.heightOffset;
-    // let elementsPerHeight = structore.elementsPerHeight;
-    // let stride = structore.stride;
-    // let elementMultiplier = structore.elementMultiplier;
-    // let isBigEndian = structore.isBigEndian;
+    let heightScale = structore.heightScale;
+    let heightOffset = structore.heightOffset;
+    let elementsPerHeight = structore.elementsPerHeight;
+    let stride = structore.stride;
+    let elementMultiplier = structore.elementMultiplier;
+    let isBigEndian = structore.isBigEndian;
 
-    // let rectangleWidth = nativeRectangle.computeWidth();
-    // let rectangleHeight = nativeRectangle.computeHeight();
+    let mut rectangleWidth = nativeRectangle.computeWidth();
+    let mut rectangleHeight = nativeRectangle.computeHeight();
 
-    // let granularityX = rectangleWidth / (width as f64 - 1.);
-    // let granularityY = rectangleHeight / (height as f64 - 1.);
+    let granularityX = rectangleWidth / (width as f64 - 1.);
+    let granularityY = rectangleHeight / (height as f64 - 1.);
 
-    // if (!isGeographic) {
-    //     rectangleWidth *= oneOverGlobeSemimajorAxis;
-    //     rectangleHeight *= oneOverGlobeSemimajorAxis;
-    // }
+    if (!isGeographic) {
+        rectangleWidth *= oneOverGlobeSemimajorAxis;
+        rectangleHeight *= oneOverGlobeSemimajorAxis;
+    }
 
-    // let radiiSquared = ellipsoid.radiiSquared;
-    // let radiiSquaredX = radiiSquared.x;
-    // let radiiSquaredY = radiiSquared.y;
-    // let radiiSquaredZ = radiiSquared.z;
+    let radiiSquared = ellipsoid.radiiSquared;
+    let radiiSquaredX = radiiSquared.x;
+    let radiiSquaredY = radiiSquared.y;
+    let radiiSquaredZ = radiiSquared.z;
 
-    // let minimumHeight: f64 = 65536.0;
-    // let maximumHeight: f64 = -65536.0;
+    let minimumHeight: f64 = 65536.0;
+    let maximumHeight: f64 = -65536.0;
 
-    // let fromENU = eastNorthUpToFixedFrame(relativeToCenter, Some(ellipsoid));
-    // let toENU = fromENU.inverse_transformation();
-    // let webMercatorProjection = WebMercatorProjection::default();
-    // let mut southMercatorY;
-    // let mut oneOverMercatorHeight;
-    // if (includeWebMercatorT) {
-    //     southMercatorY = webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicSouth);
-    //     oneOverMercatorHeight = 1.0
-    //         / (webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicNorth)
-    //             - southMercatorY);
-    // }
+    let fromENU = eastNorthUpToFixedFrame(relativeToCenter, Some(ellipsoid));
+    let toENU = fromENU.inverse_transformation();
+    let webMercatorProjection = WebMercatorProjection::default();
+    let mut southMercatorY;
+    let mut oneOverMercatorHeight;
+    if (includeWebMercatorT) {
+        southMercatorY = webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicSouth);
+        oneOverMercatorHeight = 1.0
+            / (webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicNorth)
+                - southMercatorY);
+    }
 
-    // let mut minimum = DVec3::ZERO;
-    // minimum.x = MAX;
-    // minimum.y = MAX;
-    // minimum.z = MAX;
+    let mut minimum = DVec3::ZERO;
+    minimum.x = MAX;
+    minimum.y = MAX;
+    minimum.z = MAX;
 
-    // let mut maximum = DVec3::ZERO;
-    // maximum.x = MIN_POSITIVE;
-    // maximum.y = MIN_POSITIVE;
-    // maximum.z = MIN_POSITIVE;
+    let mut maximum = DVec3::ZERO;
+    maximum.x = MIN_POSITIVE;
+    maximum.y = MIN_POSITIVE;
+    maximum.z = MIN_POSITIVE;
 
-    // let mut hMin = MAX;
+    let mut hMin = MAX;
 
-    // let gridVertexCount: i64 = width * height;
-    // let edgeVertexCount: i64 = {
-    //     if skirtHeight > 0.0 {
-    //         width * 2 + height * 2
-    //     } else {
-    //         0
-    //     }
-    // };
+    let gridVertexCount: i64 = width * height;
+    let edgeVertexCount: i64 = {
+        if skirtHeight > 0.0 {
+            width * 2 + height * 2
+        } else {
+            0
+        }
+    };
 
     // let vertexCount = gridVertexCount + edgeVertexCount;
     // let mut positions = Vec::with_capacity(vertexCount); // 预分配内存空间
@@ -395,7 +399,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     // let orientedBoundingBox;
     // if (defined(rectangle)) {
     //     orientedBoundingBox =
-    //         OrientedBoundingBox.fromRectangle(rectangle, minimumHeight, maximumHeight, ellipsoid);
+    //         OrientedBoundingBox::fromRectangle(rectangle, minimumHeight, maximumHeight, ellipsoid);
     // }
 
     // let occludeePointInScaledSpace;
@@ -408,7 +412,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     //     );
     // }
 
-    // let aaBox = new AxisAlignedBoundingBox(minimum, maximum, relativeToCenter);
+    // let aaBox = AxisAlignedBoundingBox::new(minimum, maximum, relativeToCenter);
     // let encoding = new TerrainEncoding(
     //   relativeToCenter,
     //   aaBox,

@@ -13,7 +13,7 @@ use wgpu::PrimitiveTopology;
 // mod ellipsoid_plugin;
 mod ellipsoid_shape;
 pub use ellipsoid_shape::EllipsoidShape;
-
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ellipsoid {
     pub radii: DVec3,
     pub radiiSquared: DVec3,
@@ -29,11 +29,6 @@ impl Default for Ellipsoid {
     fn default() -> Self {
         let radii = DVec3::ZERO;
         return Ellipsoid::from_vec3(radii);
-    }
-}
-impl Clone for Ellipsoid {
-    fn clone(&self) -> Self {
-        return Ellipsoid::from_vec3(self.radii);
     }
 }
 impl Ellipsoid {
@@ -328,6 +323,19 @@ impl Ellipsoid {
     }
     pub fn transformPositionToScaledSpace(&self, position: DVec3) -> DVec3 {
         return position.multiply_components(self.oneOverRadii);
+    }
+    pub fn scaleToGeocentricSurface(&self, cartesian: &DVec3) -> DVec3 {
+        let positionX = cartesian.x;
+        let positionY = cartesian.y;
+        let positionZ = cartesian.z;
+        let oneOverRadiiSquared = self.oneOverRadiiSquared;
+
+        let beta = 1.0
+            / (positionX * positionX * oneOverRadiiSquared.x
+                + positionY * positionY * oneOverRadiiSquared.y
+                + positionZ * positionZ * oneOverRadiiSquared.z)
+                .sqrt();
+        return cartesian.clone() * beta;
     }
 }
 #[cfg(test)]

@@ -9,6 +9,8 @@ use crate::{ellipsoid::Ellipsoid, math::*};
 pub trait Matrix3 {
     fn multiply_by_scale(&self, scale: DVec3) -> DMat3;
     fn from_scale3(scale: DVec3) -> DMat3;
+    fn set_column(&mut self, index: usize, cartesian: &DVec3);
+    fn multiply_by_vector(&self, cartesian: &DVec3) -> DVec3;
 }
 impl Matrix3 for DMat3 {
     fn multiply_by_scale(&self, scale: DVec3) -> DMat3 {
@@ -24,6 +26,34 @@ impl Matrix3 for DMat3 {
             DVec3::new(0.0, scale.y, 0.0),
             DVec3::new(0.0, 0.0, scale.z),
         )
+    }
+    fn set_column(&mut self, index: usize, cartesian: &DVec3) {
+        if index == 1 {
+            self.y_axis = cartesian.clone();
+        } else if index == 2 {
+            self.y_axis = cartesian.clone();
+        } else if index == 3 {
+            self.z_axis = cartesian.clone();
+        } else {
+            panic!("index out of range")
+        }
+    }
+    fn multiply_by_vector(&self, cartesian: &DVec3) -> DVec3 {
+        let mut result = DVec3::ZERO;
+        let mut slice: [f64; 9] = [0.; 9];
+        self.write_cols_to_slice(&mut slice);
+        let vX = cartesian.x;
+        let vY = cartesian.y;
+        let vZ = cartesian.z;
+
+        let x = slice[0] * vX + slice[3] * vY + slice[6] * vZ;
+        let y = slice[1] * vX + slice[4] * vY + slice[7] * vZ;
+        let z = slice[2] * vX + slice[5] * vY + slice[8] * vZ;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        return result;
     }
 }
 pub trait Matrix4 {

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 mod ellipsoid_shape;
 pub use ellipsoid_shape::*;
+use houtu_scene::Ellipsoid;
 #[derive(Component)]
 pub struct Shape;
 pub struct GlobePlugin {}
@@ -12,7 +13,6 @@ impl Default for GlobePlugin {
 }
 impl bevy::app::Plugin for GlobePlugin {
     fn build(&self, app: &mut App) {
-        // app.add_system_set(systems::system_set());
         app.add_startup_system(setup);
     }
 }
@@ -27,24 +27,16 @@ fn setup(
         ..default()
     });
     let ellipsoid = Ellipsoid::WGS84;
-    let x = ellipsoid.semimajor_axis() as f32;
-    let y = ellipsoid.semiminor_axis() as f32;
-    let z = ellipsoid.semiminor_axis() as f32;
+    let x = ellipsoid.semimajor_axis();
+    let y = ellipsoid.semimajor_axis();
+    let z = ellipsoid.semiminor_axis();
     let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
-    let points = houtu_utils::getPointsFromMesh(&mesh);
-    let obb = OrientedBoundingBox::fromPoints(&points);
-
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Box3d::frmo_obb(obb).into()),
-        material: materials.add(Color::WHITE.into()),
-        ..Default::default()
-    });
-
+    // let points = houtu_utils::getPointsFromMesh(&mesh);
+    // let obb = OrientedBoundingBox::fromPoints(&points);
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(mesh),
-            // material:  materials.add(Color::SILVER.into()),
             material: debug_material.into(),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()

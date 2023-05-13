@@ -160,6 +160,9 @@ pub fn zero_to_two_pi(angle: f64) -> f64 {
     }
     return mode;
 }
+pub fn lerp(p: f64, q: f64, time: f64) -> f64 {
+    return (1.0 - time) * p + time * q;
+}
 #[cfg(test)]
 mod tests {
     use super::*;

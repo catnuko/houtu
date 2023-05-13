@@ -8,6 +8,8 @@
 
 use bevy::prelude::*;
 
+mod events;
+mod events;
 mod jobs;
 mod plugins;
 mod systems;
@@ -29,7 +31,7 @@ pub struct Plugin;
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        // app.add_system_set(systems::system_set());
-        systems::system_set(app)
+        app.add_plugin(plugins::GlobePlugin);
+        app.add_plugin(plugins::CameraPlugin);
     }
 }

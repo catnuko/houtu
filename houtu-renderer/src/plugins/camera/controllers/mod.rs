@@ -1,5 +1,11 @@
+mod fps;
+mod orbit;
+mod unreal;
+pub use fps::*;
+pub use orbit::*;
+pub use unreal::*;
 #[macro_use]
-mod macros {
+pub mod macros {
     #[macro_export]
     macro_rules! define_on_controller_enabled_changed(($ControllerStruct:ty) => {
         fn on_controller_enabled_changed(
@@ -11,6 +17,3 @@ mod macros {
         }
     });
 }
-
-pub mod fps;
-pub mod orbit;

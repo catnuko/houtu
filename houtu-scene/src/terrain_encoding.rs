@@ -2,8 +2,10 @@ use bevy::math::{DMat4, DVec2, DVec3, DVec4};
 use geodesy::preamble::Op;
 
 use crate::{
+    compressTextureCoordinates,
     geometry::AxisAlignedBoundingBox,
     math::{Cartesian3, Matrix4, SHIFT_LEFT_12},
+    octPackFloat,
     terrain_quantization::TerrainQuantization,
 };
 
@@ -137,15 +139,88 @@ impl TerrainEncoding {
     }
     pub fn encode(
         &self,
-        vertices: &Vec<f64>,
-        bufferIndex: f64,
-        position: &DVec3,
+        vertexBuffer: &mut Vec<f64>,
+        bufferIndex: i64,
+        position: &mut DVec3,
         uv: &DVec2,
         height: f64,
         normalToPack: Option<DVec2>,
-        webMercatorT: f64,
-        geodeticSurfaceNormal: &DVec3,
-    ) -> f64 {
-        return 0.;
+        webMercatorT: Option<f64>,
+        geodeticSurfaceNormal: Option<&DVec3>,
+    ) -> i64 {
+        let u = uv.x;
+        let v = uv.y;
+        let mut new_bufferIndex = bufferIndex as usize;
+
+        if (self.quantization == TerrainQuantization::BITS12) {
+            *position = self.toScaledENU.multiply_by_point(&position);
+
+            position.x = position.x.clamp(0.0, 1.0);
+            position.y = position.y.clamp(0.0, 1.0);
+            position.z = position.z.clamp(0.0, 1.0);
+
+            let hDim = self.maximumHeight - self.minimumHeight;
+            let h = ((height - self.minimumHeight) / hDim).clamp(0.0, 1.0);
+
+            let mut cartesian2Scratch = DVec2::new(position.x, position.y);
+            let compressed0 = compressTextureCoordinates(&cartesian2Scratch);
+
+            cartesian2Scratch = DVec2::new(position.z, h);
+            let compressed1 = compressTextureCoordinates(&cartesian2Scratch);
+
+            cartesian2Scratch = DVec2::new(u, v);
+            let compressed2 = compressTextureCoordinates(&cartesian2Scratch);
+
+            vertexBuffer[new_bufferIndex] = compressed0;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = compressed1;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = compressed2;
+            new_bufferIndex += 1;
+
+            if (self.hasWebMercatorT) {
+                let cartesian2Scratch = DVec2::new(webMercatorT.unwrap(), 0.0);
+                let compressed3 = compressTextureCoordinates(&cartesian2Scratch);
+                vertexBuffer[new_bufferIndex] = compressed3;
+                new_bufferIndex += 1;
+            }
+        } else {
+            let cartesian3Scratch = position.subtract(self.center);
+
+            vertexBuffer[new_bufferIndex] = cartesian3Scratch.x;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = cartesian3Scratch.y;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = cartesian3Scratch.z;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = height;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = u;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = v;
+            new_bufferIndex += 1;
+
+            if (self.hasWebMercatorT) {
+                vertexBuffer[new_bufferIndex] = webMercatorT.unwrap();
+                new_bufferIndex += 1;
+            }
+        }
+
+        if (self.hasVertexNormals) {
+            vertexBuffer[new_bufferIndex] = octPackFloat(&normalToPack.unwrap());
+            new_bufferIndex += 1;
+        }
+
+        if (self.hasGeodeticSurfaceNormals) {
+            let new_geodeticSurfaceNormal = geodeticSurfaceNormal.unwrap();
+            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.x;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.y;
+            new_bufferIndex += 1;
+            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.z;
+            new_bufferIndex += 1;
+        }
+
+        return new_bufferIndex as i64;
     }
 }

@@ -2,14 +2,13 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     prelude::*,
 };
-use geodesy::preamble::*;
 /// Tags an entity as capable of panning and orbiting.
 #[derive(Component)]
 pub struct PanOrbitCamera {
     /// The "focus point" to orbit around. It is automatically updated when panning the camera
     pub focus: Vec3,
     pub radius: f32,
-    pub upside_down: bool,//是否是上下颠倒的
+    pub upside_down: bool, //是否是上下颠倒的
 }
 
 impl Default for PanOrbitCamera {

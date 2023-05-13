@@ -36,7 +36,6 @@ pub fn run() {
     // app.add_plugin(rgis_layers::Plugin);
     // app.add_plugin(rgis_file_loader::Plugin);
     // app.add_plugin(rgis_renderer::Plugin);
-    app.add_plugin(houtu_scene::Plugin);
     app.add_plugin(houtu_renderer::Plugin);
     // app.add_plugin(rgis_mouse::Plugin);
     // app.add_plugin(rgis_keyboard::Plugin);

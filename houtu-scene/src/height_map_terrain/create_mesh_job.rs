@@ -83,11 +83,11 @@ pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, _app: &mut bevy::app::App) {}
 }
-
+#[derive(Debug, Clone, PartialEq)]
 pub struct CreateVerticeOptions {
     pub heightmap: Vec<f64>,
-    pub width: i64,
-    pub height: i64,
+    pub width: i32,
+    pub height: i32,
     pub skirtHeight: f64,
     pub nativeRectangle: Rectangle,
     pub exaggeration: Option<f64>,
@@ -216,8 +216,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let mut hMin = MAX;
 
-    let gridVertexCount: i64 = width * height;
-    let edgeVertexCount: i64 = {
+    let gridVertexCount: i32 = width * height;
+    let edgeVertexCount: i32 = {
         if skirtHeight > 0.0 {
             width * 2 + height * 2
         } else {
@@ -227,23 +227,28 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let vertexCount = gridVertexCount + edgeVertexCount;
     let mut positions: Vec<DVec3> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
+    positions.extend(std::iter::repeat(DVec3::ZERO).take(vertexCount as usize));
     let mut heights: Vec<f64> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
+    heights.extend(std::iter::repeat(0.).take(vertexCount as usize));
     let mut uvs: Vec<DVec2> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
+    uvs.extend(std::iter::repeat(DVec2::ZERO).take(vertexCount as usize));
 
-    let mut webMercatorTs = {
+    let mut webMercatorTsOption = {
         if includeWebMercatorT {
             let mut tmp = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-            tmp
+            tmp.extend(std::iter::repeat(0.).take(vertexCount as usize));
+            Some(tmp)
         } else {
-            vec![]
+            None
         }
     };
-    let mut geodeticSurfaceNormals = {
+    let mut geodeticSurfaceNormalsOption = {
         if includeGeodeticSurfaceNormals {
             let mut tmp: Vec<DVec3> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-            tmp
+            tmp.extend(std::iter::repeat(DVec3::ZERO).take(vertexCount as usize));
+            Some(tmp)
         } else {
-            vec![]
+            None
         }
     };
     let mut startRow = 0;
@@ -318,13 +323,13 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
                 if (isBigEndian) {
                     for elementOffset in 0..elementsPerHeight {
-                        heightSample = heightSample * elementMultiplier
+                        heightSample = heightSample * elementMultiplier as f64
                             + heightmap[(terrainOffset + elementOffset) as usize];
                     }
                 } else {
                     //可能会出问题，注意
                     for elementOffset in (0..elementsPerHeight).rev() {
-                        heightSample = heightSample * elementMultiplier
+                        heightSample = heightSample * elementMultiplier as f64
                             + heightmap[(terrainOffset + elementOffset) as usize];
                     }
                 }
@@ -405,10 +410,12 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             heights[index as usize] = heightSample;
 
             if (includeWebMercatorT) {
+                let mut webMercatorTs = webMercatorTsOption.as_mut().unwrap();
                 webMercatorTs[index as usize] = webMercatorT;
             }
 
             if (includeGeodeticSurfaceNormals) {
+                let mut geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_mut().unwrap();
                 geodeticSurfaceNormals[index as usize] =
                     ellipsoid.geodeticSurfaceNormal(&position).unwrap();
             }
@@ -449,20 +456,36 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         Some(exaggeration),
         Some(exaggerationRelativeHeight),
     );
-    let mut vertices = Vec::with_capacity((vertexCount * encoding.stride as i64) as usize); // 预分配内存空间
+    let lenth = (vertexCount * encoding.stride as i32) as usize;
+    let mut vertices = Vec::with_capacity(lenth); // 预分配内存空间
+    vertices.extend(std::iter::repeat(0.).take(lenth));
 
-    let mut bufferIndex: f64 = 0.;
+    let mut bufferIndex: i64 = 0;
     for j in 0..vertexCount {
         let jj = j as usize;
         bufferIndex = encoding.encode(
-            &vertices,
+            &mut vertices,
             bufferIndex,
-            &positions[jj],
+            &mut positions[jj],
             &uvs[jj],
             heights[jj],
             None,
-            webMercatorTs[jj],
-            &geodeticSurfaceNormals[jj],
+            {
+                if webMercatorTsOption.is_none() {
+                    None
+                } else {
+                    let webMercatorTs = webMercatorTsOption.as_ref().unwrap();
+                    Some(webMercatorTs[jj])
+                }
+            },
+            {
+                if geodeticSurfaceNormalsOption.is_none() {
+                    None
+                } else {
+                    let geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_ref().unwrap();
+                    Some(&geodeticSurfaceNormals[jj])
+                }
+            },
         );
     }
 
@@ -475,4 +498,107 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         orientedBoundingBox: orientedBoundingBox,
         occludeePointInScaledSpace: occludeePointInScaledSpace,
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{equals_epsilon, lerp, Cartographic, EPSILON7};
+    use std::f64::consts::PI;
+
+    use super::*;
+    use crate::math::*;
+    #[test]
+    fn test_little_endian_heights() {
+        let width = 3;
+        let height = 3;
+        let mut structure = HeightmapTerrainStructure::default();
+        structure.stride = 3;
+        structure.elementsPerHeight = 2;
+        structure.elementMultiplier = 10;
+        let heightmap: Vec<f64> = [
+            1.0, 2.0, 100.0, 3.0, 4.0, 100.0, 5.0, 6.0, 100.0, 7.0, 8.0, 100.0, 9.0, 10.0, 100.0,
+            11.0, 12.0, 100.0, 13.0, 14.0, 100.0, 15.0, 16.0, 100.0, 17.0, 18.0, 100.0,
+        ]
+        .into();
+        let nativeRectangle = Rectangle {
+            west: 10.0,
+            south: 30.0,
+            east: 20.0,
+            north: 40.0,
+        };
+        let options = CreateVerticeOptions {
+            heightmap: heightmap.clone(),
+
+            width: width,
+            height: height,
+            skirtHeight: 0.0,
+            nativeRectangle: nativeRectangle.clone(),
+            rectangle: Some(Rectangle::new(
+                10.0.to_radians(),
+                30.0.to_radians(),
+                20.0.to_radians(),
+                40.0.to_radians(),
+            )),
+            structure: Some(structure.clone()),
+            isGeographic: None,
+            includeWebMercatorT: None,
+            exaggeration: None,
+            exaggerationRelativeHeight: None,
+            relativeToCenter: None,
+            ellipsoid: None,
+        };
+        let results = create_vertice(options);
+        let vertices = results.vertices;
+
+        let ellipsoid = Ellipsoid::WGS84;
+
+        for j in 0..height {
+            let mut latitude = lerp(
+                nativeRectangle.north,
+                nativeRectangle.south,
+                compute(j, height - 1),
+            );
+            latitude = latitude.to_radians();
+            for i in 0..width {
+                let mut longitude = lerp(
+                    nativeRectangle.west,
+                    nativeRectangle.east,
+                    compute(i, width - 1),
+                );
+                longitude = longitude.to_radians();
+
+                let heightSampleIndex = ((j * width + i) * structure.stride) as usize;
+                let heightSample =
+                    heightmap[heightSampleIndex] + heightmap[heightSampleIndex + 1] * 10.0;
+
+                let expectedVertexPosition = ellipsoid.cartographicToCartesian(&Cartographic {
+                    longitude: longitude,
+                    latitude: latitude,
+                    height: heightSample,
+                });
+
+                let index = ((j * width + i) * 6) as usize;
+                let vertexPosition =
+                    DVec3::new(vertices[index], vertices[index + 1], vertices[index + 2]);
+
+                assert!(vertexPosition.equals_epsilon(expectedVertexPosition, Some(1.0), None));
+                assert!(vertices[index + 3] == heightSample);
+                assert!(equals_epsilon(
+                    vertices[(index + 4)],
+                    compute(i, width - 1),
+                    Some(EPSILON7),
+                    None
+                ));
+                assert!(equals_epsilon(
+                    vertices[(index + 5)],
+                    1.0 - compute(j, height - 1),
+                    Some(EPSILON7),
+                    None
+                ));
+            }
+        }
+    }
+    fn compute(index: i32, num: i32) -> f64 {
+        return index as f64 / (num as f64);
+    }
 }

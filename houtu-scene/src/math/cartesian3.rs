@@ -146,7 +146,7 @@ impl Cartesian3 for DVec3 {
         return self.add(right).multiply_by_scalar(0.5);
     }
     fn subtract(self, right: DVec3) -> DVec3 {
-        return right.sub(right);
+        return self.sub(right);
     }
     fn from_degrees(
         longitude: f64,

@@ -32,19 +32,3 @@ impl Default for HeightmapTerrainStructure {
         }
     }
 }
-
-pub struct CreateVerticeOptions {
-    pub heightmap: Vec<f64>,
-    pub width: i64,
-    pub height: i64,
-    pub skirtHeight: f64,
-    pub nativeRectangle: Rectangle,
-    pub exaggeration: Option<f64>,
-    pub exaggerationRelativeHeight: Option<f64>,
-    pub rectangle: Option<Rectangle>,
-    pub isGeographic: Option<bool>,
-    pub relativeToCenter: Option<DVec3>,
-    pub ellipsoid: Option<Ellipsoid>,
-    pub structure: Option<HeightmapTerrainStructure>,
-    pub includeWebMercatorT: Option<bool>,
-}

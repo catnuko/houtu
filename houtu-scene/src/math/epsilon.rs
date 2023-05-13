@@ -55,3 +55,5 @@ pub const FOUR_GIGABYTES: u64 = 4 * 1024 * 1024 * 1024;
 pub const RADIANS_PER_DEGREE: f64 = PI / 180.0;
 
 pub const DEGREES_PER_RADIAN: f64 = 180.0 / PI;
+
+pub const SHIFT_LEFT_12: f64 = 4096.0;

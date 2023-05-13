@@ -58,7 +58,7 @@ impl EllipsoidalOccluder {
     pub fn computeHorizonCullingPointPossiblyUnderEllipsoid(
         &self,
         directionToPoint: DVec3,
-        positions: Vec<DVec3>,
+        positions: &Vec<DVec3>,
         minimumHeight: f64,
     ) -> DVec3 {
         let possiblyShrunkEllipsoid =
@@ -73,7 +73,7 @@ impl EllipsoidalOccluder {
     pub fn computeHorizonCullingPoint(
         &self,
         directionToPoint: DVec3,
-        positions: Vec<DVec3>,
+        positions: &Vec<DVec3>,
     ) -> Option<DVec3> {
         return computeHorizonCullingPointFromPositions(
             &self.ellipsoid,
@@ -101,7 +101,7 @@ pub fn getPossiblyShrunkEllipsoid(ellipsoid: &Ellipsoid, minimumHeight: Option<f
 pub fn computeHorizonCullingPointFromPositions(
     ellipsoid: &Ellipsoid,
     directionToPoint: DVec3,
-    positions: Vec<DVec3>,
+    positions: &Vec<DVec3>,
 ) -> Option<DVec3> {
     let scaledSpaceDirectionToPoint =
         computeScaledSpaceDirectionToPoint(ellipsoid, directionToPoint);
@@ -182,7 +182,7 @@ mod tests {
         let directionToPoint = DVec3::new(1.0, 0.0, 0.0);
 
         let result = ellipsoidalOccluder
-            .computeHorizonCullingPoint(directionToPoint, positions)
+            .computeHorizonCullingPoint(directionToPoint, &positions)
             .unwrap();
         assert!(equals_epsilon(result.x, 1.0, Some(EPSILON14), None));
         assert!(equals_epsilon(result.y, 0.0, Some(EPSILON14), None));
@@ -195,7 +195,7 @@ mod tests {
         let positions = vec![DVec3::new(0.0, 4567.0, 0.0)];
         let directionToPoint = DVec3::new(1.0, 0.0, 0.0);
 
-        let result = ellipsoidalOccluder.computeHorizonCullingPoint(directionToPoint, positions);
+        let result = ellipsoidalOccluder.computeHorizonCullingPoint(directionToPoint, &positions);
         assert!(result.is_none());
     }
     #[test]
@@ -205,7 +205,7 @@ mod tests {
         let positions = vec![DVec3::new(2.0, 0.0, 0.0), DVec3::new(-1.0, 0.0, 0.0)];
         let directionToPoint = DVec3::new(1.0, 0.0, 0.0);
 
-        let result = ellipsoidalOccluder.computeHorizonCullingPoint(directionToPoint, positions);
+        let result = ellipsoidalOccluder.computeHorizonCullingPoint(directionToPoint, &positions);
         assert!(result.is_none());
     }
 }

@@ -1,0 +1,151 @@
+use bevy::math::{DMat4, DVec2, DVec3, DVec4};
+use geodesy::preamble::Op;
+
+use crate::{
+    geometry::AxisAlignedBoundingBox,
+    math::{Cartesian3, Matrix4, SHIFT_LEFT_12},
+    terrain_quantization::TerrainQuantization,
+};
+
+pub struct TerrainEncoding {
+    pub quantization: TerrainQuantization,
+    pub minimumHeight: f64,
+    pub maximumHeight: f64,
+    pub center: DVec3,
+    pub toScaledENU: DMat4,
+    pub fromScaledENU: DMat4,
+    pub matrix: DMat4,
+    pub hasVertexNormals: bool,
+    pub hasWebMercatorT: bool,
+    pub hasGeodeticSurfaceNormals: bool,
+    pub exaggeration: f64,
+    pub exaggerationRelativeHeight: f64,
+    pub stride: f64,
+    pub _offsetGeodeticSurfaceNormal: f64,
+    pub _offsetVertexNormal: f64,
+}
+impl TerrainEncoding {
+    pub fn new(
+        center: DVec3,
+        axisAlignedBoundingBoxOption: Option<AxisAlignedBoundingBox>,
+        minimumHeightOption: Option<f64>,
+        maximumHeightOption: Option<f64>,
+        fromENUOption: Option<DMat4>,
+        hasVertexNormals: bool,
+        hasWebMercatorTOption: Option<bool>,
+        hasGeodeticSurfaceNormalsOption: Option<bool>,
+        exaggerationOption: Option<f64>,
+        exaggerationRelativeHeightOption: Option<f64>,
+    ) -> Self {
+        let mut quantization = TerrainQuantization::NONE;
+        let mut toENU = DMat4::default();
+        let mut matrix = DMat4::default();
+        let mut axisAlignedBoundingBox: AxisAlignedBoundingBox = AxisAlignedBoundingBox::default();
+        let mut minimumHeight = 0.;
+        let mut maximumHeight = 0.;
+        let mut fromENU = DMat4::default();
+
+        if (axisAlignedBoundingBoxOption.is_some()
+            && minimumHeightOption.is_some()
+            && maximumHeightOption.is_some()
+            && fromENUOption.is_some())
+        {
+            axisAlignedBoundingBox = axisAlignedBoundingBoxOption.unwrap();
+            minimumHeight = minimumHeightOption.unwrap();
+            maximumHeight = maximumHeightOption.unwrap();
+            fromENU = fromENUOption.unwrap();
+            let minimum = axisAlignedBoundingBox.minimum;
+            let maximum = axisAlignedBoundingBox.maximum;
+
+            let dimensions = maximum - minimum;
+            let hDim = maximumHeight - minimumHeight;
+            let maxDim = dimensions.maximum_component().max(hDim);
+
+            if (maxDim < SHIFT_LEFT_12 - 1.0) {
+                quantization = TerrainQuantization::BITS12;
+            } else {
+                quantization = TerrainQuantization::NONE;
+            }
+
+            toENU = fromENU.inverse_transformation();
+
+            let translation = minimum.negate();
+            let mut toENU = DMat4::from_translation(translation) * toENU;
+
+            let mut scale = DVec3::ZERO;
+            scale.x = 1.0 / dimensions.x;
+            scale.y = 1.0 / dimensions.y;
+            scale.z = 1.0 / dimensions.z;
+            toENU = DMat4::from_scale(scale) * toENU;
+
+            matrix = fromENU.clone();
+
+            matrix.set_translation(&DVec3::ZERO);
+
+            fromENU = fromENU.clone();
+
+            let translationMatrix = DMat4::from_translation(minimum);
+            let scaleMatrix = DMat4::from_scale(dimensions);
+            let st = translationMatrix * scaleMatrix;
+            fromENU = fromENU * st;
+            matrix = matrix * st;
+        }
+        let mut encoding = Self {
+            quantization,
+            minimumHeight: minimumHeight,
+            maximumHeight: maximumHeight,
+            center,
+            toScaledENU: toENU,
+            fromScaledENU: fromENU,
+            matrix,
+            hasVertexNormals,
+            hasWebMercatorT: hasWebMercatorTOption.unwrap_or(false),
+            hasGeodeticSurfaceNormals: hasGeodeticSurfaceNormalsOption.unwrap_or(false),
+            exaggeration: exaggerationOption.unwrap_or(1.0),
+            exaggerationRelativeHeight: exaggerationRelativeHeightOption.unwrap_or(0.0),
+            stride: 0.0,
+            _offsetGeodeticSurfaceNormal: 0.0,
+            _offsetVertexNormal: 0.0,
+        };
+        encoding._calculateStrideAndOffsets();
+        return encoding;
+    }
+    pub fn _calculateStrideAndOffsets(&mut self) {
+        let mut vertexStride = 0;
+
+        match self.quantization {
+            TerrainQuantization::BITS12 => {
+                vertexStride += 3;
+            }
+            _ => {
+                vertexStride += 6;
+            }
+        }
+        if (self.hasWebMercatorT) {
+            vertexStride += 1;
+        }
+        if (self.hasVertexNormals) {
+            self._offsetVertexNormal = vertexStride as f64;
+            vertexStride += 1;
+        }
+        if (self.hasGeodeticSurfaceNormals) {
+            self._offsetGeodeticSurfaceNormal = vertexStride as f64;
+            vertexStride += 3;
+        }
+
+        self.stride = vertexStride as f64;
+    }
+    pub fn encode(
+        &self,
+        vertices: &Vec<f64>,
+        bufferIndex: f64,
+        position: &DVec3,
+        uv: &DVec2,
+        height: f64,
+        normalToPack: Option<DVec2>,
+        webMercatorT: f64,
+        geodeticSurfaceNormal: &DVec3,
+    ) -> f64 {
+        return 0.;
+    }
+}

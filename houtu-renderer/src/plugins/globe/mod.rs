@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-
-use crate::ellipsoid::{Ellipsoid, EllipsoidShape};
-use crate::geometry::{Box3d, OrientedBoundingBox};
+mod ellipsoid_shape;
+pub use ellipsoid_shape::*;
 #[derive(Component)]
 pub struct Shape;
 pub struct GlobePlugin {}

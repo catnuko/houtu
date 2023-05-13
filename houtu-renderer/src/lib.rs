@@ -9,6 +9,7 @@
 use bevy::prelude::*;
 
 mod jobs;
+mod plugins;
 mod systems;
 mod z_index;
 

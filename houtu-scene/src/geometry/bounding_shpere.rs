@@ -90,7 +90,7 @@ impl BoundingSphere {
         for i in 0..length {
             positions.push(boundingSpheres[i].center);
         }
-        let result = BoundingSphere::from_points(positions);
+        let result = BoundingSphere::from_points(&positions);
 
         let center = result.center;
         let mut radius = result.radius;
@@ -110,7 +110,7 @@ impl BoundingSphere {
         let radius = ellipsoid.maximumRadius;
         Self { center, radius }
     }
-    pub fn from_points(positions: Vec<DVec3>) -> Self {
+    pub fn from_points(positions: &Vec<DVec3>) -> Self {
         if (positions.len() == 0) {
             return Self::default();
         }
@@ -265,7 +265,7 @@ impl BoundingSphere {
         surfaceHeight: Option<f64>,
     ) -> Self {
         let positions = rectangle.subsample(ellipsoid, surfaceHeight);
-        return Self::from_points(positions);
+        return Self::from_points(&positions);
     }
 }
 
@@ -296,27 +296,29 @@ mod tests {
             DVec3::new(0.0, 0.0, 1.0),
             DVec3::new(1.0, 1.0, 1.0),
         ];
-        let bounding_sphere = BoundingSphere::from_points(positions);
+        let bounding_sphere = BoundingSphere::from_points(&positions);
         assert_eq!(bounding_sphere.center, DVec3::new(0.5, 0.5, 0.5));
         assert_eq!(bounding_sphere.radius, 0.8660254037844386);
     }
     #[test]
     fn from_points_work_with_empty_points() {
         let positions = vec![];
-        let bounding_sphere = BoundingSphere::from_points(positions);
+        let bounding_sphere = BoundingSphere::from_points(&positions);
         assert_eq!(bounding_sphere.center, DVec3::ZERO);
         assert_eq!(bounding_sphere.radius, 0.0);
     }
     #[test]
     fn from_points_work_with_one_point() {
         let expectedCenter = DVec3::new(1.0, 2.0, 3.0);
-        let sphere = BoundingSphere::from_points(vec![expectedCenter]);
+        let positions = vec![expectedCenter];
+        let sphere = BoundingSphere::from_points(&positions);
         assert_eq!(sphere.center, expectedCenter);
         assert_eq!(sphere.radius, 0.0);
     }
     #[test]
     fn from_points_compute_center_from_points() {
-        let sphere = BoundingSphere::from_points(getPositions());
+        let positions = getPositions();
+        let sphere = BoundingSphere::from_points(&positions);
         assert_eq!(sphere.center, positionsCenter);
         assert_eq!(sphere.radius, 1.0);
     }

@@ -58,9 +58,15 @@ impl Matrix3 for DMat3 {
 }
 pub trait Matrix4 {
     fn inverse_transformation(&self) -> DMat4;
-    fn multiply_by_point(&self, cartesian: DVec3) -> DVec3;
+    fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3;
+    fn set_translation(&mut self, cartesian: &DVec3);
 }
 impl Matrix4 for DMat4 {
+    fn set_translation(&mut self, cartesian: &DVec3) {
+        self.x_axis.w = cartesian.x;
+        self.y_axis.w = cartesian.y;
+        self.z_axis.w = cartesian.z;
+    }
     fn inverse_transformation(&self) -> DMat4 {
         let mut slice: [f64; 16] = [
             0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -103,7 +109,7 @@ impl Matrix4 for DMat4 {
         return DMat4::from_cols_array(&slice2);
     }
 
-    fn multiply_by_point(&self, cartesian: DVec3) -> DVec3 {
+    fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3 {
         let mut slice: [f64; 16] = [0.; 16];
         self.write_cols_to_slice(&mut slice);
         let matrix0 = slice[0];

@@ -1,4 +1,2 @@
-mod globe;
-pub use globe::*;
-mod camera;
-pub use camera::*;
+pub mod camera;
+pub mod globe;

@@ -1,13 +1,13 @@
-use crate::{LookAngles, LookTransform, LookTransformBundle, Smoother};
+use crate::plugins::camera::{LookAngles, LookTransform, LookTransformBundle, Smoother};
 
 use bevy::{
-    app::prelude::*,
     ecs::{bundle::Bundle, prelude::*},
     input::{
         mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
         prelude::*,
     },
     math::prelude::*,
+    prelude::*,
     time::Time,
     transform::components::Transform,
 };
@@ -28,8 +28,7 @@ impl OrbitCameraPlugin {
 impl Plugin for OrbitCameraPlugin {
     fn build(&self, app: &mut App) {
         let app = app
-            // .add_system(on_controller_enabled_changed.in_base_set(CoreStage::PreUpdate))
-            .add_system_to_stage(CoreStage::PreUpdate, on_controller_enabled_changed)
+            .add_system(on_controller_enabled_changed.in_base_set(CoreSet::PreUpdate))
             .add_system(control_system)
             .add_event::<ControlEvent>();
 
@@ -188,7 +187,7 @@ pub fn control_system(
     look_angles.assert_not_looking_up();
 
     let new_radius = radius_scalar * transform.radius();
-        // .min(1000000.0)
-        // .max(0.001);
+    // .min(1000000.0)
+    // .max(0.001);
     transform.eye = transform.target + new_radius * look_angles.unit_vector();
 }

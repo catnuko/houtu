@@ -7,8 +7,6 @@ use bevy::math::DVec3;
 // use bevy::DVec3;
 use bevy::prelude::Mesh;
 use bevy::render::mesh::Indices;
-use geodesy::Ellipsoid as GeodesyEllipsoid;
-use wgpu::PrimitiveTopology;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ellipsoid {
     pub radii: DVec3,

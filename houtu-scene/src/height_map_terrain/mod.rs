@@ -1,7 +1,7 @@
 use crate::{ellipsoid::Ellipsoid, geometry::Rectangle};
-mod create_mesh_job;
+mod create_vertice;
 use bevy::math::DVec3;
-pub use create_mesh_job::*;
+pub use create_vertice::*;
 // mod create_mesh_job;
 pub struct HeightmapTerrainData {
     pub buffer: Vec<u8>,

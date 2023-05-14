@@ -2,7 +2,9 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     prelude::*,
 };
-use controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin};
+// use bevy_atmosphere::prelude::*;
+use controllers::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin};
+
 pub mod controller;
 //复制进来的东西
 pub mod controllers;
@@ -18,10 +20,12 @@ pub struct CameraPlugin;
 
 impl bevy::app::Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
+        // app.add_plugin(AtmospherePlugin);
         app.insert_resource(Msaa::default())
             .add_plugin(LookTransformPlugin)
             .add_plugin(OrbitCameraPlugin::default())
             .add_startup_system(setup);
+
         // app.add_system(controller::pan_orbit_camera);
     }
 }
@@ -36,6 +40,7 @@ fn setup(mut commands: Commands) {
     let x = ellipsoid.semimajor_axis() as f32;
     commands
         .spawn(Camera3dBundle::default())
+        // .insert(AtmosphereCamera::default())
         .insert(OrbitCameraBundle::new(
             OrbitCameraController::default(),
             Vec3::new(x + 10000000., x + 10000000., x + 10000000.),

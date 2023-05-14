@@ -8,17 +8,18 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-bevy = { version = "0.9", default-features = false, features = [
+bevy = { version = "0.10.1", default-features = false, features = [
     "bevy_winit",
     "bevy_core_pipeline",
     "bevy_render",
     "bevy_sprite",
     "bevy_ui",
     "bevy_asset",
+    "bevy_pbr",
     "wayland",
     "png",
 ] }
-geo = "0.24"
+# geo = "0.24"
 # rgis-camera = { path = "../rgis-camera" }
 # rgis-file-loader = { path = "../rgis-file-loader" }
 # rgis-keyboard = { path = "../rgis-keyboard" }

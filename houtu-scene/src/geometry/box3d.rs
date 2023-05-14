@@ -1,6 +1,6 @@
 use bevy::math::{DMat3, DVec3};
 use bevy::prelude::*;
-use wgpu::PrimitiveTopology;
+use bevy::render::render_resource::PrimitiveTopology;
 
 use super::OrientedBoundingBox;
 

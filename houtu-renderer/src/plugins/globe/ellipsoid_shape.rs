@@ -4,8 +4,8 @@ use std::fmt;
 use bevy::math::DVec3;
 use bevy::prelude::{Mesh, Vec3};
 use bevy::render::mesh::Indices;
+use bevy::render::render_resource::PrimitiveTopology;
 use houtu_scene::*;
-use wgpu::PrimitiveTopology;
 pub struct EllipsoidShape {
     pub radii: DVec3,
     pub inner_radii: DVec3,

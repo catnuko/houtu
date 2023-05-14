@@ -5,10 +5,10 @@ pub use ellipsoid_shape::*;
 use houtu_scene::Ellipsoid;
 #[derive(Component)]
 pub struct Shape;
-pub struct GlobePlugin {}
+pub struct GlobePlugin;
 impl Default for GlobePlugin {
     fn default() -> Self {
-        Self {}
+        Self
     }
 }
 impl bevy::app::Plugin for GlobePlugin {
@@ -22,37 +22,35 @@ fn setup(
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let debug_material = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(uv_debug_texture())),
-        ..default()
-    });
-    let ellipsoid = Ellipsoid::WGS84;
-    let x = ellipsoid.semimajor_axis();
-    let y = ellipsoid.semimajor_axis();
-    let z = ellipsoid.semiminor_axis();
-    let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
+    // let debug_material = materials.add(StandardMaterial {
+    //     base_color_texture: Some(images.add(uv_debug_texture())),
+    //     ..default()
+    // });
+    // let ellipsoid = Ellipsoid::WGS84;
+    // let x = ellipsoid.semimajor_axis() as f32;
+    // let y = ellipsoid.semimajor_axis() as f32;
+    // let z = ellipsoid.semiminor_axis() as f32;
+    // let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
-    // let points = houtu_utils::getPointsFromMesh(&mesh);
-    // let obb = OrientedBoundingBox::fromPoints(&points);
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(mesh),
-            material: debug_material.into(),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            ..default()
-        },
-        Shape,
-    ));
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 9000.0,
-            range: 100.,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(x + 1000., x + 1000., x + 1000.),
-        ..default()
-    });
+    // commands.spawn((
+    //     PbrBundle {
+    //         mesh: meshes.add(mesh),
+    //         material: debug_material.into(),
+    //         transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    //         ..default()
+    //     },
+    //     Shape,
+    // ));
+    // commands.spawn(PointLightBundle {
+    //     point_light: PointLight {
+    //         intensity: 9000.0,
+    //         range: 100.,
+    //         shadows_enabled: true,
+    //         ..default()
+    //     },
+    //     transform: Transform::from_xyz(x + 1000., x + 1000., x + 1000.),
+    //     ..default()
+    // });
 }
 /// Creates a colorful test pattern
 fn uv_debug_texture() -> Image {

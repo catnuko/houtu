@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.9", default-features = false, features = [
+bevy = { version = "0.10.1", default-features = false, features = [
     "bevy_winit",
     "bevy_core_pipeline",
     "bevy_render",
@@ -16,15 +16,6 @@ bevy = { version = "0.9", default-features = false, features = [
     "bevy_pbr",
     "png",
 ] }
-geo = "0.24"
-geo-bevy = { git = "https://github.com/frewsxcv/geo-bevy.git", branch = "frewsxcv/earcut" }
-geo-projected = { path = "../geo-projected" }
-# rgis-events = { path = "../rgis-events" }
-rgis-layer-id = { path = "../rgis-layer-id" }
-# rgis-layers = { path = "../rgis-layers" }
-bevy_jobs = { git = "https://github.com/frewsxcv/bevy_jobs" }
 houtu-scene = { path = "../houtu-scene" }
-
-[dependencies.wgpu]
-version = "0.14.0"
-features = ["spirv"]
+# bevy_atmosphere = "0.6.0"
+# bevy-inspector-egui = "0.18.3"

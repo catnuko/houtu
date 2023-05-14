@@ -17,5 +17,16 @@ bevy = { version = "0.10.1", default-features = false, features = [
     "png",
 ] }
 houtu-scene = { path = "../houtu-scene" }
-# bevy_atmosphere = "0.6.0"
-# bevy-inspector-egui = "0.18.3"
+houtu-jobs = { path = "../houtu-jobs" }
+bevy_atmosphere = "0.6.0"
+bevy-inspector-egui = "0.18.3"
+
+# jobs/load
+reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["stream"] }
+futures-util = "0.3"
+thiserror = "1.0.40"
+bytes = "1.4.0"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1", features = ["full"] }
+async-channel = "1.8.0"
+instant = "0.1"

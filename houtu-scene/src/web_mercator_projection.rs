@@ -23,25 +23,25 @@ impl Default for WebMercatorProjection {
 impl Projection for WebMercatorProjection {
     type Output = WebMercatorProjection;
 
-    fn project(&self, coord: Cartographic) -> DVec3 {
+    fn project(&self, coord: &Cartographic) -> DVec3 {
         let semimajorAxis = self.semimajor_axis;
         let x = coord.longitude * semimajorAxis;
         let y = geodeticLatitudeToMercatorAngle(coord.latitude) * semimajorAxis;
         let z = coord.height;
         return DVec3::new(x, y, z);
     }
-    fn un_project(&self, vec: DVec3) -> Cartographic {
+    fn un_project(&self, vec: &DVec3) -> Cartographic {
         let oneOverEarthSemimajorAxis = self.one_over_semimajor_axis;
         let longitude = vec.x * oneOverEarthSemimajorAxis;
         let latitude = mercatorAngleToGeodeticLatitude(vec.y * oneOverEarthSemimajorAxis);
         let height = vec.z;
         return Cartographic::new(longitude, latitude, height);
     }
-    fn from_ellipsoid(&self, ellipsoid: Ellipsoid) -> WebMercatorProjection {
+    fn from_ellipsoid(ellipsoid: &Ellipsoid) -> WebMercatorProjection {
         let a = ellipsoid.semimajor_axis();
         let b = 1.0 / ellipsoid.semimajor_axis();
         Self {
-            ellipsoid: ellipsoid,
+            ellipsoid: ellipsoid.clone(),
             semimajor_axis: a,
             one_over_semimajor_axis: b,
         }

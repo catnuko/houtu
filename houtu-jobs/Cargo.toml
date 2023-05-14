@@ -1,0 +1,17 @@
+[package]
+name = "houtu-jobs"
+version = "0.1.0"
+edition = "2021"
+license = "MIT/Apache-2.0"
+
+[dependencies]
+async-channel = "1.8.0"
+bevy = { version = "0.10.1", default-features = false, features = [
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_ui",
+    "wayland",
+] }
+instant = "0.1"

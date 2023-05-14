@@ -86,8 +86,8 @@ impl bevy::app::Plugin for Plugin {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateVerticeOptions {
     pub heightmap: Vec<f64>,
-    pub width: i32,
-    pub height: i32,
+    pub width: u32,
+    pub height: u32,
     pub skirtHeight: f64,
     pub nativeRectangle: Rectangle,
     pub exaggeration: Option<f64>,
@@ -216,8 +216,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let mut hMin = MAX;
 
-    let gridVertexCount: i32 = width * height;
-    let edgeVertexCount: i32 = {
+    let gridVertexCount: u32 = width * height;
+    let edgeVertexCount: u32 = {
         if skirtHeight > 0.0 {
             width * 2 + height * 2
         } else {
@@ -456,7 +456,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         Some(exaggeration),
         Some(exaggerationRelativeHeight),
     );
-    let lenth = (vertexCount * encoding.stride as i32) as usize;
+    let lenth = (vertexCount * encoding.stride as u32) as usize;
     let mut vertices = Vec::with_capacity(lenth); // 预分配内存空间
     vertices.extend(std::iter::repeat(0.).take(lenth));
 
@@ -556,14 +556,14 @@ mod tests {
             let mut latitude = lerp(
                 nativeRectangle.north,
                 nativeRectangle.south,
-                compute(j, height - 1),
+                compute_u32(j, height - 1),
             );
             latitude = latitude.to_radians();
             for i in 0..width {
                 let mut longitude = lerp(
                     nativeRectangle.west,
                     nativeRectangle.east,
-                    compute(i, width - 1),
+                    compute_u32(i, width - 1),
                 );
                 longitude = longitude.to_radians();
 
@@ -585,13 +585,13 @@ mod tests {
                 assert!(vertices[index + 3] == heightSample);
                 assert!(equals_epsilon(
                     vertices[(index + 4)],
-                    compute(i, width - 1),
+                    compute_u32(i, width - 1),
                     Some(EPSILON7),
                     None
                 ));
                 assert!(equals_epsilon(
                     vertices[(index + 5)],
-                    1.0 - compute(j, height - 1),
+                    1.0 - compute_u32(j, height - 1),
                     Some(EPSILON7),
                     None
                 ));
@@ -599,6 +599,9 @@ mod tests {
         }
     }
     fn compute(index: i32, num: i32) -> f64 {
+        return index as f64 / (num as f64);
+    }
+    fn compute_u32(index: u32, num: u32) -> f64 {
         return index as f64 / (num as f64);
     }
 }

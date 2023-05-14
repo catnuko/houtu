@@ -21,7 +21,7 @@ pub struct TerrainEncoding {
     pub hasGeodeticSurfaceNormals: bool,
     pub exaggeration: f64,
     pub exaggerationRelativeHeight: f64,
-    pub stride: f64,
+    pub stride: u32,
     pub _offsetGeodeticSurfaceNormal: f64,
     pub _offsetVertexNormal: f64,
 }
@@ -104,7 +104,7 @@ impl TerrainEncoding {
             hasGeodeticSurfaceNormals: hasGeodeticSurfaceNormalsOption.unwrap_or(false),
             exaggeration: exaggerationOption.unwrap_or(1.0),
             exaggerationRelativeHeight: exaggerationRelativeHeightOption.unwrap_or(0.0),
-            stride: 0.0,
+            stride: 0,
             _offsetGeodeticSurfaceNormal: 0.0,
             _offsetVertexNormal: 0.0,
         };
@@ -134,7 +134,7 @@ impl TerrainEncoding {
             vertexStride += 3;
         }
 
-        self.stride = vertexStride as f64;
+        self.stride = vertexStride;
     }
     pub fn encode(
         &self,

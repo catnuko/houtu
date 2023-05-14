@@ -48,9 +48,9 @@ pub const SOLAR_RADIUS: f64 = 6.955e8;
 
 pub const LUNAR_RADIUS: f64 = 1737400.0;
 
-pub const SIXTY_FOUR_KILOBYTES: u64 = 64 * 1024;
+pub const SIXTY_FOUR_KILOBYTES: u32 = 64 * 1024;
 
-pub const FOUR_GIGABYTES: u64 = 4 * 1024 * 1024 * 1024;
+pub const FOUR_GIGABYTES: u32 = 4 * 1024 * 1024 * 1024;
 
 pub const RADIANS_PER_DEGREE: f64 = PI / 180.0;
 

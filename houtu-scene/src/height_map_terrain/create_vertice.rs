@@ -83,9 +83,8 @@ pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, _app: &mut bevy::app::App) {}
 }
-#[derive(Debug, Clone, PartialEq)]
-pub struct CreateVerticeOptions {
-    pub heightmap: Vec<f64>,
+pub struct CreateVerticeOptions<'a> {
+    pub heightmap: &'a mut Vec<f64>,
     pub width: u32,
     pub height: u32,
     pub skirtHeight: f64,
@@ -515,7 +514,7 @@ mod tests {
         structure.stride = 3;
         structure.elementsPerHeight = 2;
         structure.elementMultiplier = 10;
-        let heightmap: Vec<f64> = [
+        let mut heightmap: Vec<f64> = [
             1.0, 2.0, 100.0, 3.0, 4.0, 100.0, 5.0, 6.0, 100.0, 7.0, 8.0, 100.0, 9.0, 10.0, 100.0,
             11.0, 12.0, 100.0, 13.0, 14.0, 100.0, 15.0, 16.0, 100.0, 17.0, 18.0, 100.0,
         ]
@@ -527,7 +526,7 @@ mod tests {
             north: 40.0,
         };
         let options = CreateVerticeOptions {
-            heightmap: heightmap.clone(),
+            heightmap: &mut heightmap,
 
             width: width,
             height: height,

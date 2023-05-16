@@ -1,4 +1,5 @@
-use std::{f64::consts::PI, sync::Arc};
+use core::num;
+use std::{collections::HashMap, f64::consts::PI, sync::Arc};
 
 use bevy::prelude::In;
 
@@ -12,75 +13,67 @@ pub struct IndicesAndEdges {
     pub northIndicesWestToEast: Vec<u32>,
     pub indexCountWithoutSkirts: Option<u32>,
 }
-struct InnerIndicesAndEdges {
+pub struct InnerIndicesAndEdges {
     pub westIndicesSouthToNorth: Vec<u32>,
     pub southIndicesEastToWest: Vec<u32>,
     pub eastIndicesNorthToSouth: Vec<u32>,
     pub northIndicesWestToEast: Vec<u32>,
 }
 const heightmapTerrainQuality: f64 = 0.25;
-static mut regularGridAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
-static mut regularGridAndSkirtAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
-static mut regularGridIndicesCache: Vec<Vec<Vec<u32>>> = Vec::new();
-pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
-    ellipsoid: &Ellipsoid,
-    tileImageWidth: u32,
-    numberOfTilesAtLevelZero: u32,
-) -> f64 {
-    return ((ellipsoid.maximumRadius * 2. * PI * heightmapTerrainQuality)
-        / (tileImageWidth * numberOfTilesAtLevelZero) as f64);
+// static mut regularGridAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
+// static mut regularGridAndSkirtAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
+// static mut regularGridIndicesCache: Vec<Vec<Vec<u32>>> = Vec::new();
+pub struct IndicesAndEdgesCache {
+    pub regularGridAndEdgeIndicesCache: HashMap<String, IndicesAndEdges>,
+    pub regularGridAndSkirtAndEdgeIndicesCache: HashMap<String, IndicesAndEdges>,
+    pub regularGridIndicesCache: HashMap<String, Vec<u32>>,
 }
-pub fn getRegularGridIndices(width: u32, height: u32) -> Vec<u32> {
-    if (width * height >= FOUR_GIGABYTES) {
-        panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
+impl IndicesAndEdgesCache {
+    pub fn new() -> Self {
+        Self {
+            regularGridAndEdgeIndicesCache: HashMap::new(),
+            regularGridAndSkirtAndEdgeIndicesCache: HashMap::new(),
+            regularGridIndicesCache: HashMap::new(),
+        }
     }
-    //>>includeEnd('debug');
-    let byWidth: &Vec<Vec<u32>> = {
-        let byWidthOption = unsafe {
-            regularGridIndicesCache.get(width as usize);
-        };
-        if byWidthOption.is_none() {
-            let value = Vec::<Vec<u32>>::new();
-            unsafe {
-                regularGridIndicesCache[width as usize] = value;
-            }
-            &value
-        } else {
-            &byWidthOption.unwrap()
-        }
-    };
-    let indices: Vec<u32> = {
-        let indicesAndEdgesOption = byWidth.get_mut(height as usize);
-        if indicesAndEdgesOption.is_none() {
-            let value: Vec<u32> = vec![0; ((width - 1) * (height - 1) * 6) as usize];
-            byWidth[height as usize] = value;
-            addRegularGridIndices(width, height, &mut value, 0);
-            value
-        } else {
-            indicesAndEdgesOption.unwrap().clone()
-        }
-    };
-    return indices;
-}
-pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
-    if (width * height >= FOUR_GIGABYTES) {
-        panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
+    fn get_key(width: u32, height: u32) -> String {
+        format!("{}-{}", width, height)
     }
-    //>>includeEnd('debug');
-    let byWidth: &Vec<IndicesAndEdges> = {
-        let byWidthOption = regularGridAndSkirtAndEdgeIndicesCache.get_mut(width as usize);
-        if byWidthOption.is_none() {
-            let value = Vec::<IndicesAndEdges>::new();
-            regularGridAndSkirtAndEdgeIndicesCache[width as usize] = value;
-            &value
-        } else {
-            &byWidthOption.unwrap()
+    pub fn getRegularGridIndices(&mut self, width: u32, height: u32) -> Vec<u32> {
+        if ((width * height) as u64 >= FOUR_GIGABYTES) {
+            panic!(
+                "The total number of vertices (width * height) must be less than 4,294,967,296."
+            );
         }
-    };
+        let key = Self::get_key(width, height);
+        let value = self.regularGridIndicesCache.get(key.as_str()).cloned();
 
-    let indicesAndEdges: IndicesAndEdges = {
-        let indicesAndEdgesOption = byWidth.get_mut(height as usize);
-        if indicesAndEdgesOption.is_none() {
+        if value.is_none() {
+            let mut new_value: Vec<u32> = vec![0; ((width - 1) * (height - 1) * 6) as usize];
+            addRegularGridIndices(width, height, &mut new_value, 0);
+            self.regularGridIndicesCache.insert(key, new_value.clone());
+            return new_value;
+        } else {
+            return value.unwrap();
+        }
+    }
+    pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(
+        &mut self,
+        width: u32,
+        height: u32,
+    ) -> IndicesAndEdges {
+        if ((width * height) as u64 >= FOUR_GIGABYTES) {
+            panic!(
+                "The total number of vertices (width * height) must be less than 4,294,967,296."
+            );
+        }
+        let key = Self::get_key(width, height);
+        let value = self
+            .regularGridAndSkirtAndEdgeIndicesCache
+            .get(key.as_str())
+            .cloned();
+
+        if value.is_none() {
             let gridVertexCount = width * height;
             let gridIndexCount = (width - 1) * (height - 1) * 6;
             let edgeVertexCount = width * 2 + height * 2;
@@ -94,7 +87,7 @@ pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(width: u32, height: u32) -> I
             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
 
-            let indices = Vec::<u32>::new();
+            let mut indices = Vec::<u32>::new();
             addRegularGridIndices(width, height, &mut indices, 0);
             addSkirtIndices(
                 &westIndicesSouthToNorth,
@@ -105,7 +98,7 @@ pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(width: u32, height: u32) -> I
                 &mut indices,
                 gridIndexCount,
             );
-            let value = IndicesAndEdges {
+            let new_value = IndicesAndEdges {
                 indices: indices,
                 westIndicesSouthToNorth: westIndicesSouthToNorth,
                 southIndicesEastToWest: southIndicesEastToWest,
@@ -113,34 +106,31 @@ pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(width: u32, height: u32) -> I
                 northIndicesWestToEast: northIndicesWestToEast,
                 indexCountWithoutSkirts: Some(gridIndexCount),
             };
-            byWidth[height as usize] = value;
-            value
+            self.regularGridAndSkirtAndEdgeIndicesCache
+                .insert(key, new_value.clone());
+            return new_value;
         } else {
-            indicesAndEdgesOption.unwrap().clone()
+            return value.unwrap();
         }
-    };
-    return indicesAndEdges;
-}
-pub fn getRegularGridIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
-    if (width * height >= FOUR_GIGABYTES) {
-        panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
     }
-    //>>includeEnd('debug');
-    let byWidth: &Vec<IndicesAndEdges> = {
-        let byWidthOption = regularGridAndEdgeIndicesCache.get_mut(width as usize);
-        if byWidthOption.is_none() {
-            let value = Vec::<IndicesAndEdges>::new();
-            regularGridAndEdgeIndicesCache[width as usize] = value;
-            &value
-        } else {
-            &byWidthOption.unwrap()
+    pub fn getRegularGridIndicesAndEdgeIndices(
+        &mut self,
+        width: u32,
+        height: u32,
+    ) -> IndicesAndEdges {
+        if ((width * height) as u64 >= FOUR_GIGABYTES) {
+            panic!(
+                "The total number of vertices (width * height) must be less than 4,294,967,296."
+            );
         }
-    };
+        let key = Self::get_key(width, height);
+        let value = self
+            .regularGridAndEdgeIndicesCache
+            .get(key.as_str())
+            .cloned();
 
-    let indicesAndEdges: IndicesAndEdges = {
-        let indicesAndEdgesOption = byWidth.get_mut(height as usize);
-        if indicesAndEdgesOption.is_none() {
-            let indices = getRegularGridIndices(width, height);
+        if value.is_none() {
+            let indices = self.getRegularGridIndices(width, height);
 
             let edgeIndices = getEdgeIndices(width, height);
             let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
@@ -148,7 +138,7 @@ pub fn getRegularGridIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAn
             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
 
-            let value = IndicesAndEdges {
+            let new_value = IndicesAndEdges {
                 indices: indices,
                 westIndicesSouthToNorth: westIndicesSouthToNorth,
                 southIndicesEastToWest: southIndicesEastToWest,
@@ -156,14 +146,170 @@ pub fn getRegularGridIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAn
                 northIndicesWestToEast: northIndicesWestToEast,
                 indexCountWithoutSkirts: None,
             };
-            byWidth[height as usize] = value;
-            value
+            self.regularGridAndEdgeIndicesCache
+                .insert(key, new_value.clone());
+            return new_value;
         } else {
-            indicesAndEdgesOption.unwrap().clone()
+            return value.unwrap();
         }
-    };
-    return indicesAndEdges;
+
+        pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
+            ellipsoid: &Ellipsoid,
+            tileImageWidth: u32,
+            numberOfTilesAtLevelZero: u32,
+        ) -> f64 {
+            return getEstimatedLevelZeroGeometricErrorForAHeightmap(
+                ellipsoid,
+                tileImageWidth,
+                numberOfTilesAtLevelZero,
+            );
+        }
+    }
 }
+
+pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
+    ellipsoid: &Ellipsoid,
+    tileImageWidth: u32,
+    numberOfTilesAtLevelZero: u32,
+) -> f64 {
+    return ((ellipsoid.maximumRadius * 2. * PI * heightmapTerrainQuality)
+        / (tileImageWidth * numberOfTilesAtLevelZero) as f64);
+}
+// pub fn getRegularGridIndices(width: u32, height: u32) -> Vec<u32> {
+//     if (width * height >= FOUR_GIGABYTES) {
+//         panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
+//     }
+
+//     //>>includeEnd('debug');
+//     let byWidth: &Vec<Vec<u32>> = {
+//         let byWidthOption = unsafe {
+//             regularGridIndicesCache.get(width as usize);
+//         };
+//         if byWidthOption.is_none() {
+//             let value = Vec::<Vec<u32>>::new();
+//             unsafe {
+//                 regularGridIndicesCache[width as usize] = value;
+//             }
+//             &value
+//         } else {
+//             &byWidthOption.unwrap()
+//         }
+//     };
+//     let indices: Vec<u32> = {
+//         let indicesAndEdgesOption = byWidth.get_mut(height as usize);
+//         if indicesAndEdgesOption.is_none() {
+//             let value: Vec<u32> = vec![0; ((width - 1) * (height - 1) * 6) as usize];
+//             byWidth[height as usize] = value;
+//             addRegularGridIndices(width, height, &mut value, 0);
+//             value
+//         } else {
+//             indicesAndEdgesOption.unwrap().clone()
+//         }
+//     };
+//     return indices;
+// }
+// pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
+//     if (width * height >= FOUR_GIGABYTES) {
+//         panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
+//     }
+//     //>>includeEnd('debug');
+//     let byWidth: &Vec<IndicesAndEdges> = {
+//         let byWidthOption = regularGridAndSkirtAndEdgeIndicesCache.get_mut(width as usize);
+//         if byWidthOption.is_none() {
+//             let value = Vec::<IndicesAndEdges>::new();
+//             regularGridAndSkirtAndEdgeIndicesCache[width as usize] = value;
+//             &value
+//         } else {
+//             &byWidthOption.unwrap()
+//         }
+//     };
+
+//     let indicesAndEdges: IndicesAndEdges = {
+//         let indicesAndEdgesOption = byWidth.get_mut(height as usize);
+//         if indicesAndEdgesOption.is_none() {
+//             let gridVertexCount = width * height;
+//             let gridIndexCount = (width - 1) * (height - 1) * 6;
+//             let edgeVertexCount = width * 2 + height * 2;
+//             let edgeIndexCount = 0.max(edgeVertexCount - 4) * 6;
+//             let vertexCount = gridVertexCount + edgeVertexCount;
+//             let indexCount = gridIndexCount + edgeIndexCount;
+
+//             let edgeIndices = getEdgeIndices(width, height);
+//             let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
+//             let southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
+//             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
+//             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+
+//             let indices = Vec::<u32>::new();
+//             addRegularGridIndices(width, height, &mut indices, 0);
+//             addSkirtIndices(
+//                 &westIndicesSouthToNorth,
+//                 &southIndicesEastToWest,
+//                 &eastIndicesNorthToSouth,
+//                 &northIndicesWestToEast,
+//                 gridVertexCount,
+//                 &mut indices,
+//                 gridIndexCount,
+//             );
+//             let value = IndicesAndEdges {
+//                 indices: indices,
+//                 westIndicesSouthToNorth: westIndicesSouthToNorth,
+//                 southIndicesEastToWest: southIndicesEastToWest,
+//                 eastIndicesNorthToSouth: eastIndicesNorthToSouth,
+//                 northIndicesWestToEast: northIndicesWestToEast,
+//                 indexCountWithoutSkirts: Some(gridIndexCount),
+//             };
+//             byWidth[height as usize] = value;
+//             value
+//         } else {
+//             indicesAndEdgesOption.unwrap().clone()
+//         }
+//     };
+//     return indicesAndEdges;
+// }
+// pub fn getRegularGridIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
+//     if (width * height >= FOUR_GIGABYTES) {
+//         panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
+//     }
+//     //>>includeEnd('debug');
+//     let byWidth: &Vec<IndicesAndEdges> = {
+//         let byWidthOption = regularGridAndEdgeIndicesCache.get_mut(width as usize);
+//         if byWidthOption.is_none() {
+//             let value = Vec::<IndicesAndEdges>::new();
+//             regularGridAndEdgeIndicesCache[width as usize] = value;
+//             &value
+//         } else {
+//             &byWidthOption.unwrap()
+//         }
+//     };
+
+//     let indicesAndEdges: IndicesAndEdges = {
+//         let indicesAndEdgesOption = byWidth.get_mut(height as usize);
+//         if indicesAndEdgesOption.is_none() {
+//             let indices = getRegularGridIndices(width, height);
+
+//             let edgeIndices = getEdgeIndices(width, height);
+//             let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
+//             let southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
+//             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
+//             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+
+//             let value = IndicesAndEdges {
+//                 indices: indices,
+//                 westIndicesSouthToNorth: westIndicesSouthToNorth,
+//                 southIndicesEastToWest: southIndicesEastToWest,
+//                 eastIndicesNorthToSouth: eastIndicesNorthToSouth,
+//                 northIndicesWestToEast: northIndicesWestToEast,
+//                 indexCountWithoutSkirts: None,
+//             };
+//             byWidth[height as usize] = value;
+//             value
+//         } else {
+//             indicesAndEdgesOption.unwrap().clone()
+//         }
+//     };
+//     return indicesAndEdges;
+// }
 
 pub fn getEdgeIndices(width: u32, height: u32) -> InnerIndicesAndEdges {
     let mut westIndicesSouthToNorth = vec![0; height as usize];

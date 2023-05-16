@@ -1,13 +1,20 @@
 use crate::{
-    getEstimatedLevelZeroGeometricErrorForAHeightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
-    getRegularGridIndicesAndEdgeIndices, CreateVerticeOptions, GeographicTilingScheme,
-    HeightmapEncoding, HeightmapTerrainStructure, TerrainMesh, TilingScheme,
+    getEstimatedLevelZeroGeometricErrorForAHeightmap,
+    // getEstimatedLevelZeroGeometricErrorForAHeightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
+    // getRegularGridIndicesAndEdgeIndices,
+    CreateVerticeOptions,
+    GeographicTilingScheme,
+    HeightmapEncoding,
+    HeightmapTerrainStructure,
+    IndicesAndEdgesCache,
+    TerrainMesh,
+    TilingScheme,
 };
 
 use super::create_vertice;
 
 pub struct HeightmapTerrainData {
-    pub _buffer: Option<Vec<f64>>,
+    pub _buffer: Vec<f64>,
     pub _width: u32,
     pub _height: u32,
     pub _childTileMask: i32,
@@ -33,7 +40,7 @@ impl HeightmapTerrainData {
         mesh: Option<TerrainMesh>,
     ) -> Self {
         Self {
-            _buffer: Some(buffer),
+            _buffer: buffer,
             _width: width,
             _height: height,
             _childTileMask: childTileMask.unwrap_or(15),
@@ -53,8 +60,8 @@ impl HeightmapTerrainData {
         level: u32,
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
-    ) -> &TerrainMesh
-    where
+        indicesAndEdgesCache: &mut IndicesAndEdgesCache,
+    ) where
         T: TilingScheme,
     {
         let tilingScheme = tilingScheme;
@@ -83,7 +90,7 @@ impl HeightmapTerrainData {
         self._skirtHeight = Some(skirtHeight);
 
         let result = create_vertice(CreateVerticeOptions {
-            heightmap: self._buffer.unwrap(),
+            heightmap: &mut self._buffer,
             structure: Some(structure),
             includeWebMercatorT: Some(true),
             width: self._width,
@@ -99,14 +106,14 @@ impl HeightmapTerrainData {
         });
 
         // Free memory received from server after mesh is created.
-        self._buffer = None;
 
         let indicesAndEdges;
         if (skirtHeight > 0.0) {
-            indicesAndEdges =
-                getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
+            indicesAndEdges = indicesAndEdgesCache
+                .getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
         } else {
-            indicesAndEdges = getRegularGridIndicesAndEdgeIndices(self._width, self._height);
+            indicesAndEdges =
+                indicesAndEdgesCache.getRegularGridIndicesAndEdgeIndices(self._width, self._height);
         }
 
         let vertexCountWithoutSkirts = 0;
@@ -131,7 +138,5 @@ impl HeightmapTerrainData {
             indicesAndEdges.eastIndicesNorthToSouth,
             indicesAndEdges.northIndicesWestToEast,
         ));
-
-        return &self._mesh.unwrap();
     }
 }

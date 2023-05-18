@@ -24,5 +24,6 @@ impl Plugin for RendererPlugin {
         app.add_plugin(WorldInspectorPlugin::new());
         app.add_plugin(plugins::globe::GlobePlugin);
         app.add_plugin(plugins::camera::CameraPlugin);
+        app.add_plugin(plugins::scene::ScenePlugin);
     }
 }

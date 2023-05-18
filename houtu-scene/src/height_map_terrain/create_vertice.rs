@@ -250,10 +250,10 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             None
         }
     };
-    let mut startRow = 0;
-    let mut endRow = height;
-    let mut startCol = 0;
-    let mut endCol = width;
+    let mut startRow: i32 = 0;
+    let mut endRow: i32 = height as i32;
+    let mut startCol: i32 = 0;
+    let mut endCol: i32 = width as i32;
 
     if (hasSkirts) {
         startRow -= 1;
@@ -268,8 +268,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         if (row < 0) {
             row = 0;
         }
-        if (row >= height) {
-            row = height - 1;
+        if (row >= height as i32) {
+            row = (height - 1) as i32;
         }
 
         let mut latitude = nativeRectangle.north - granularityY * row as f64;
@@ -308,11 +308,11 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             if (col < 0) {
                 col = 0;
             }
-            if (col >= width) {
-                col = width - 1;
+            if (col >= width as i32) {
+                col = (width - 1) as i32;
             }
 
-            let terrainOffset = row * (width * stride) + col * stride;
+            let terrainOffset = (row as u32) * (width * stride) + (col as u32) * stride;
 
             let mut heightSample: f64;
             if (elementsPerHeight == 1) {
@@ -350,7 +350,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             let mut u = (longitude - geographicWest) / (geographicEast - geographicWest);
             u = u.clamp(0.0, 1.0);
 
-            let mut index = row * width + col;
+            let mut index = (row as u32) * width + (col as u32);
 
             if (skirtHeight > 0.0) {
                 let isWestEdge = colIndex == startCol;
@@ -365,18 +365,18 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
                     if (isWestEdge) {
                         // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
-                        index = gridVertexCount + (height - row - 1);
+                        index = gridVertexCount + (height - (row as u32) - 1);
                         longitude -= skirtOffsetPercentage * rectangleWidth;
                     } else if (isSouthEdge) {
                         // Add after west indices. South indices are ordered east to west.
-                        index = gridVertexCount + height + (width - col - 1);
+                        index = gridVertexCount + height + (width - (col as u32) - 1);
                     } else if (isEastEdge) {
                         // Add after west and south indices. East indices are ordered north to south. The index is flipped like above.
-                        index = gridVertexCount + height + width + row;
+                        index = gridVertexCount + height + width + (row as u32);
                         longitude += skirtOffsetPercentage * rectangleWidth;
                     } else if (isNorthEdge) {
                         // Add after west, south, and east indices. North indices are ordered west to east.
-                        index = gridVertexCount + height + width + height + col;
+                        index = gridVertexCount + height + width + height + (col as u32);
                     }
                 }
             }

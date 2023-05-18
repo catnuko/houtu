@@ -9,11 +9,6 @@ pub use height_map_encoding::*;
 pub use height_map_terrain_data::*;
 pub use terrian_mesh::*;
 // mod create_mesh_job;
-pub struct HeightmapTerrainData {
-    pub buffer: Vec<u8>,
-    pub width: i32,
-    pub height: i32,
-}
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HeightmapTerrainStructure {
     pub heightScale: f64,

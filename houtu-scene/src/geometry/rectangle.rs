@@ -12,6 +12,12 @@ pub struct Rectangle {
     pub north: f64,
 }
 impl Rectangle {
+    pub const MAX_VALUE: Rectangle = Rectangle {
+        west: -PI,
+        south: -FRAC_PI_2,
+        east: PI,
+        north: FRAC_PI_2,
+    };
     pub fn computeWidth(&self) -> f64 {
         self.east - self.west
     }

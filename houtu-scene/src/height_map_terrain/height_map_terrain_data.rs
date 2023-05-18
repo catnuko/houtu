@@ -52,18 +52,16 @@ impl HeightmapTerrainData {
             _mesh: mesh,
         }
     }
-    pub fn _createMeshSync<T>(
+    pub fn _createMeshSync(
         &mut self,
-        tilingScheme: GeographicTilingScheme,
+        tilingScheme: &GeographicTilingScheme,
         x: u32,
         y: u32,
         level: u32,
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
         indicesAndEdgesCache: &mut IndicesAndEdgesCache,
-    ) where
-        T: TilingScheme,
-    {
+    ) {
         let tilingScheme = tilingScheme;
         let x = x;
         let y = y;

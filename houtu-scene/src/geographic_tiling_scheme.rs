@@ -34,9 +34,9 @@ impl Default for GeographicTilingSchemeOptions {
         let e = Ellipsoid::WGS84;
         Self {
             ellipsoid: e,
-            rectangle: Rectangle::default(),
+            rectangle: Rectangle::MAX_VALUE,
             projection: GeographicProjection::from_ellipsoid(&e),
-            number_of_level_zero_tiles_x: 1,
+            number_of_level_zero_tiles_x: 2,
             number_of_level_zero_tiles_y: 1,
         }
     }

@@ -1,5 +1,6 @@
 use bevy::{
     math::{DMat4, DVec2, DVec3},
+    prelude::Vec3,
     render::primitives::Aabb,
 };
 
@@ -13,7 +14,7 @@ pub struct TerrainMesh {
     pub minimumHeight: f64,
     pub maximumHeight: f64,
     pub boundingSphere3D: BoundingSphere,
-    pub occludeePointInScaledSpace: DVec3,
+    pub occludeePointInScaledSpace: Option<DVec3>,
     pub vertexStride: u32,
     pub orientedBoundingBox: OrientedBoundingBox,
     pub encoding: TerrainEncoding,
@@ -32,7 +33,7 @@ impl TerrainMesh {
         minimumHeight: f64,
         maximumHeight: f64,
         boundingSphere3D: BoundingSphere,
-        occludeePointInScaledSpace: DVec3,
+        occludeePointInScaledSpace: Option<DVec3>,
         vertexStride: u32,
         orientedBoundingBox: OrientedBoundingBox,
         encoding: TerrainEncoding,

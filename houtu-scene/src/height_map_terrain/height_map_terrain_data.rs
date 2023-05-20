@@ -61,7 +61,7 @@ impl HeightmapTerrainData {
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
         indicesAndEdgesCache: &mut IndicesAndEdgesCache,
-    ) {
+    ) -> TerrainMesh {
         let tilingScheme = tilingScheme;
         let x = x;
         let y = y;
@@ -118,7 +118,26 @@ impl HeightmapTerrainData {
 
         // No need to clone here (as we do in the async version) because the result
         // is not coming from a web worker.
-        self._mesh = Some(TerrainMesh::new(
+        //TODO: encoding和indicesAndEdges.indexCountWithoutSkirts的值不对
+        // self._mesh = Some(TerrainMesh::new(
+        //     center,
+        //     result.vertices,
+        //     indicesAndEdges.indices,
+        //     indicesAndEdges.indexCountWithoutSkirts,
+        //     vertexCountWithoutSkirts,
+        //     result.minimumHeight,
+        //     result.maximumHeight,
+        //     result.boundingSphere3D,
+        //     result.occludeePointInScaledSpace,
+        //     result.encoding.stride,
+        //     result.orientedBoundingBox,
+        //     result.encoding,
+        //     indicesAndEdges.westIndicesSouthToNorth,
+        //     indicesAndEdges.southIndicesEastToWest,
+        //     indicesAndEdges.eastIndicesNorthToSouth,
+        //     indicesAndEdges.northIndicesWestToEast,
+        // ));
+        return TerrainMesh::new(
             center,
             result.vertices,
             indicesAndEdges.indices,
@@ -135,6 +154,6 @@ impl HeightmapTerrainData {
             indicesAndEdges.southIndicesEastToWest,
             indicesAndEdges.eastIndicesNorthToSouth,
             indicesAndEdges.northIndicesWestToEast,
-        ));
+        );
     }
 }

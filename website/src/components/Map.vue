@@ -8,7 +8,7 @@ onMounted(() => {
         terrainProvider: Cesium.createWorldTerrain()
     })
     let tiling_scheme= new Cesium.GeographicTilingScheme()
-    let level = 3
+    let level = 0
     let num_of_x_tiles = tiling_scheme.getNumberOfXTilesAtLevel(level);
     let num_of_y_tiles = tiling_scheme.getNumberOfYTilesAtLevel(level);
     for(let y=0;y<num_of_y_tiles;y++){

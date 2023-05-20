@@ -16,6 +16,8 @@ bevy = { version = "0.10.1", default-features = false, features = [
     "bevy_pbr",
     "png",
 ] }
+bevy_reflect_derive = "0.10.1"
+
 houtu-scene = { path = "../houtu-scene" }
 houtu-jobs = { path = "../houtu-jobs" }
 bevy_atmosphere = "0.6.0"
@@ -30,3 +32,7 @@ bytes = "1.4.0"
 tokio = { version = "1", features = ["full"] }
 async-channel = "1.8.0"
 instant = "0.1"
+bevy_panorbit_camera = { version = "0.4.3", features = [
+    "bevy_egui",
+] }
+rand="0.8.5"

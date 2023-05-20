@@ -60,15 +60,14 @@ impl EllipsoidalOccluder {
         directionToPoint: DVec3,
         positions: &Vec<DVec3>,
         minimumHeight: f64,
-    ) -> DVec3 {
+    ) -> Option<DVec3> {
         let possiblyShrunkEllipsoid =
             getPossiblyShrunkEllipsoid(&self.ellipsoid, Some(minimumHeight));
         return computeHorizonCullingPointFromPositions(
             &possiblyShrunkEllipsoid,
             directionToPoint,
             positions,
-        )
-        .unwrap();
+        );
     }
     pub fn computeHorizonCullingPoint(
         &self,
@@ -110,15 +109,6 @@ pub fn computeHorizonCullingPointFromPositions(
         let position = positions[i];
         let candidateMagnitude = computeMagnitude(ellipsoid, position, scaledSpaceDirectionToPoint);
         if candidateMagnitude < 0.0 {
-            // all points should face the same direction, but self one doesn't, so return undefined
-            return None;
-        }
-        resultMagnitude = resultMagnitude.max(candidateMagnitude);
-    }
-    for i in 0..positions.len() {
-        let position = positions[i];
-        let candidateMagnitude = computeMagnitude(ellipsoid, position, scaledSpaceDirectionToPoint);
-        if (candidateMagnitude < 0.0) {
             // all points should face the same direction, but self one doesn't, so return undefined
             return None;
         }

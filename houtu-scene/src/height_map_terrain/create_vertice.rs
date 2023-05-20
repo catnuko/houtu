@@ -105,7 +105,7 @@ pub struct CreateVerticeReturn {
     pub encoding: TerrainEncoding,
     pub boundingSphere3D: BoundingSphere,
     pub orientedBoundingBox: OrientedBoundingBox,
-    pub occludeePointInScaledSpace: DVec3,
+    pub occludeePointInScaledSpace: Option<DVec3>,
 }
 pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let piOverTwo = FRAC_PI_2;
@@ -432,7 +432,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         );
     }
 
-    let mut occludeePointInScaledSpace = DVec3::ZERO;
+    let mut occludeePointInScaledSpace: Option<DVec3> = None;
     if (hasRelativeToCenter) {
         let occluder = EllipsoidalOccluder::new(&ellipsoid);
         occludeePointInScaledSpace = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(

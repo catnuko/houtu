@@ -723,6 +723,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_easings"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3d00078837ace3e96d56c332a5cadf0c7c7a7021f8952d05e6a27f226405f3d"
+dependencies = [
+ "bevy 0.10.1",
+ "interpolation",
+]
+
+[[package]]
 name = "bevy_ecs"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1055,6 +1065,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39106bc2ee21fce9496d2e15e0ba7925dff63e3eae10f7c1fc0094b56ad9f2bb"
 dependencies = [
  "glam 0.23.0",
+]
+
+[[package]]
+name = "bevy_panorbit_camera"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58ee1d3b3838008c59e0f4b0409b73c6c1b4b549dc5ee78e4d7d32cc112e30a8"
+dependencies = [
+ "bevy 0.10.1",
+ "bevy_easings",
+ "bevy_egui 0.20.3",
 ]
 
 [[package]]
@@ -3395,11 +3416,14 @@ dependencies = [
  "bevy 0.10.1",
  "bevy-inspector-egui",
  "bevy_atmosphere",
+ "bevy_panorbit_camera",
+ "bevy_reflect_derive 0.10.1",
  "bytes",
  "futures-util",
  "houtu-jobs",
  "houtu-scene",
  "instant",
+ "rand",
  "reqwest",
  "thiserror",
  "tokio",
@@ -3544,6 +3568,12 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[package]]
+name = "interpolation"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3b7357d2bbc5ee92f8e899ab645233e43d21407573cceb37fed8bc3dede2c02"
 
 [[package]]
 name = "io-lifetimes"

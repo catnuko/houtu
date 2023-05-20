@@ -375,23 +375,31 @@ impl From<EllipsoidShape> for Mesh {
             normalIndex += 1;
         }
 
-        let mut endPositions: Vec<[f64; 3]> = Vec::new();
-        let mut endNormals: Vec<[f64; 3]> = Vec::new();
-        let mut endST: Vec<[f64; 2]> = Vec::new();
+        let mut endPositions: Vec<[f32; 3]> = Vec::new();
+        let mut endNormals: Vec<[f32; 3]> = Vec::new();
+        let mut endST: Vec<[f32; 2]> = Vec::new();
         positions.iter().enumerate().step_by(3).for_each(|(i, x)| {
-            endPositions.push([positions[i], positions[i + 1], positions[i + 2]])
+            endPositions.push([
+                positions[i] as f32,
+                positions[i + 1] as f32,
+                positions[i + 2] as f32,
+            ])
         });
         normals.iter().enumerate().step_by(3).for_each(|(i, x)| {
-            endNormals.push([normals[i], normals[i + 1], normals[i + 2]]);
+            endNormals.push([
+                normals[i] as f32,
+                normals[i + 1] as f32,
+                normals[i + 2] as f32,
+            ]);
         });
         st.iter().enumerate().step_by(2).for_each(|(i, x)| {
-            endST.push([st[i], st[i + 1]]);
+            endST.push([st[i] as f32, st[i + 1] as f32]);
         });
         let indices2 = Indices::U32(indices.iter().map(|&x| x as u32).collect());
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        // mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, endPositions);
-        // mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, endNormals);
-        // mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, endST);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, endPositions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, endNormals);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, endST);
         mesh.set_indices(Some(indices2));
         mesh
     }

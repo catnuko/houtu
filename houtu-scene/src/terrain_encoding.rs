@@ -184,7 +184,8 @@ impl TerrainEncoding {
                 new_bufferIndex += 1;
             }
         } else {
-            let cartesian3Scratch = position.subtract(self.center);
+            // let cartesian3Scratch = position.subtract(self.center);
+            let cartesian3Scratch = position.clone();
 
             vertexBuffer[new_bufferIndex] = cartesian3Scratch.x;
             new_bufferIndex += 1;

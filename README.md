@@ -12,7 +12,9 @@
 </div>
 
 ## 🖼️screenshot
-![wgs84-ellipsoid](./www/assets/wgs84-ellipsoid.png)
+
+第二层瓦片网格
+![瓦片网格](./www/assets/jietu4.png)
 ## 🚀feature
 1. bevy
 2. webgpu

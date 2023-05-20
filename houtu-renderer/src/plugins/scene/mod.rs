@@ -12,10 +12,13 @@ use bevy::{
 };
 use houtu_scene::{
     GeographicProjection, GeographicTilingScheme, HeightmapTerrainData, IndicesAndEdgesCache,
-    TilingScheme,
+    TileKey, TilingScheme,
 };
-mod terrain_mesh;
 use rand::Rng;
+
+mod terrain_mesh;
+mod tile_load;
+use tile_load::*;
 
 pub struct ScenePlugin;
 
@@ -55,31 +58,23 @@ fn setup(
                 None,
                 &mut indicesAndEdgesCache,
             );
-            let center = terrain_mesh.center;
             let mesh = meshes.add(terrain_mesh::TerrainMeshWarp(terrain_mesh).into());
             let mut rng = rand::thread_rng();
             let r: f32 = rng.gen();
             let g: f32 = rng.gen();
             let b: f32 = rng.gen();
-            commands.spawn(
-                ({
-                    MaterialMeshBundle {
-                        mesh: mesh,
-                        material: terrain_materials.add(TerrainMeshMaterial {
-                            color: Color::rgba(r, g, b, 1.0),
-                            // color: c1[x as usize],
-                            center_3d: Color::rgba(
-                                center.x as f32,
-                                center.y as f32,
-                                center.z as f32,
-                                1.,
-                            ),
-                        }),
-                        // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
-                        ..Default::default()
-                    }
-                }),
-            );
+            commands.spawn((
+                MaterialMeshBundle {
+                    mesh: mesh,
+                    material: terrain_materials.add(TerrainMeshMaterial {
+                        color: Color::rgba(r, g, b, 1.0),
+                    }),
+                    // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
+                    ..Default::default()
+                },
+                TileKey::new(y, x, level),
+                TileState::START,
+            ));
         }
     }
 }
@@ -88,8 +83,6 @@ fn setup(
 pub struct TerrainMeshMaterial {
     #[uniform(0)]
     color: Color,
-    #[uniform(0)]
-    center_3d: Color,
 }
 impl Material for TerrainMeshMaterial {
     fn fragment_shader() -> ShaderRef {

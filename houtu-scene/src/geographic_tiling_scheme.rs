@@ -76,10 +76,10 @@ impl TilingScheme for GeographicTilingScheme {
     }
     fn tile_x_y_to_native_rectange(&self, x: u32, y: u32, level: u32) -> Rectangle {
         let mut rectangleRadians = self.tile_x_y_to_rectange(x, y, level);
-        rectangleRadians.west = rectangleRadians.west.to_radians();
-        rectangleRadians.south = rectangleRadians.south.to_radians();
-        rectangleRadians.east = rectangleRadians.east.to_radians();
-        rectangleRadians.north = rectangleRadians.north.to_radians();
+        rectangleRadians.west = rectangleRadians.west.to_degrees();
+        rectangleRadians.south = rectangleRadians.south.to_degrees();
+        rectangleRadians.east = rectangleRadians.east.to_degrees();
+        rectangleRadians.north = rectangleRadians.north.to_degrees();
         return rectangleRadians;
     }
     fn tile_x_y_to_rectange(&self, x: u32, y: u32, level: u32) -> Rectangle {

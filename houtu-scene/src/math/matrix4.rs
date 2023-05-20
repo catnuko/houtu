@@ -29,7 +29,7 @@ impl Matrix3 for DMat3 {
     }
     fn set_column(&mut self, index: usize, cartesian: &DVec3) {
         if index == 0 {
-            self.y_axis = cartesian.clone();
+            self.x_axis = cartesian.clone();
         } else if index == 1 {
             self.y_axis = cartesian.clone();
         } else if index == 2 {

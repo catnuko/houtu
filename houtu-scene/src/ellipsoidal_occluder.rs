@@ -64,7 +64,7 @@ impl EllipsoidalOccluder {
         let possiblyShrunkEllipsoid =
             getPossiblyShrunkEllipsoid(&self.ellipsoid, Some(minimumHeight));
         return computeHorizonCullingPointFromPositions(
-            &self.ellipsoid,
+            &possiblyShrunkEllipsoid,
             directionToPoint,
             positions,
         )

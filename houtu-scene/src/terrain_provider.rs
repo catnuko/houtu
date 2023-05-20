@@ -75,7 +75,7 @@ impl IndicesAndEdgesCache {
 
         if value.is_none() {
             let gridVertexCount = width * height;
-            let gridIndexCount = (width - 1) * (height - 1) * 6;
+            let mut gridIndexCount = (width - 1) * (height - 1) * 6;
             let edgeVertexCount = width * 2 + height * 2;
             let edgeIndexCount = 0.max(edgeVertexCount - 4) * 6;
             let vertexCount = gridVertexCount + edgeVertexCount;
@@ -87,9 +87,9 @@ impl IndicesAndEdgesCache {
             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
 
-            let mut indices = Vec::<u32>::new();
+            let mut indices: Vec<u32> = vec![0; indexCount as usize];
             addRegularGridIndices(width, height, &mut indices, 0);
-            addSkirtIndices(
+            gridIndexCount = addSkirtIndices(
                 &westIndicesSouthToNorth,
                 &southIndicesEastToWest,
                 &eastIndicesNorthToSouth,
@@ -343,7 +343,7 @@ pub fn addSkirtIndices(
     vertexCount: u32,
     indices: &mut Vec<u32>,
     offset: u32,
-) {
+) -> u32 {
     let mut offset = offset;
     let mut vertexIndex = vertexCount;
     offset = inner_addSkirtIndices(westIndicesSouthToNorth, vertexIndex, indices, offset);
@@ -352,7 +352,7 @@ pub fn addSkirtIndices(
     vertexIndex += southIndicesEastToWest.len() as u32;
     offset = inner_addSkirtIndices(eastIndicesNorthToSouth, vertexIndex, indices, offset);
     vertexIndex += eastIndicesNorthToSouth.len() as u32;
-    inner_addSkirtIndices(northIndicesWestToEast, vertexIndex, indices, offset);
+    return inner_addSkirtIndices(northIndicesWestToEast, vertexIndex, indices, offset);
 }
 fn inner_addSkirtIndices(
     edgeIndices: &Vec<u32>,

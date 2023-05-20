@@ -46,6 +46,8 @@ impl EllipsoidTangentPlane {
         if intersectionPointOption.is_none() {
             ray.direction = ray.direction.negate();
             intersectionPoint = rayPlane(ray, self.plane).unwrap();
+        } else {
+            intersectionPoint = intersectionPointOption.unwrap();
         }
         let v = intersectionPoint - self.origin;
         let x = v.dot(self.xAxis);

@@ -47,6 +47,7 @@ pub fn eastNorthUpToFixedFrame(origin: DVec3, ellipsoid: Option<Ellipsoid>) -> D
         east.y = origin.x;
         east.z = 0.0;
         scratchCalculateCartesian_east = east.normalize();
+        east = scratchCalculateCartesian_east.clone();
         scratchCalculateCartesian_north = up.cross(east);
         scratchCalculateCartesian_down = scratchCalculateCartesian_up.multiply_by_scalar(-1.0);
         scratchCalculateCartesian_west = scratchCalculateCartesian_east.multiply_by_scalar(-1.0);

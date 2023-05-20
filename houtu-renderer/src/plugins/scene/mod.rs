@@ -28,7 +28,6 @@ fn setup(
     let mut indicesAndEdgesCache = IndicesAndEdgesCache::new();
     for y in 0..num_of_y_tiles {
         for x in 0..num_of_x_tiles {
-            let tile_rectangle = tiling_scheme.tile_x_y_to_rectange(x, y, level);
             let width: u32 = 16;
             let height: u32 = 16;
             let buffer: Vec<f64> = vec![0.; (width * height) as usize];

@@ -4,19 +4,13 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     prelude::*,
 };
-use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
-
-pub mod controller;
-//复制进来的东西
-pub mod controllers;
-
-mod look_angles;
-mod look_transform;
+mod camera;
+mod camera_old;
+mod egui;
+use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
 
 use bevy_atmosphere::prelude::*;
 use houtu_scene::*;
-pub use look_angles::*;
-pub use look_transform::*;
 
 pub struct CameraPlugin;
 

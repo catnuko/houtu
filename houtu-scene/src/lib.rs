@@ -30,6 +30,7 @@ mod terrain_quantization;
 mod tile;
 mod tile_key;
 mod tiling_scheme;
+mod web_mecator_tiling_scheme;
 mod wmts_imagery_provider;
 
 mod web_mercator_projection;
@@ -50,5 +51,7 @@ pub use terrain_quantization::*;
 pub use tile::*;
 pub use tile_key::*;
 pub use tiling_scheme::*;
+pub use web_mecator_tiling_scheme::*;
 pub use web_mercator_projection::*;
-pub use wmts_imagery_provider::*;
+
+// pub use wmts_imagery_provider::*;

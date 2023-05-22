@@ -2,11 +2,15 @@
 import { onBeforeUnmount, onMounted } from 'vue';
 let viewer
 onMounted(() => {
-    const { Matrix3 ,Cartesian3,Rectangle,HeightmapTessellator,Ellipsoid} = Cesium
-    let CesiumMath =Cesium. Math;
     viewer = new Cesium.Viewer('map', {
         terrainProvider: Cesium.createWorldTerrain()
     })
+    viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+        url:"https://maps.omniscale.net/v2/houtu-b8084b0b/style.default/{z}/{x}/{y}.png",
+        tilingScheme:new Cesium.WebMercatorTilingScheme(),
+    }))
+    
+
     let tiling_scheme= new Cesium.GeographicTilingScheme()
     let level = 0
     let num_of_x_tiles = tiling_scheme.getNumberOfXTilesAtLevel(level);
@@ -23,7 +27,15 @@ onMounted(() => {
         heigmapTerrainData._createMeshSync({tilingScheme:tiling_scheme,x,y,level})
       }
     }
-
+    viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(0.0, 6378137, 0.0),
+        box: {
+            dimensions: new Cesium.Cartesian3(400000.0, 300000.0, 500000.0),
+            material: Cesium.Color.RED.withAlpha(0.5),
+            outline: true,
+            outlineColor: Cesium.Color.BLACK,
+        },
+    })
 })
 onBeforeUnmount(() => {
     viewer.destroy()

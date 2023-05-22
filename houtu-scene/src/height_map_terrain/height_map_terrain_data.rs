@@ -1,3 +1,5 @@
+use std::any::type_name;
+
 use crate::{
     getEstimatedLevelZeroGeometricErrorForAHeightmap,
     // getEstimatedLevelZeroGeometricErrorForAHeightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
@@ -52,9 +54,9 @@ impl HeightmapTerrainData {
             _mesh: mesh,
         }
     }
-    pub fn _createMeshSync(
+    pub fn _createMeshSync<T: TilingScheme>(
         &mut self,
-        tilingScheme: &GeographicTilingScheme,
+        tilingScheme: &T,
         x: u32,
         y: u32,
         level: u32,
@@ -69,7 +71,7 @@ impl HeightmapTerrainData {
         let exaggeration = exaggeration.unwrap_or(1.0);
         let exaggerationRelativeHeight = exaggerationRelativeHeight.unwrap_or(0.0);
 
-        let ellipsoid = tilingScheme.ellipsoid;
+        let ellipsoid = tilingScheme.get_ellipsoid();
         let nativeRectangle = tilingScheme.tile_x_y_to_native_rectange(x, y, level);
         let rectangle = tilingScheme.tile_x_y_to_rectange(x, y, level);
 
@@ -86,7 +88,7 @@ impl HeightmapTerrainData {
         let thisLevelMaxError = levelZeroMaxError / (1 << level) as f64;
         let skirtHeight = (thisLevelMaxError * 4.0).min(1000.0);
         self._skirtHeight = Some(skirtHeight);
-
+        println!("{}", type_name::<T>());
         let result = create_vertice(CreateVerticeOptions {
             heightmap: &mut self._buffer,
             structure: Some(structure),
@@ -98,7 +100,9 @@ impl HeightmapTerrainData {
             relativeToCenter: Some(center),
             ellipsoid: Some(ellipsoid),
             skirtHeight: skirtHeight,
-            isGeographic: Some(true),
+            isGeographic: Some(
+                type_name::<T>() == "houtu_scene::geographic_tiling_scheme::GeographicTilingScheme",
+            ),
             exaggeration: Some(exaggeration),
             exaggerationRelativeHeight: Some(exaggerationRelativeHeight),
         });

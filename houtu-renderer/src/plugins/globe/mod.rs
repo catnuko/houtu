@@ -1,3 +1,4 @@
+use bevy::prelude::shape::{Box, Cylinder};
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 mod ellipsoid_shape;
@@ -37,10 +38,51 @@ fn setup(
             mesh: meshes.add(mesh),
             material: debug_material.into(),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            visibility: Visibility::Hidden,
             ..default()
         },
         Shape,
     ));
+    commands.spawn({
+        MaterialMeshBundle {
+            mesh: meshes.add(Box::default().into()),
+            transform: Transform {
+                translation: Vec3 {
+                    x: 0.0,
+                    y: x + 10000.0,
+                    z: 0.,
+                },
+                scale: Vec3 {
+                    x: 120000.0,
+                    y: 120000.0,
+                    z: 120000.0,
+                },
+                ..Default::default()
+            },
+            material: materials.add(Color::RED.into()),
+            ..Default::default()
+        }
+    });
+    commands.spawn({
+        MaterialMeshBundle {
+            mesh: meshes.add(Box::default().into()),
+            transform: Transform {
+                translation: Vec3 {
+                    x: 0.0,
+                    y: -x - 10000.0,
+                    z: 0.,
+                },
+                scale: Vec3 {
+                    x: 120000.0,
+                    y: 120000.0,
+                    z: 120000.0,
+                },
+                ..Default::default()
+            },
+            material: materials.add(Color::GREEN.into()),
+            ..Default::default()
+        }
+    });
     commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 9000.0,

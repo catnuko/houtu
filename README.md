@@ -14,7 +14,7 @@
 ## 🖼️screenshot
 
 第二层瓦片网格
-![瓦片网格](./www/assets/jietu4.png)
+![瓦片网格](./www/assets/jietu5.png)
 ## 🚀feature
 1. bevy
 2. webgpu

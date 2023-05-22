@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod file;
 mod network;
+mod png_loader;
 mod systems;
 
 pub struct LoadPlugin;

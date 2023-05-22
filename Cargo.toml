@@ -25,6 +25,7 @@ members = [
     "houtu-renderer",
     "houtu-scene",
     "houtu-jobs",
+    "bevy_web_asset",
 ]
 resolver = "2"
 

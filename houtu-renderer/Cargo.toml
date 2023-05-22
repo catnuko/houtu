@@ -17,13 +17,13 @@ bevy = { version = "0.10.1", default-features = false, features = [
     "png",
 ] }
 bevy_reflect_derive = "0.10.1"
-
+bevy_easings = "0.10"
+bevy_egui = "0.20.3"
 houtu-scene = { path = "../houtu-scene" }
 houtu-jobs = { path = "../houtu-jobs" }
+bevy_web_asset = { path = "../bevy_web_asset" }
 bevy_atmosphere = "0.6.0"
 bevy-inspector-egui = "0.18.3"
-
-# jobs/load
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["stream"] }
 futures-util = "0.3"
 thiserror = "1.0.40"
@@ -32,7 +32,8 @@ bytes = "1.4.0"
 tokio = { version = "1", features = ["full"] }
 async-channel = "1.8.0"
 instant = "0.1"
-bevy_panorbit_camera = { version = "0.4.3", features = [
-    "bevy_egui",
-] }
 rand="0.8.5"
+anyhow = "1.0"
+thiserror = "1.0"
+
+

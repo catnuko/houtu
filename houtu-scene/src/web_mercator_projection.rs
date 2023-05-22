@@ -1,8 +1,8 @@
-use bevy::math::DVec3;
+use bevy::math::{DVec2, DVec3};
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use crate::{ellipsoid::Ellipsoid, math::Cartographic, projection::Projection};
-
+#[derive(Debug, Clone)]
 pub struct WebMercatorProjection {
     pub ellipsoid: Ellipsoid,
     pub semimajor_axis: f64,
@@ -20,24 +20,22 @@ impl Default for WebMercatorProjection {
         }
     }
 }
-impl Projection for WebMercatorProjection {
-    type Output = WebMercatorProjection;
-
-    fn project(&self, coord: &Cartographic) -> DVec3 {
+impl WebMercatorProjection {
+    pub fn project(&self, coord: &Cartographic) -> DVec3 {
         let semimajorAxis = self.semimajor_axis;
         let x = coord.longitude * semimajorAxis;
         let y = geodeticLatitudeToMercatorAngle(coord.latitude) * semimajorAxis;
         let z = coord.height;
         return DVec3::new(x, y, z);
     }
-    fn un_project(&self, vec: &DVec3) -> Cartographic {
+    pub fn un_project(&self, vec: &DVec2) -> Cartographic {
         let oneOverEarthSemimajorAxis = self.one_over_semimajor_axis;
         let longitude = vec.x * oneOverEarthSemimajorAxis;
         let latitude = mercatorAngleToGeodeticLatitude(vec.y * oneOverEarthSemimajorAxis);
-        let height = vec.z;
+        let height = 0.;
         return Cartographic::new(longitude, latitude, height);
     }
-    fn from_ellipsoid(ellipsoid: &Ellipsoid) -> WebMercatorProjection {
+    pub fn from_ellipsoid(ellipsoid: &Ellipsoid) -> WebMercatorProjection {
         let a = ellipsoid.semimajor_axis();
         let b = 1.0 / ellipsoid.semimajor_axis();
         Self {

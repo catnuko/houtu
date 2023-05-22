@@ -13,7 +13,7 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run() {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins);
+    // app.add_plugins(DefaultPlugins);
     app.add_plugin(houtu_renderer::RendererPlugin);
     // app.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()));
 

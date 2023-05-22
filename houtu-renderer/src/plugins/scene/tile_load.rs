@@ -1,6 +1,10 @@
 use bevy::prelude::*;
 use houtu_scene::TileKey;
 
+use crate::plugins::wmts::WMTS;
+
+use super::TerrainMeshMaterial;
+
 #[derive(Component)]
 pub enum TileState {
     START = 0,
@@ -10,13 +14,26 @@ pub enum TileState {
 pub fn upd_level(mut commands: Commands) {}
 pub fn upd_tile_load(
     mut commands: Commands,
-    mut query: Query<(&mut TileKey, &mut TileState)>,
+    mut terrain_materials: ResMut<Assets<TerrainMeshMaterial>>,
+    mut query: Query<(
+        &mut TileKey,
+        &mut TileState,
+        &mut Handle<TerrainMeshMaterial>,
+    )>,
     asset_server: Res<AssetServer>,
-    // primary_query: Query<&Window, With<PrimaryWindow>>,
+    wmts: Res<WMTS>,
 ) {
-    for (tile_key, tile_state) in query.iter() {
+    for (tile_key, mut tile_state, mut material) in query.iter() {
         match tile_state {
-            TileState::START => {}
+            TileState::START => {
+                // let url = wmts.build_url(tile_key);
+                let handler: Handle<Image> = asset_server.load("icon.png");
+                material = &terrain_materials.add(TerrainMeshMaterial {
+                    color: Color::WHITE,
+                    image: Some(handler),
+                });
+                tile_state = &TileState::LOADING;
+            }
             TileState::LOADING => {}
             TileState::READY => {}
 

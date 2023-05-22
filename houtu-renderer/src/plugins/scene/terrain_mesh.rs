@@ -10,6 +10,7 @@ impl From<TerrainMeshWarp> for Mesh {
         mesh.set_indices(Some(Indices::U32(terrain_mesh.indices)));
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
+        let mut normals: Vec<[f32; 3]> = Vec::new();
         terrain_mesh
             .vertices
             .iter()
@@ -25,9 +26,16 @@ impl From<TerrainMeshWarp> for Mesh {
                 uvs.push([
                     terrain_mesh.vertices[i + 4] as f32, //u
                     terrain_mesh.vertices[i + 5] as f32, //v
-                ])
+                ]);
+                // normals.push([
+                //     terrain_mesh.vertices[i + 7] as f32, //u
+                //     terrain_mesh.vertices[i + 8] as f32, //v
+                //     terrain_mesh.vertices[i + 9] as f32, //v
+                // ])
             });
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        // mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
         mesh
     }

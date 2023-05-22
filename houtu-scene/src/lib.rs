@@ -1,8 +1,3 @@
-use bevy::prelude::*;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use std::f32::consts::PI;
-
-use bevy::math::{DMat3, DVec3};
 // mod globe_surface_tile_provider;
 // mod imagery;
 // mod imagery_layer;
@@ -15,6 +10,7 @@ use bevy::math::{DMat3, DVec3};
 // mod tiling_scheme;
 // mod wmts_imagery_layer;
 mod attribute_compression;
+mod camera;
 mod ellipsoid;
 mod ellipsoid_terrain_provider;
 mod ellipsoidal_occluder;
@@ -35,6 +31,7 @@ mod wmts_imagery_provider;
 
 mod web_mercator_projection;
 pub use attribute_compression::*;
+pub use camera::*;
 pub use ellipsoid::Ellipsoid;
 pub use ellipsoid_terrain_provider::*;
 pub use ellipsoidal_occluder::*;

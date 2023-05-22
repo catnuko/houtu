@@ -60,6 +60,7 @@ pub trait Matrix4 {
     fn inverse_transformation(&self) -> DMat4;
     fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3;
     fn set_translation(&mut self, cartesian: &DVec3);
+    fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4;
 }
 impl Matrix4 for DMat4 {
     fn set_translation(&mut self, cartesian: &DVec3) {
@@ -130,5 +131,25 @@ impl Matrix4 for DMat4 {
         let y = matrix4 * vX + matrix5 * vY + matrix6 * vZ + slice[13];
         let z = matrix8 * vX + matrix9 * vY + matrix10 * vZ + slice[14];
         return DVec3::new(x, y, z);
+    }
+    fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4 {
+        let mut result: [f64; 16] = [0.; 16];
+        result[0] = right.x;
+        result[1] = up.x;
+        result[2] = -direction.x;
+        result[3] = 0.0;
+        result[4] = right.y;
+        result[5] = up.y;
+        result[6] = -direction.y;
+        result[7] = 0.0;
+        result[8] = right.z;
+        result[9] = up.z;
+        result[10] = -direction.z;
+        result[11] = 0.0;
+        result[12] = -right.dot(*position);
+        result[13] = -up.dot(*position);
+        result[14] = direction.dot(*position);
+        result[15] = 1.0;
+        return DMat4::from_cols_array(&result);
     }
 }

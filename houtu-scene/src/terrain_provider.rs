@@ -1,7 +1,7 @@
 use core::num;
 use std::{collections::HashMap, f64::consts::PI, sync::Arc};
 
-use bevy::prelude::In;
+use bevy::prelude::{In, Resource};
 
 use crate::{Ellipsoid, FOUR_GIGABYTES, SIXTY_FOUR_KILOBYTES};
 #[derive(Debug, Clone)]
@@ -23,6 +23,7 @@ const heightmapTerrainQuality: f64 = 0.25;
 // static mut regularGridAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
 // static mut regularGridAndSkirtAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
 // static mut regularGridIndicesCache: Vec<Vec<Vec<u32>>> = Vec::new();
+#[derive(Resource)]
 pub struct IndicesAndEdgesCache {
     pub regularGridAndEdgeIndicesCache: HashMap<String, IndicesAndEdges>,
     pub regularGridAndSkirtAndEdgeIndicesCache: HashMap<String, IndicesAndEdges>,

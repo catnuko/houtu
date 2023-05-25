@@ -96,24 +96,24 @@ impl Camera {
         self._viewMatrix = self._viewMatrix * self._actualInvTransform;
         self._invViewMatrix = self._viewMatrix.inverse_transformation();
     }
-    pub fn updateCameraDeltas(&mut self) {
-        if let Some(real_oldPositionWC) = self._oldPositionWC {
-            self.positionWCDeltaMagnitudeLastFrame = self.positionWCDeltaMagnitude;
-            let delta =
-                Cartesian3.subtract(self.positionWC, self._oldPositionWC, self._oldPositionWC);
-            self.positionWCDeltaMagnitude = Cartesian3.magnitude(delta);
-            self._oldPositionWC = Cartesian3.clone(self.positionWC, self._oldPositionWC);
+    // pub fn updateCameraDeltas(&mut self) {
+    //     if let Some(real_oldPositionWC) = self._oldPositionWC {
+    //         self.positionWCDeltaMagnitudeLastFrame = self.positionWCDeltaMagnitude;
+    //         let delta =
+    //             Cartesian3.subtract(self.positionWC, self._oldPositionWC, self._oldPositionWC);
+    //         self.positionWCDeltaMagnitude = Cartesian3.magnitude(delta);
+    //         self._oldPositionWC = Cartesian3.clone(self.positionWC, self._oldPositionWC);
 
-            // Update move timers
-            if (self.positionWCDeltaMagnitude > 0.0) {
-                self.timeSinceMoved = 0.0;
-                self._lastMovedTimestamp = getTimestamp();
-            } else {
-                self.timeSinceMoved =
-                    Math.max(getTimestamp() - self._lastMovedTimestamp, 0.0) / 1000.0;
-            }
-        } else {
-            self._oldPositionWC = Some(self.get_positionWC().clone());
-        }
-    }
+    //         // Update move timers
+    //         if (self.positionWCDeltaMagnitude > 0.0) {
+    //             self.timeSinceMoved = 0.0;
+    //             self._lastMovedTimestamp = getTimestamp();
+    //         } else {
+    //             self.timeSinceMoved =
+    //                 Math.max(getTimestamp() - self._lastMovedTimestamp, 0.0) / 1000.0;
+    //         }
+    //     } else {
+    //         self._oldPositionWC = Some(self.get_positionWC().clone());
+    //     }
+    // }
 }

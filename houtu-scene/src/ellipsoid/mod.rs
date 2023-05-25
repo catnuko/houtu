@@ -5,9 +5,9 @@ use std::ops::Sub;
 use crate::math::*;
 use bevy::math::DVec3;
 // use bevy::DVec3;
-use bevy::prelude::Mesh;
+use bevy::prelude::{Mesh, Resource};
 use bevy::render::mesh::Indices;
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Resource)]
 pub struct Ellipsoid {
     pub radii: DVec3,
     pub radiiSquared: DVec3,

@@ -1,3 +1,4 @@
+use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::shape::{Box, Cylinder};
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
@@ -14,6 +15,7 @@ impl Default for GlobePlugin {
 }
 impl bevy::app::Plugin for GlobePlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(Ellipsoid::WGS84);
         app.add_startup_system(setup);
     }
 }
@@ -33,36 +35,31 @@ fn setup(
     let z = ellipsoid.semiminor_axis() as f32;
     let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(mesh),
-            material: debug_material.into(),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            visibility: Visibility::Hidden,
-            ..default()
-        },
-        Shape,
-    ));
-    commands.spawn({
-        MaterialMeshBundle {
-            mesh: meshes.add(Box::default().into()),
-            transform: Transform {
-                translation: Vec3 {
-                    x: 0.0,
-                    y: x + 10000.0,
-                    z: 0.,
-                },
-                scale: Vec3 {
-                    x: 120000.0,
-                    y: 120000.0,
-                    z: 120000.0,
-                },
-                ..Default::default()
+    commands.spawn((PbrBundle {
+        mesh: meshes.add(mesh),
+        material: debug_material.into(),
+        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        visibility: Visibility::Hidden,
+        ..default()
+    },));
+    commands.spawn((MaterialMeshBundle {
+        mesh: meshes.add(Box::default().into()),
+        transform: Transform {
+            translation: Vec3 {
+                x: 0.0,
+                y: x + 10000.0,
+                z: 0.,
             },
-            material: materials.add(Color::RED.into()),
+            scale: Vec3 {
+                x: 120000.0,
+                y: 120000.0,
+                z: 120000.0,
+            },
             ..Default::default()
-        }
-    });
+        },
+        material: materials.add(Color::RED.into()),
+        ..Default::default()
+    },));
     commands.spawn({
         MaterialMeshBundle {
             mesh: meshes.add(Box::default().into()),

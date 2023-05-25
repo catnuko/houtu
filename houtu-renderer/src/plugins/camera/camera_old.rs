@@ -241,10 +241,10 @@ impl PanOrbitCamera {
 // Tracks the camera entity that should be handling input events.
 // This enables having multiple cameras with different viewports or windows.
 #[derive(Resource, Default, Debug, PartialEq)]
-struct ActiveCameraData {
-    entity: Option<Entity>,
-    viewport_size: Option<Vec2>,
-    window_size: Option<Vec2>,
+pub struct ActiveCameraData {
+    pub entity: Option<Entity>,
+    pub viewport_size: Option<Vec2>,
+    pub window_size: Option<Vec2>,
 }
 
 // Gathers data about the active viewport, i.e. the viewport the user is interacting with. This

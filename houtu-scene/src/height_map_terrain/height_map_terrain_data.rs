@@ -5,6 +5,7 @@ use crate::{
     // getEstimatedLevelZeroGeometricErrorForAHeightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
     // getRegularGridIndicesAndEdgeIndices,
     CreateVerticeOptions,
+    CreateVerticeReturn,
     GeographicTilingScheme,
     HeightmapEncoding,
     HeightmapTerrainStructure,
@@ -64,6 +65,56 @@ impl HeightmapTerrainData {
         exaggerationRelativeHeight: Option<f64>,
         indicesAndEdgesCache: &mut IndicesAndEdgesCache,
     ) -> TerrainMesh {
+        let result = self.create_vertice(
+            tilingScheme,
+            x,
+            y,
+            level,
+            exaggeration,
+            exaggerationRelativeHeight,
+            indicesAndEdgesCache,
+        );
+
+        let indicesAndEdges;
+        if (self._skirtHeight.unwrap() > 0.0) {
+            indicesAndEdges = indicesAndEdgesCache
+                .getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
+        } else {
+            indicesAndEdges =
+                indicesAndEdgesCache.getRegularGridIndicesAndEdgeIndices(self._width, self._height);
+        }
+
+        let vertexCountWithoutSkirts = 0;
+        return TerrainMesh::new(
+            result.relativeToCenter.unwrap(),
+            result.vertices,
+            indicesAndEdges.indices,
+            indicesAndEdges.indexCountWithoutSkirts,
+            vertexCountWithoutSkirts,
+            result.minimumHeight,
+            result.maximumHeight,
+            result.boundingSphere3D,
+            result.occludeePointInScaledSpace,
+            result.encoding.stride,
+            result.orientedBoundingBox,
+            result.encoding,
+            indicesAndEdges.westIndicesSouthToNorth,
+            indicesAndEdges.southIndicesEastToWest,
+            indicesAndEdges.eastIndicesNorthToSouth,
+            indicesAndEdges.northIndicesWestToEast,
+        );
+    }
+
+    pub fn create_vertice<T: TilingScheme>(
+        &mut self,
+        tilingScheme: &T,
+        x: u32,
+        y: u32,
+        level: u32,
+        exaggeration: Option<f64>,
+        exaggerationRelativeHeight: Option<f64>,
+        indicesAndEdgesCache: &mut IndicesAndEdgesCache,
+    ) -> CreateVerticeReturn {
         let tilingScheme = tilingScheme;
         let x = x;
         let y = y;
@@ -88,7 +139,6 @@ impl HeightmapTerrainData {
         let thisLevelMaxError = levelZeroMaxError / (1 << level) as f64;
         let skirtHeight = (thisLevelMaxError * 4.0).min(1000.0);
         self._skirtHeight = Some(skirtHeight);
-        println!("{}", type_name::<T>());
         let result = create_vertice(CreateVerticeOptions {
             heightmap: &mut self._buffer,
             structure: Some(structure),
@@ -106,58 +156,6 @@ impl HeightmapTerrainData {
             exaggeration: Some(exaggeration),
             exaggerationRelativeHeight: Some(exaggerationRelativeHeight),
         });
-
-        // Free memory received from server after mesh is created.
-
-        let indicesAndEdges;
-        if (skirtHeight > 0.0) {
-            indicesAndEdges = indicesAndEdgesCache
-                .getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
-        } else {
-            indicesAndEdges =
-                indicesAndEdgesCache.getRegularGridIndicesAndEdgeIndices(self._width, self._height);
-        }
-
-        let vertexCountWithoutSkirts = 0;
-
-        // No need to clone here (as we do in the async version) because the result
-        // is not coming from a web worker.
-        //TODO: encoding和indicesAndEdges.indexCountWithoutSkirts的值不对
-        // self._mesh = Some(TerrainMesh::new(
-        //     center,
-        //     result.vertices,
-        //     indicesAndEdges.indices,
-        //     indicesAndEdges.indexCountWithoutSkirts,
-        //     vertexCountWithoutSkirts,
-        //     result.minimumHeight,
-        //     result.maximumHeight,
-        //     result.boundingSphere3D,
-        //     result.occludeePointInScaledSpace,
-        //     result.encoding.stride,
-        //     result.orientedBoundingBox,
-        //     result.encoding,
-        //     indicesAndEdges.westIndicesSouthToNorth,
-        //     indicesAndEdges.southIndicesEastToWest,
-        //     indicesAndEdges.eastIndicesNorthToSouth,
-        //     indicesAndEdges.northIndicesWestToEast,
-        // ));
-        return TerrainMesh::new(
-            center,
-            result.vertices,
-            indicesAndEdges.indices,
-            indicesAndEdges.indexCountWithoutSkirts,
-            vertexCountWithoutSkirts,
-            result.minimumHeight,
-            result.maximumHeight,
-            result.boundingSphere3D,
-            result.occludeePointInScaledSpace,
-            result.encoding.stride,
-            result.orientedBoundingBox,
-            result.encoding,
-            indicesAndEdges.westIndicesSouthToNorth,
-            indicesAndEdges.southIndicesEastToWest,
-            indicesAndEdges.eastIndicesNorthToSouth,
-            indicesAndEdges.northIndicesWestToEast,
-        );
+        return result;
     }
 }

@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    pbr::wireframe::{WireframeConfig, WireframePlugin},
+    prelude::*,
+};
 
 mod events;
 mod jobs;
@@ -24,10 +27,16 @@ impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(WebAssetPlugin::default())
             .add_plugins(DefaultPlugins.build().disable::<AssetPlugin>())
+            .add_plugin(WireframePlugin)
             .add_plugin(WorldInspectorPlugin::new())
+            .add_plugin(houtu_jobs::Plugin)
             .add_plugin(plugins::globe::GlobePlugin)
             .add_plugin(plugins::camera::CameraPlugin)
-            .add_plugin(plugins::scene::ScenePlugin);
+            .add_plugin(plugins::scene::ScenePlugin)
+            .add_system(setup);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
+}
+fn setup(mut wireframe_config: ResMut<WireframeConfig>) {
+    wireframe_config.global = false
 }

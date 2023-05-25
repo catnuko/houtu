@@ -1,10 +1,10 @@
 use std::f64::consts::{FRAC_PI_2, PI};
 
-use bevy::math::DVec3;
+use bevy::{math::DVec3, prelude::Component};
 
 use crate::{ellipsoid::Ellipsoid, math::*};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Component)]
 pub struct Rectangle {
     pub west: f64,
     pub south: f64,

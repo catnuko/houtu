@@ -106,6 +106,7 @@ pub struct CreateVerticeReturn {
     pub boundingSphere3D: BoundingSphere,
     pub orientedBoundingBox: OrientedBoundingBox,
     pub occludeePointInScaledSpace: Option<DVec3>,
+    pub relativeToCenter: Option<DVec3>,
 }
 pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let piOverTwo = FRAC_PI_2;
@@ -489,6 +490,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     }
 
     return CreateVerticeReturn {
+        relativeToCenter: options.relativeToCenter,
         vertices: vertices,
         maximumHeight: maximumHeight,
         minimumHeight: minimumHeight,

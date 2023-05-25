@@ -28,8 +28,6 @@ pub struct WMTS {
     pub layer: String,
     pub style: String,
     pub format: String,
-    // pub matrix_set: String,
-    // pub crs: String,
     pub tile_matrix_set_id: String,
     pub minimumLevel: u8,
     pub maximumLevel: u8,

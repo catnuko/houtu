@@ -2,15 +2,16 @@ use std::f64::{
     consts::{FRAC_2_PI, PI},
     MAX,
 };
+use std::ops::Index;
 
-use crate::{ellipsoid::Ellipsoid, math::*};
+use crate::{ellipsoid::Ellipsoid, math::*, BoundingVolume, Intersect};
 use bevy::{
     math::{DMat3, DVec3},
     prelude::*,
 };
 
 use super::{Box3d, EllipsoidTangentPlane, Plane, Rectangle};
-#[derive(Component)]
+#[derive(Clone, Debug, Component)]
 pub struct OrientedBoundingBox {
     pub center: DVec3,
     pub halfAxes: DMat3,
@@ -103,11 +104,11 @@ impl OrientedBoundingBox {
         rectangle: &Rectangle,
         minimumHeight: Option<f64>,
         maximumHeight: Option<f64>,
-        ellipsoid: Option<Ellipsoid>,
+        ellipsoid: Option<&Ellipsoid>,
     ) -> Self {
         let minimumHeight = minimumHeight.unwrap_or(0.0);
         let maximumHeight = maximumHeight.unwrap_or(0.0);
-        let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
+        let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
 
         let mut minX: f64;
         let mut maxX: f64;
@@ -300,6 +301,171 @@ impl OrientedBoundingBox {
             minZ,
             maxZ,
         );
+    }
+    pub fn distanceSquaredTo(&self, cartesian: &DVec3) -> f64 {
+        let offset = cartesian.subtract(self.center);
+
+        let halfAxes = self.halfAxes;
+        let mut u = halfAxes.get_column(0);
+        let mut v = halfAxes.get_column(1);
+        let mut w = halfAxes.get_column(2);
+
+        let uHalf = u.magnitude();
+        let vHalf = v.magnitude();
+        let wHalf = w.magnitude();
+
+        let mut uValid = true;
+        let mut vValid = true;
+        let mut wValid = true;
+
+        if (uHalf > 0.) {
+            u = u.divide_by_scalar(uHalf);
+        } else {
+            uValid = false;
+        }
+
+        if (vHalf > 0.) {
+            v = v.divide_by_scalar(vHalf);
+        } else {
+            vValid = false;
+        }
+
+        if (wHalf > 0.) {
+            w = w.divide_by_scalar(wHalf);
+        } else {
+            wValid = false;
+        }
+
+        let numberOfDegenerateAxes = (!uValid as i8) + (!vValid as i8) + (!wValid as i8);
+        let mut validAxis1;
+        let mut validAxis2;
+        let mut validAxis3;
+
+        if (numberOfDegenerateAxes == 1) {
+            let mut degenerateAxis = u;
+            validAxis1 = v;
+            validAxis2 = w;
+            if (!vValid) {
+                degenerateAxis = v;
+                validAxis1 = u;
+            } else if (!wValid) {
+                degenerateAxis = w;
+                validAxis2 = u;
+            }
+
+            validAxis3 = validAxis1.cross(validAxis2);
+
+            if (degenerateAxis == u) {
+                u = validAxis3;
+            } else if (degenerateAxis == v) {
+                v = validAxis3;
+            } else if (degenerateAxis == w) {
+                w = validAxis3;
+            }
+        } else if (numberOfDegenerateAxes == 2) {
+            validAxis1 = u;
+            if (vValid) {
+                validAxis1 = v;
+            } else if (wValid) {
+                validAxis1 = w;
+            }
+
+            let mut crossVector = DVec3::UNIT_Y;
+            if (crossVector.equals_epsilon(validAxis1, Some(EPSILON3), None)) {
+                crossVector = DVec3::UNIT_X;
+            }
+
+            validAxis2 = validAxis1.cross(crossVector);
+            validAxis2.normalize();
+            validAxis3 = validAxis1.cross(validAxis2);
+            validAxis3.normalize();
+
+            if (validAxis1 == u) {
+                v = validAxis2;
+                w = validAxis3;
+            } else if (validAxis1 == v) {
+                w = validAxis2;
+                u = validAxis3;
+            } else if (validAxis1 == w) {
+                u = validAxis2;
+                v = validAxis3;
+            }
+        } else if (numberOfDegenerateAxes == 3) {
+            u = DVec3::UNIT_X;
+            v = DVec3::UNIT_Y;
+            w = DVec3::UNIT_Z;
+        }
+
+        let mut pPrime = DVec3::ZERO;
+        pPrime.x = offset.dot(u);
+        pPrime.y = offset.dot(v);
+        pPrime.z = offset.dot(w);
+
+        let mut distanceSquared = 0.0;
+        let mut d;
+
+        if (pPrime.x < -uHalf) {
+            d = pPrime.x + uHalf;
+            distanceSquared += d * d;
+        } else if (pPrime.x > uHalf) {
+            d = pPrime.x - uHalf;
+            distanceSquared += d * d;
+        }
+
+        if (pPrime.y < -vHalf) {
+            d = pPrime.y + vHalf;
+            distanceSquared += d * d;
+        } else if (pPrime.y > vHalf) {
+            d = pPrime.y - vHalf;
+            distanceSquared += d * d;
+        }
+
+        if (pPrime.z < -wHalf) {
+            d = pPrime.z + wHalf;
+            distanceSquared += d * d;
+        } else if (pPrime.z > wHalf) {
+            d = pPrime.z - wHalf;
+            distanceSquared += d * d;
+        }
+
+        return distanceSquared;
+    }
+    pub fn intersectPlane(&self, plane: &Plane) -> Intersect {
+        let center = self.center;
+        let normal = plane.normal;
+        let halfAxes = self.halfAxes;
+        let normalX = normal.x;
+        let normalY = normal.y;
+        let normalZ = normal.z;
+        let slice = halfAxes.to_cols_array();
+        // plane is used as if it is its normal; the first three components are assumed to be normalized
+        let radEffective = (normalX * slice[DMat3::COLUMN0ROW0]
+            + normalY * slice[DMat3::COLUMN0ROW1]
+            + normalZ * slice[DMat3::COLUMN0ROW2])
+            .abs()
+            + (normalX * slice[DMat3::COLUMN1ROW0]
+                + normalY * slice[DMat3::COLUMN1ROW1]
+                + normalZ * slice[DMat3::COLUMN1ROW2])
+                .abs()
+            + (normalX * slice[DMat3::COLUMN2ROW0]
+                + normalY * slice[DMat3::COLUMN2ROW1]
+                + normalZ * slice[DMat3::COLUMN2ROW2])
+                .abs();
+        let distanceToPlane = normal.dot(center) + plane.distance;
+
+        if (distanceToPlane <= -radEffective) {
+            // The entire box is on the negative side of the plane normal
+            return Intersect::OUTSIDE;
+        } else if (distanceToPlane >= radEffective) {
+            // The entire box is on the positive side of the plane normal
+            return Intersect::INSIDE;
+        }
+        return Intersect::INTERSECTING;
+    }
+}
+impl BoundingVolume for OrientedBoundingBox {
+    fn intersect_plane(&self, plane: &Plane) -> Intersect {
+        return self.intersectPlane(plane);
     }
 }
 pub fn fromPlaneExtents(

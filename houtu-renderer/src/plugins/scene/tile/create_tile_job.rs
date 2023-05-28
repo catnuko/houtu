@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::{tile::Tile, tile_layer::TileLayer, tile_state::TileState};
+use super::{tile_layer::TileLayer, tile_state::TileState, tile_z::Tile};
 pub struct CreateTileJob {
     pub x: u32,
     pub y: u32,
@@ -89,7 +89,7 @@ impl Job for CreateTileJob {
 pub fn handle_created_tile_system(
     mut finished_jobs: FinishedJobs,
     mut indicesAndEdgesCache: ResMut<IndicesAndEdgesCache>,
-    mut tile_layer: ResMut<TileLayer>,
+    // mut tile_layer: ResMut<TileLayer>,
     // world: &mut World,
     mut commands: Commands,
 ) {
@@ -101,19 +101,19 @@ pub fn handle_created_tile_system(
                 let level = outcome.job.level;
                 let terrain_mesh = create_terrain_mesh(outcome, &mut indicesAndEdgesCache);
 
-                if let Some(entity) = tile_layer.get_tile_entity(x, y, level) {
-                    let cloned_entity = entity.clone();
-                    commands.add(move |world: &mut World| {
-                        if let Some(mut tile) = world.get_mut::<Tile>(cloned_entity) {
-                            tile.terrain_mesh = Some(terrain_mesh);
-                            tile.state = TileState::READY
-                        } else {
-                            bevy::log::error!("瓦片实体中找不到瓦片组件,{},{},{}", x, y, level)
-                        }
-                    })
-                } else {
-                    bevy::log::error!("创建的瓦片后发现瓦片在图层中不存在,{},{},{}", x, y, level)
-                }
+                // if let Some(entity) = tile_layer.get_tile_entity(x, y, level) {
+                //     let cloned_entity = entity.clone();
+                //     commands.add(move |world: &mut World| {
+                //         if let Some(mut tile) = world.get_mut::<Tile>(cloned_entity) {
+                //             tile.terrain_mesh = Some(terrain_mesh);
+                //             tile.state = TileState::READY
+                //         } else {
+                //             bevy::log::error!("瓦片实体中找不到瓦片组件,{},{},{}", x, y, level)
+                //         }
+                //     })
+                // } else {
+                //     bevy::log::error!("创建的瓦片后发现瓦片在图层中不存在,{},{},{}", x, y, level)
+                // }
             }
             Err(e) => {
                 bevy::log::error!("Encountered error when loading file: {:?}", e);

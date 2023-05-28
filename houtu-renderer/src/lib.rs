@@ -10,6 +10,7 @@ mod systems;
 mod z_index;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
+use plugins::quadtree;
 use z_index::ZIndex;
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {
@@ -30,6 +31,7 @@ impl Plugin for RendererPlugin {
             .add_plugin(WireframePlugin)
             .add_plugin(WorldInspectorPlugin::new())
             .add_plugin(houtu_jobs::Plugin)
+            .add_plugin(quadtree::Plugin)
             .add_plugin(plugins::globe::GlobePlugin)
             .add_plugin(plugins::camera::CameraPlugin)
             .add_plugin(plugins::scene::ScenePlugin)

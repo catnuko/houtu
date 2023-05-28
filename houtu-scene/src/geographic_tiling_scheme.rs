@@ -1,7 +1,7 @@
 use crate::{bit_or_zero, Cartographic, Ellipsoid, Rectangle};
 use bevy::{
     math::DVec2,
-    prelude::{IVec2, UVec2, Vec2},
+    prelude::{IVec2, Resource, UVec2, Vec2},
 };
 
 use crate::{
@@ -10,8 +10,7 @@ use crate::{
     tiling_scheme::TilingScheme,
     web_mercator_projection::WebMercatorProjection,
 };
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Resource)]
 pub struct GeographicTilingScheme {
     pub ellipsoid: Ellipsoid,
     pub rectangle: Rectangle,

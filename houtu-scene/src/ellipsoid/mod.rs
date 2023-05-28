@@ -170,7 +170,7 @@ impl Ellipsoid {
             return None;
         }
         Some(
-            vec3.multiply_components(self.oneOverRadiiSquared)
+            vec3.multiply_components(&self.oneOverRadiiSquared)
                 .normalize(),
         )
     }
@@ -315,8 +315,8 @@ impl Ellipsoid {
         }
         return result;
     }
-    pub fn transformPositionToScaledSpace(&self, position: DVec3) -> DVec3 {
-        return position.multiply_components(self.oneOverRadii);
+    pub fn transformPositionToScaledSpace(&self, position: &DVec3) -> DVec3 {
+        return position.multiply_components(&self.oneOverRadii);
     }
     pub fn scaleToGeocentricSurface(&self, cartesian: &DVec3) -> DVec3 {
         let positionX = cartesian.x;

@@ -23,7 +23,7 @@ impl EllipsoidalOccluder {
     pub fn set_camera_position(&mut self, camera_position: DVec3) {
         // See https://cesium.com/blog/2013/04/25/Horizon-culling/
         let ellipsoid = &self.ellipsoid;
-        let cv = ellipsoid.transformPositionToScaledSpace(camera_position);
+        let cv = ellipsoid.transformPositionToScaledSpace(&camera_position);
         self.cameraPositionInScaledSpace = cv.clone();
         let vhMagnitudeSquared = cv.magnitude_squared() - 1.0;
         self.cameraPosition = camera_position.clone();
@@ -32,17 +32,24 @@ impl EllipsoidalOccluder {
     }
     pub fn isPointVisible(&self, occludee: DVec3) -> bool {
         let ellipsoid = &self.ellipsoid;
-        let occludeeScaledSpacePosition = ellipsoid.transformPositionToScaledSpace(occludee);
-        return self.isScaledSpacePointVisible(occludeeScaledSpacePosition);
+        let occludeeScaledSpacePosition = ellipsoid.transformPositionToScaledSpace(&occludee);
+        return self.isScaledSpacePointVisible(
+            &occludeeScaledSpacePosition,
+            &self.cameraPositionInScaledSpace,
+            self.distanceToLimbInScaledSpaceSquared,
+        );
     }
-    pub fn isScaledSpacePointVisible(&self, occludeeScaledSpacePosition: DVec3) -> bool {
-        let cameraPositionInScaledSpace = self.cameraPositionInScaledSpace;
-        let distanceToLimbInScaledSpaceSquared = self.distanceToLimbInScaledSpaceSquared;
+    pub fn isScaledSpacePointVisible(
+        &self,
+        occludeeScaledSpacePosition: &DVec3,
+        cameraPositionInScaledSpace: &DVec3,
+        distanceToLimbInScaledSpaceSquared: f64,
+    ) -> bool {
         // See https://cesium.com/blog/2013/04/25/Horizon-culling/
         let cv = cameraPositionInScaledSpace;
         let vhMagnitudeSquared = distanceToLimbInScaledSpaceSquared;
-        let vt = occludeeScaledSpacePosition - cv;
-        let vtDotVc = -1. * vt.dot(cv);
+        let vt = occludeeScaledSpacePosition.subtract(*cv);
+        let vtDotVc = -1. * vt.dot(*cv);
         // If vhMagnitudeSquared < 0 then we are below the surface of the ellipsoid and
         // in self case, set the culling plane to be on V.
         let isOccluded = {
@@ -55,9 +62,39 @@ impl EllipsoidalOccluder {
         };
         return !isOccluded;
     }
+    pub fn isScaledSpacePointVisiblePossiblyUnderEllipsoid(
+        &self,
+        occludeeScaledSpacePosition: &DVec3,
+        minimumHeight: Option<f64>,
+    ) -> bool {
+        let ellipsoid = self.ellipsoid;
+        let vhMagnitudeSquared;
+        let mut cv;
+        if let Some(minimumHeight) = minimumHeight {
+            if minimumHeight < 0.0 && ellipsoid.minimumRadius > -minimumHeight {
+                // This code is similar to the cameraPosition setter, but unrolled for performance because it will be called a lot.
+                cv = DVec3::ZERO;
+                cv.x = self.cameraPosition.x / (ellipsoid.radii.x + minimumHeight);
+                cv.y = self.cameraPosition.y / (ellipsoid.radii.y + minimumHeight);
+                cv.z = self.cameraPosition.z / (ellipsoid.radii.z + minimumHeight);
+                vhMagnitudeSquared = cv.x * cv.x + cv.y * cv.y + cv.z * cv.z - 1.0;
+            } else {
+                cv = self.cameraPositionInScaledSpace;
+                vhMagnitudeSquared = self.distanceToLimbInScaledSpaceSquared;
+            }
+        } else {
+            cv = self.cameraPositionInScaledSpace;
+            vhMagnitudeSquared = self.distanceToLimbInScaledSpaceSquared;
+        }
+        return self.isScaledSpacePointVisible(
+            occludeeScaledSpacePosition,
+            &cv,
+            vhMagnitudeSquared,
+        );
+    }
     pub fn computeHorizonCullingPointPossiblyUnderEllipsoid(
         &self,
-        directionToPoint: DVec3,
+        directionToPoint: &DVec3,
         positions: &Vec<DVec3>,
         minimumHeight: f64,
     ) -> Option<DVec3> {
@@ -71,7 +108,7 @@ impl EllipsoidalOccluder {
     }
     pub fn computeHorizonCullingPoint(
         &self,
-        directionToPoint: DVec3,
+        directionToPoint: &DVec3,
         positions: &Vec<DVec3>,
     ) -> Option<DVec3> {
         return computeHorizonCullingPointFromPositions(
@@ -99,7 +136,7 @@ pub fn getPossiblyShrunkEllipsoid(ellipsoid: &Ellipsoid, minimumHeight: Option<f
 }
 pub fn computeHorizonCullingPointFromPositions(
     ellipsoid: &Ellipsoid,
-    directionToPoint: DVec3,
+    directionToPoint: &DVec3,
     positions: &Vec<DVec3>,
 ) -> Option<DVec3> {
     let scaledSpaceDirectionToPoint =
@@ -117,11 +154,14 @@ pub fn computeHorizonCullingPointFromPositions(
 
     return magnitudeToPoint(scaledSpaceDirectionToPoint, resultMagnitude);
 }
-pub fn computeScaledSpaceDirectionToPoint(ellipsoid: &Ellipsoid, directionToPoint: DVec3) -> DVec3 {
-    if directionToPoint == DVec3::ZERO {
-        return directionToPoint;
+pub fn computeScaledSpaceDirectionToPoint(
+    ellipsoid: &Ellipsoid,
+    directionToPoint: &DVec3,
+) -> DVec3 {
+    if directionToPoint == &DVec3::ZERO {
+        return directionToPoint.clone();
     }
-    let directionToPointScratch = ellipsoid.transformPositionToScaledSpace(directionToPoint);
+    let directionToPointScratch = ellipsoid.transformPositionToScaledSpace(&directionToPoint);
     return directionToPointScratch.normalize();
 }
 pub fn computeMagnitude(
@@ -129,7 +169,7 @@ pub fn computeMagnitude(
     position: DVec3,
     scaledSpaceDirectionToPoint: DVec3,
 ) -> f64 {
-    let scaledSpacePosition = ellipsoid.transformPositionToScaledSpace(position);
+    let scaledSpacePosition = ellipsoid.transformPositionToScaledSpace(&position);
     let mut magnitudeSquared = scaledSpacePosition.magnitude_squared();
     let mut magnitude = magnitudeSquared.sqrt();
     let direction = scaledSpacePosition / magnitude;
@@ -172,7 +212,7 @@ mod tests {
         let directionToPoint = DVec3::new(1.0, 0.0, 0.0);
 
         let result = ellipsoidalOccluder
-            .computeHorizonCullingPoint(directionToPoint, &positions)
+            .computeHorizonCullingPoint(&directionToPoint, &positions)
             .unwrap();
         assert!(equals_epsilon(result.x, 1.0, Some(EPSILON14), None));
         assert!(equals_epsilon(result.y, 0.0, Some(EPSILON14), None));
@@ -185,7 +225,7 @@ mod tests {
         let positions = vec![DVec3::new(0.0, 4567.0, 0.0)];
         let directionToPoint = DVec3::new(1.0, 0.0, 0.0);
 
-        let result = ellipsoidalOccluder.computeHorizonCullingPoint(directionToPoint, &positions);
+        let result = ellipsoidalOccluder.computeHorizonCullingPoint(&directionToPoint, &positions);
         assert!(result.is_none());
     }
     #[test]
@@ -195,7 +235,7 @@ mod tests {
         let positions = vec![DVec3::new(2.0, 0.0, 0.0), DVec3::new(-1.0, 0.0, 0.0)];
         let directionToPoint = DVec3::new(1.0, 0.0, 0.0);
 
-        let result = ellipsoidalOccluder.computeHorizonCullingPoint(directionToPoint, &positions);
+        let result = ellipsoidalOccluder.computeHorizonCullingPoint(&directionToPoint, &positions);
         assert!(result.is_none());
     }
 }

@@ -7,12 +7,31 @@ use bevy::math::{DMat3, DMat4, DVec3};
 
 use crate::{ellipsoid::Ellipsoid, math::*};
 pub trait Matrix3 {
+    const COLUMN0ROW0: usize;
+    const COLUMN0ROW1: usize;
+    const COLUMN0ROW2: usize;
+    const COLUMN1ROW0: usize;
+    const COLUMN1ROW1: usize;
+    const COLUMN1ROW2: usize;
+    const COLUMN2ROW0: usize;
+    const COLUMN2ROW1: usize;
+    const COLUMN2ROW2: usize;
     fn multiply_by_scale(&self, scale: DVec3) -> DMat3;
     fn from_scale3(scale: DVec3) -> DMat3;
     fn set_column(&mut self, index: usize, cartesian: &DVec3);
     fn multiply_by_vector(&self, cartesian: &DVec3) -> DVec3;
+    fn get_column(&self, index: usize) -> DVec3;
 }
 impl Matrix3 for DMat3 {
+    const COLUMN0ROW0: usize = 0;
+    const COLUMN0ROW1: usize = 1;
+    const COLUMN0ROW2: usize = 2;
+    const COLUMN1ROW0: usize = 3;
+    const COLUMN1ROW1: usize = 4;
+    const COLUMN1ROW2: usize = 5;
+    const COLUMN2ROW0: usize = 6;
+    const COLUMN2ROW1: usize = 7;
+    const COLUMN2ROW2: usize = 8;
     fn multiply_by_scale(&self, scale: DVec3) -> DMat3 {
         let mut result = self.clone();
         result.x_axis = result.x_axis * scale.x;
@@ -38,6 +57,18 @@ impl Matrix3 for DMat3 {
             panic!("index out of range")
         }
     }
+    fn get_column(&self, index: usize) -> DVec3 {
+        if index == 0 {
+            return self.x_axis;
+        } else if index == 1 {
+            return self.y_axis;
+        } else if index == 2 {
+            return self.z_axis;
+        } else {
+            panic!("index out of range")
+        }
+    }
+
     fn multiply_by_vector(&self, cartesian: &DVec3) -> DVec3 {
         let mut result = DVec3::ZERO;
         let mut slice: [f64; 9] = [0.; 9];

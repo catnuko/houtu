@@ -260,6 +260,17 @@ impl Rectangle {
         }
         return result;
     }
+    pub fn simpleIntersection(&self, otherRectangle: &Rectangle) -> Option<Rectangle> {
+        let west = self.west.max(otherRectangle.west);
+        let south = self.south.max(otherRectangle.south);
+        let east = self.east.min(otherRectangle.east);
+        let north = self.north.min(otherRectangle.north);
+
+        if (south >= north || west >= east) {
+            return None;
+        }
+        return Some(Rectangle::new(west, south, east, north));
+    }
 }
 //单元测试
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub enum TileState {
     START = 0,
     LOADING = 1,

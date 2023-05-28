@@ -15,8 +15,8 @@ pub struct EllipsoidTangentPlane {
     pub ellipsoid: Ellipsoid,
 }
 impl EllipsoidTangentPlane {
-    pub fn new(origin: DVec3, ellipsoid: Option<Ellipsoid>) -> Self {
-        let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
+    pub fn new(origin: DVec3, ellipsoid: Option<&Ellipsoid>) -> Self {
+        let ellipsoid = ellipsoid.map_or(Ellipsoid::WGS84, |x| x.clone());
         let eastNorthUp = eastNorthUpToFixedFrame(origin, Some(ellipsoid));
         let xAxis = DVec3::from_cartesian4(eastNorthUp.col(0));
         let yAxis = DVec3::from_cartesian4(eastNorthUp.col(1));
@@ -33,7 +33,7 @@ impl EllipsoidTangentPlane {
             ellipsoid,
         };
     }
-    pub fn fromPoints(cartesians: Vec<DVec3>, ellipsoid: Option<Ellipsoid>) -> Self {
+    pub fn fromPoints(cartesians: Vec<DVec3>, ellipsoid: Option<&Ellipsoid>) -> Self {
         let aabb = AxisAlignedBoundingBox::fromPoints(cartesians);
         return EllipsoidTangentPlane::new(aabb.center, ellipsoid);
     }

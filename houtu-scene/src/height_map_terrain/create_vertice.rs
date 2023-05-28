@@ -429,7 +429,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             &rectangle,
             Some(minimumHeight),
             Some(maximumHeight),
-            Some(ellipsoid),
+            Some(&ellipsoid),
         );
     }
 
@@ -437,7 +437,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     if (hasRelativeToCenter) {
         let occluder = EllipsoidalOccluder::new(&ellipsoid);
         occludeePointInScaledSpace = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
-            relativeToCenter,
+            &relativeToCenter,
             &positions,
             minimumHeight,
         );

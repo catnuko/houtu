@@ -64,7 +64,7 @@ pub trait Cartesian3 {
     fn equals(&self, right: DVec3) -> bool;
     fn midpoint(&self, right: DVec3) -> DVec3;
     fn multiply_by_scalar(&self, scalar: f64) -> DVec3;
-    fn multiply_components(&self, right: DVec3) -> DVec3;
+    fn multiply_components(&self, right: &DVec3) -> DVec3;
     fn subtract(self, right: DVec3) -> DVec3;
     fn divide_by_scalar(&self, scalar: f64) -> DVec3;
     fn devide_components(&self, right: DVec3) -> DVec3;
@@ -130,7 +130,7 @@ impl Cartesian3 for DVec3 {
                 && equals_epsilon(self.z, right.z, relative_epsilon, absolute_epsilon);
         return res;
     }
-    fn multiply_components(&self, right: DVec3) -> DVec3 {
+    fn multiply_components(&self, right: &DVec3) -> DVec3 {
         return DVec3::new(self.x * right.x, self.y * right.y, self.z * right.z);
     }
     fn multiply_by_scalar(&self, scalar: f64) -> DVec3 {
@@ -173,7 +173,7 @@ impl Cartesian3 for DVec3 {
         scratchN.x = cosLatitude * longitude.cos();
         scratchN.y = cosLatitude * longitude.sin();
         scratchN.z = latitude.sin();
-        scratchK = radii_squared.multiply_components(scratchN);
+        scratchK = radii_squared.multiply_components(&scratchN);
         let gamma = scratchN.dot(scratchK).sqrt();
         scratchK = scratchK.divide_by_scalar(gamma);
         scratchN = scratchN.multiply_by_scalar(height);

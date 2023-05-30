@@ -11,7 +11,7 @@ use bevy::{
 };
 
 use super::{Box3d, EllipsoidTangentPlane, Plane, Rectangle};
-#[derive(Clone, Debug, Component)]
+#[derive(Clone, Debug, Component, Copy)]
 pub struct OrientedBoundingBox {
     pub center: DVec3,
     pub halfAxes: DMat3,

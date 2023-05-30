@@ -7,7 +7,7 @@ use crate::{
     octPackFloat,
     terrain_quantization::TerrainQuantization,
 };
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Copy)]
 pub struct TerrainEncoding {
     pub quantization: TerrainQuantization,
     pub minimumHeight: f64,

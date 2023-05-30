@@ -4,7 +4,7 @@ use crate::{
 };
 use bevy::math::{DMat4, DVec3};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct BoundingSphere {
     center: DVec3,
     radius: f64,

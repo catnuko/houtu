@@ -6,7 +6,7 @@ use bevy::{
 
 use crate::{BoundingSphere, OrientedBoundingBox, TerrainEncoding};
 use bevy::prelude::*;
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Component)]
 pub struct TerrainMesh {
     pub center: DVec3,
     pub vertices: Vec<f64>,

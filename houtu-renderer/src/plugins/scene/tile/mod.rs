@@ -76,7 +76,7 @@ fn layer_system(
     if tile_layer.quadtree.roots.len() == 0 {
         if tile_layer.datasource.is_ready() {
             let tiling_scehme = tile_layer.datasource.get_tiling_scheme();
-            let tiles = QuadtreeTile::createLevelZeroTiles(tiling_scehme);
+            let tiles = QuadtreeTile::c(tiling_scehme);
             tiles.iter().for_each(|x| tile_layer.quadtree.add_node(*x))
         } else {
             return;

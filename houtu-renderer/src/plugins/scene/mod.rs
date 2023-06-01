@@ -20,9 +20,9 @@ mod tile;
 use houtu_scene::Rectangle;
 use tile::*;
 
-pub struct ScenePlugin;
+pub struct Plugin;
 
-impl bevy::app::Plugin for ScenePlugin {
+impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(tile::TilePlugin);
     }

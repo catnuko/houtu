@@ -34,7 +34,8 @@ impl Plugin for RendererPlugin {
             // .add_plugin(quadtree::Plugin)
             .add_plugin(plugins::globe::GlobePlugin)
             .add_plugin(plugins::camera::CameraPlugin)
-            .add_plugin(plugins::scene::ScenePlugin)
+            .add_plugin(plugins::tileset::Plugin)
+            // .add_plugin(plugins::scene::ScenePlugin)
             .add_system(setup);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }

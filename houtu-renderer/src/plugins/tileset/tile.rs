@@ -1,10 +1,8 @@
-use bevy::{
-    math::UVec3,
-    prelude::{Bundle, Color, Component, FromReflect, Reflect, ReflectComponent, Visibility},
-};
-use houtu_scene::TerrainMesh;
+use bevy::{math::UVec3, prelude::*};
+use houtu_scene::{GeographicTilingScheme, HeightmapTerrainData, TerrainMesh};
+use rand::Rng;
 
-use super::{layer::TileLayerId, storage::TileStorage};
+use super::{layer::TileLayerId, storage::TileStorage, terrian_material::TerrainMeshMaterial};
 #[derive(
     Component, Reflect, FromReflect, Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd,
 )]
@@ -61,12 +59,60 @@ impl Default for TileVisible {
 pub struct TileTextureIndex(pub u32);
 #[derive(Component, Default, Clone, Debug)]
 pub struct TerrainMeshWrap(pub Option<TerrainMesh>);
-
+#[derive(Component, Debug, Default, Clone)]
+pub struct TileMark;
+#[derive(Component, Debug, Clone)]
+pub enum TileState {
+    Start,
+    Creationg,
+    Created,
+    Rendered,
+}
+impl Default for TileState {
+    fn default() -> Self {
+        Self::Start
+    }
+}
 #[derive(Bundle, Clone, Debug)]
 pub struct TileBundle {
+    pub mark: TileMark,
     pub key: TileKey,
     pub visible: Visibility,
     pub tile_layer_id: TileLayerId,
     pub terrain_mesh: TerrainMeshWrap,
+    pub state: TileState,
 }
-pub fn tile_system() {}
+pub fn tile_system(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut terrain_materials: ResMut<Assets<TerrainMeshMaterial>>,
+    mut query: Query<(&mut TerrainMeshWrap, &mut TileState), With<TileMark>>,
+    asset_server: Res<AssetServer>,
+) {
+    for (mut terrain_mesh_warp, mut state) in &mut query {
+        if let None = terrain_mesh_warp.0 {
+            bevy::log::info!("没有terrain_mesh")
+        } else {
+            match *state {
+                TileState::Start => {
+                    let mut rng = rand::thread_rng();
+                    let r: f32 = rng.gen();
+                    let g: f32 = rng.gen();
+                    let b: f32 = rng.gen();
+                    commands.spawn((MaterialMeshBundle {
+                        mesh: meshes.add(terrain_mesh_warp.0.as_ref().unwrap().into()),
+                        material: terrain_materials.add(TerrainMeshMaterial {
+                            image: Some(asset_server.load("icon.png")),
+                            color: Color::rgba(r, g, b, 1.0),
+                        }),
+                        ..Default::default()
+                    },));
+                    *state = TileState::Rendered;
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+pub fn create_tile_system() {}

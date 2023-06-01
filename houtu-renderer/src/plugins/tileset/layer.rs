@@ -38,17 +38,29 @@ impl Default for TileLayerState {
     }
 }
 /// The default tilemap bundle. All of the components within are required.
-#[derive(Bundle, Debug, Default, Clone)]
+#[derive(Bundle, Debug, Clone)]
 pub struct TileLayerBundle {
     pub mark: TileLayerMark,
-    pub storage: TileStorage,
-    pub texture: TileLayerTexture,
+    // pub texture: TileLayerTexture,
     pub visibility: Visibility,
     pub computed_visibility: ComputedVisibility,
     pub tile_storage: TileStorage,
     pub tiling_scheme: GeographicTilingScheme,
     pub state: TileLayerState,
     pub id: TileLayerId,
+}
+impl Default for TileLayerBundle {
+    fn default() -> Self {
+        Self {
+            mark: TileLayerMark,
+            tile_storage: TileStorage::empty(),
+            visibility: Visibility::Visible,
+            computed_visibility: ComputedVisibility::default(),
+            tiling_scheme: GeographicTilingScheme::default(),
+            state: TileLayerState::Start,
+            id: TileLayerId(Entity::PLACEHOLDER),
+        }
+    }
 }
 
 pub fn layer_system(
@@ -93,6 +105,8 @@ pub fn layer_system(
                                 visible: Visibility::Visible,
                                 tile_layer_id: tile_layer_id.clone(),
                                 terrain_mesh: super::tile::TerrainMeshWrap(Some(terrain_mesh)),
+                                mark: super::tile::TileMark,
+                                state: super::tile::TileState::Start,
                             })
                             .id();
                         tile_storage.set(&tile_key, entity);

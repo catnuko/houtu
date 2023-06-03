@@ -10,12 +10,14 @@ use bevy::{
     prelude::*,
 };
 mod cartesian3;
+mod cartesian4;
 mod cartographic;
 mod heading_pitch_roll;
 mod matrix4;
 mod transform;
 pub use cartesian3::*;
 mod quaternion;
+pub use cartesian4::*;
 pub use cartographic::*;
 pub use heading_pitch_roll::*;
 pub use matrix4::*;
@@ -162,6 +164,9 @@ pub fn zero_to_two_pi(angle: f64) -> f64 {
 }
 pub fn lerp(p: f64, q: f64, time: f64) -> f64 {
     return (1.0 - time) * p + time * q;
+}
+pub fn acos_clamped(value: f64) -> f64 {
+    value.clamp(-1.0, 1.0).acos()
 }
 #[cfg(test)]
 mod tests {

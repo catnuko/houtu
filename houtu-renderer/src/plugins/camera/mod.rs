@@ -1,8 +1,14 @@
-use std::f32::consts::TAU;
+use std::{
+    f32::consts::TAU,
+    f64::{
+        consts::{FRAC_PI_2, PI},
+        MAX,
+    },
+};
 
 use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
-    math::{DVec2, DVec3},
+    math::{DMat4, DVec2, DVec3},
     prelude::*,
     render::primitives::Frustum,
 };
@@ -15,9 +21,9 @@ mod pan_orbit;
 use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
 
 use bevy_atmosphere::prelude::*;
-use houtu_scene::*;
+use houtu_scene::{Projection, *};
 
-use self::camera_new::{CameraControl, CameraControlPlugin};
+use self::camera_new::{CameraControlPlugin, GlobeCamera};
 
 pub struct CameraPlugin;
 
@@ -51,12 +57,12 @@ fn setup(mut commands: Commands) {
             //     radius: x + 10000000.0,
             //     ..Default::default()
             // },
-            CameraControl::default(),
-            GlobeMapCamera::default(),
+            GlobeCamera::default(),
+            GlobeCameraControl::default(),
         ));
 }
 #[derive(Component)]
-pub struct GlobeMapCamera {
+pub struct GlobeCameraControl {
     pub position_cartesian: DVec3,
     pub position_cartographic: Option<Cartographic>,
     pub culling_volume: Option<CullingVolume>,
@@ -80,10 +86,14 @@ pub struct GlobeMapCamera {
     pub _useZoomWorldPosition: bool,
     pub _zoomWorldPosition: DVec3,
     pub _zoomingUnderground: bool,
-    pub _maxCoord: Vec2,
+    pub _maxCoord: DVec3,
+    pub _zoomFactor: f64,
+    pub maximumMovementRatio: f64,
+    pub bounceAnimationTime: f64,
 }
-impl Default for GlobeMapCamera {
+impl Default for GlobeCameraControl {
     fn default() -> Self {
+        let max_coord = GeographicProjection::WGS84.project(&Cartographic::new(PI, FRAC_PI_2, 0.));
         Self {
             position_cartesian: DVec3::ZERO,
             direction: DVec3::ZERO,
@@ -97,62 +107,34 @@ impl Default for GlobeMapCamera {
             drawingBufferHeight: 0,
             _cameraUnderground: false,
             _minimumPickingTerrainHeight: 150000.0,
+            _zoomFactor: 5.0,
+            maximumMovementRatio: 1.0,
+            bounceAnimationTime: 3.0,
+            minimumZoomDistance: 1.0,
+            maximumZoomDistance: MAX,
+            _minimumZoomRate: 20.0,
+            _maximumZoomRate: 5906376272000.0,
+            enableCollisionDetection: true,
+            _zoomMouseStart: Vec2::ZERO,
+            _rotatingZoom: false,
+            _zoomingOnVector: false,
+            _useZoomWorldPosition: false,
+            _zoomWorldPosition: DVec3::ZERO,
+            _zoomingUnderground: false,
+            _maxCoord: max_coord,
         }
     }
 }
-impl GlobeMapCamera {
+impl GlobeCameraControl {
     fn getMagnitude(&self) -> f64 {
         return self.position_cartesian.magnitude();
     }
 }
 
-pub fn getPickRay(
-    windowPosition: Vec2,
-    window_size: &Vec2,
-    projection: &PerspectiveProjection,
-    camera: &GlobeMapCamera,
-) -> houtu_scene::Ray {
-    if window_size.x <= 0. && window_size.y <= 0. {
-        return None;
-    }
-    return getPickRayPerspective(windowPosition, window_size, projection, camera);
-}
-pub fn getPickRayPerspective(
-    windowPosition: Vec2,
-    window_size: &Vec2,
-    projection: &PerspectiveProjection,
-    camera: &GlobeMapCamera,
-) -> houtu_scene::Ray {
-    let mut result = houtu_scene::Ray::default();
-    let width = window_size.x as f64;
-    let height = window_size.y as f64;
-    let aspectRatio = width / height;
-    let tanPhi = (projection.fov as f64 * 0.5).tan();
-    let tanTheta = aspectRatio * tanPhi;
-    let near = projection.near as f64;
-
-    let x = (2.0 / width) * windowPosition.x as f64 - 1.0;
-    let y = (2.0 / height) * (height - windowPosition.y as f64) - 1.0;
-
-    let position = camera.position_cartesian;
-    result.origin = position.clone();
-
-    let mut nearCenter = camera.direction.multiply_by_scalar(near);
-    nearCenter = position + nearCenter;
-    let xDir = camera.right.multiply_by_scalar(x * near * tanTheta);
-    let yDir = camera.up.multiply_by_scalar(y * near * tanPhi);
-    let mut direction = nearCenter + xDir;
-    direction = direction + yDir;
-    direction = direction + position;
-    direction = direction.normalize();
-    result.direction = direction;
-    return result;
-}
-
 fn globe_map_camera_system(
     mut query: Query<
         (
-            &mut GlobeMapCamera,
+            &mut GlobeCameraControl,
             &mut Transform,
             &Frustum,
             &bevy::prelude::Projection,
@@ -160,18 +142,17 @@ fn globe_map_camera_system(
         ),
         (With<Camera3d>, Changed<Transform>),
     >,
-    ellipsoid: Res<Ellipsoid>,
 ) {
-    for (mut globe_map_camera, transform, frustum, projection, camera) in &mut query {
-        globe_map_camera.position_cartesian = DVec3::new(
+    for (mut globe_camera_control, transform, frustum, projection, camera) in &mut query {
+        globe_camera_control.position_cartesian = DVec3::new(
             transform.translation.x as f64,
             transform.translation.x as f64,
             transform.translation.x as f64,
         );
         let position_cartographic =
-            ellipsoid.cartesianToCartographic(globe_map_camera.position_cartesian);
-        globe_map_camera.position_cartographic = position_cartographic;
-        globe_map_camera.culling_volume = Some(CullingVolume::new(Some(
+            Ellipsoid::WGS84.cartesianToCartographic(&globe_camera_control.position_cartesian);
+        globe_camera_control.position_cartographic = position_cartographic;
+        globe_camera_control.culling_volume = Some(CullingVolume::new(Some(
             frustum
                 .planes
                 .iter()
@@ -191,16 +172,19 @@ fn globe_map_camera_system(
         let rotMat = Mat3::from_quat(transform.rotation);
         let x_axis = rotMat.x_axis;
         let y_axis = rotMat.y_axis;
-        globe_map_camera.direction = DVec3::new(x_axis.x as f64, x_axis.y as f64, x_axis.z as f64);
-        globe_map_camera.up = DVec3::new(y_axis.x as f64, y_axis.y as f64, y_axis.z as f64);
-        globe_map_camera.right = globe_map_camera.direction.cross(globe_map_camera.up);
-        if (globe_map_camera._sseDenominator == 0.0) {
+        globe_camera_control.direction =
+            DVec3::new(x_axis.x as f64, x_axis.y as f64, x_axis.z as f64);
+        globe_camera_control.up = DVec3::new(y_axis.x as f64, y_axis.y as f64, y_axis.z as f64);
+        globe_camera_control.right = globe_camera_control
+            .direction
+            .cross(globe_camera_control.up);
+        if (globe_camera_control._sseDenominator == 0.0) {
             if let bevy::prelude::Projection::Perspective(p) = projection {
-                globe_map_camera._sseDenominator = (2.0 * (0.5 * p.fov) as f64).tan();
+                globe_camera_control._sseDenominator = (2.0 * (0.5 * p.fov) as f64).tan();
             }
             if let Some(info) = camera.physical_target_size() {
-                globe_map_camera.drawingBufferWidth = info.x;
-                globe_map_camera.drawingBufferHeight = info.y;
+                globe_camera_control.drawingBufferWidth = info.x;
+                globe_camera_control.drawingBufferHeight = info.y;
             }
         }
     }

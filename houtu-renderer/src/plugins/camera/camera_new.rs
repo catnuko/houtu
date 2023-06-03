@@ -8,45 +8,66 @@ use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_easings::Lerp;
 use bevy_egui::EguiSet;
 use egui::EguiWantsFocus;
-use houtu_scene::Cartographic;
-use std::f64::consts::{PI, TAU};
+use houtu_scene::{
+    Cartesian3, Cartographic, Ellipsoid, EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll,
+    IntersectionTests, Matrix4, Projection, Rectangle, RADIANS_PER_DEGREE,
+};
+use std::f64::consts::{FRAC_PI_2, PI, TAU};
+use std::f64::NEG_INFINITY;
 
 pub struct CameraControlPlugin;
 
 impl Plugin for CameraControlPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(camera_event_aggregator::Plugin);
-        app.insert_resource(ActiveCameraData::default())
-            .add_systems(
-                (active_viewport_data, pan_orbit_camera)
-                    .chain()
-                    .in_base_set(PanOrbitCameraSystemSet),
+        app.init_resource::<EguiWantsFocus>()
+            .add_system(
+                egui::check_egui_wants_focus
+                    .after(EguiSet::InitContexts)
+                    .before(PanOrbitCameraSystemSet),
+            )
+            .configure_set(
+                PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
+                    prev: false,
+                    curr: false,
+                })),
             );
-
-        {
-            app.init_resource::<EguiWantsFocus>()
-                .add_system(
-                    egui::check_egui_wants_focus
-                        .after(EguiSet::InitContexts)
-                        .before(PanOrbitCameraSystemSet),
-                )
-                .configure_set(
-                    PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
-                        prev: false,
-                        curr: false,
-                    })),
-                );
-        }
     }
 }
 
-/// Base system set to allow ordering of `CameraControl`
+/// Base system set to allow ordering of `GlobeCamera`
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[system_set(base)]
 pub struct PanOrbitCameraSystemSet;
 
+pub struct GlobeCameraFrustum {
+    fov: f64,
+    fovy: f64,
+    near: f64,
+    far: f64,
+    xOffset: f64,
+    yOffset: f64,
+    aspectRatio: f64,
+    _sseDenominator: f64,
+}
+impl Default for GlobeCameraFrustum {
+    fn default() -> Self {
+        Self {
+            fov: 0.,
+            near: 1.0,
+            far: 500000000.0,
+            xOffset: 0.0,
+            yOffset: 0.0,
+            aspectRatio: 0.,
+            _sseDenominator: 0.,
+            ..Default::default()
+        }
+    }
+}
+impl GlobeCameraFrustum {}
+
 #[derive(Component)]
-pub struct CameraControl {
+pub struct GlobeCamera {
     pub right: DVec3,
     pub _right: DVec3,
     pub _rightWC: DVec3,
@@ -84,19 +105,17 @@ pub struct CameraControl {
     pub _viewMatrix: DMat4,
     pub _invViewMatrix: DMat4,
 
-    /// Button used to orbit the camera. Defaults to `Button::Left`.
-    pub button_orbit: MouseButton,
-    /// Button used to pan the camera. Defaults to `Button::Right`.
-    pub button_pan: MouseButton,
-    /// Key that must be pressed for `button_orbit` to work. Defaults to `None` (no modifier).
-    pub modifier_orbit: Option<KeyCode>,
-    /// Key that must be pressed for `button_pan` to work. Defaults to `None` (no modifier).
-    pub modifier_pan: Option<KeyCode>,
+    pub hpr: HeadingPitchRoll,
+    pub _maxCoord: DVec3,
+
+    pub frustum: GlobeCameraFrustum,
 }
 
-impl Default for CameraControl {
+impl Default for GlobeCamera {
     fn default() -> Self {
-        Self {
+        let max_coord = GeographicProjection::WGS84.project(&Cartographic::new(PI, FRAC_PI_2, 0.));
+
+        let mut me = Self {
             positionWCDeltaMagnitude: 0.0,
             positionWCDeltaMagnitudeLastFrame: 0.0,
             timeSinceMoved: 0.0,
@@ -132,182 +151,246 @@ impl Default for CameraControl {
             _positionWC: DVec3::ZERO,
             _positionCartographic: Cartographic::ZERO,
             _oldPositionWC: None,
-            button_orbit: MouseButton::Left,
-            button_pan: MouseButton::Right,
-            modifier_orbit: None,
-            modifier_pan: None,
+            hpr: HeadingPitchRoll::default(),
+            _maxCoord: max_coord,
+            frustum: GlobeCameraFrustum::default(),
+        };
+        me.updateViewMatrix();
+        return me;
+    }
+}
+impl GlobeCamera {
+    pub fn get_positionWC(&mut self) -> DVec3 {
+        self.updateViewMatrix();
+        return self._positionWC;
+    }
+    pub fn updateMembers(&mut self) {}
+    pub fn updateViewMatrix(&mut self) {
+        self._viewMatrix =
+            DMat4::compute_view(&self.position, &self.direction, &self.up, &self.right);
+        self._viewMatrix = self._viewMatrix * self._actualInvTransform;
+        self._invViewMatrix = self._viewMatrix.inverse_transformation();
+    }
+    pub fn set_view(
+        &mut self,
+        destination: Option<DVec3>,
+        orientation: Option<HeadingPitchRoll>,
+        endTransform: Option<DMat4>,
+        convert: Option<bool>,
+    ) {
+    }
+    pub fn zoom_in(&mut self, amout: Option<f64>) {}
+    pub fn zoom_out(&mut self, amout: Option<f64>) {}
+    pub fn move_direction(&mut self, direction: &DVec3, amout: f64) {
+        let moveScratch = direction.multiply_by_scalar(amout);
+        let cameraPosition = self.position + moveScratch;
+    }
+    pub fn rotate(&mut self, axis: DVec3, angle: f64) {}
+    pub fn getPickRay(
+        &mut self,
+        windowPosition: &Vec2,
+        window_size: &Vec2,
+        projection: &PerspectiveProjection,
+    ) -> Option<houtu_scene::Ray> {
+        if window_size.x <= 0. && window_size.y <= 0. {
+            return None;
         }
+        return Some(self.getPickRayPerspective(windowPosition, window_size, projection));
     }
-}
+    pub fn pickEllipsoid(
+        &self,
+        windowPosition: &Vec2,
+        window_size: &Vec2,
+        projection: &PerspectiveProjection,
+    ) -> Option<DVec3> {
+        return self.pickEllipsoid3D(windowPosition, window_size, projection);
+    }
+    pub fn pickEllipsoid3D(
+        &self,
+        windowPosition: &Vec2,
+        window_size: &Vec2,
+        projection: &PerspectiveProjection,
+    ) -> Option<DVec3> {
+        let ellipsoid = Ellipsoid::WGS84;
+        let ray = if let Some(v) = self.getPickRay(windowPosition, window_size, projection) {
+            v
+        } else {
+            return None;
+        };
 
-impl CameraControl {}
+        let intersection = IntersectionTests::rayEllipsoid(&ray);
+        let intersection = if let Some(v) = intersection {
+            v
+        } else {
+            return None;
+        };
+        let t = if intersection.start > 0.0 {
+            intersection.start
+        } else {
+            intersection.stop
+        };
+        return Some(ray.getPoint(t));
+    }
+    pub fn getPickRayPerspective(
+        &mut self,
+        windowPosition: &Vec2,
+        window_size: &Vec2,
+        projection: &PerspectiveProjection,
+    ) -> houtu_scene::Ray {
+        let mut result = houtu_scene::Ray::default();
+        let width = window_size.x as f64;
+        let height = window_size.y as f64;
+        let aspectRatio = width / height;
+        let tanPhi = (projection.fov as f64 * 0.5).tan();
+        let tanTheta = aspectRatio * tanPhi;
+        let near = projection.near as f64;
 
-// Tracks the camera entity that should be handling input events.
-// This enables having multiple cameras with different viewports or windows.
-#[derive(Resource, Default, Debug, PartialEq)]
-pub struct ActiveCameraData {
-    pub entity: Option<Entity>,
-    pub viewport_size: Option<Vec2>,
-    pub window_size: Option<Vec2>,
-}
+        let x = (2.0 / width) * windowPosition.x as f64 - 1.0;
+        let y = (2.0 / height) * (height - windowPosition.y as f64) - 1.0;
 
-// Gathers data about the active viewport, i.e. the viewport the user is interacting with. This
-// enables multiple viewports/windows.
-fn active_viewport_data(
-    mut active_cam: ResMut<ActiveCameraData>,
-    mouse_input: Res<Input<MouseButton>>,
-    key_input: Res<Input<KeyCode>>,
-    scroll_events: EventReader<MouseWheel>,
-    primary_windows: Query<&Window, With<PrimaryWindow>>,
-    other_windows: Query<&Window, Without<PrimaryWindow>>,
-    orbit_cameras: Query<(Entity, &Camera, &CameraControl)>,
-) {
-    let mut new_resource: Option<ActiveCameraData> = None;
-    let mut max_cam_order = 0;
+        let position = self._positionWC;
+        result.origin = position.clone();
 
-    for (entity, camera, pan_orbit) in orbit_cameras.iter() {
-        let input_just_activated = orbit_just_pressed(pan_orbit, &mouse_input, &key_input)
-            || pan_just_pressed(pan_orbit, &mouse_input, &key_input)
-            || !scroll_events.is_empty();
+        let mut nearCenter = self._directionWC.multiply_by_scalar(near);
+        nearCenter = position + nearCenter;
+        let xDir = self._rightWC.multiply_by_scalar(x * near * tanTheta);
+        let yDir = self._upWC.multiply_by_scalar(y * near * tanPhi);
+        let mut direction = nearCenter + xDir;
+        direction = direction + yDir;
+        direction = direction + position;
+        direction = direction.normalize();
+        result.direction = direction;
+        return result;
+    }
+    pub fn rectangleCameraPosition3D(
+        &mut self,
+        rectangle: &Rectangle,
+        updateCamera: bool,
+    ) -> Option<DVec3> {
+        let ellipsoid = Ellipsoid::WGS84;
 
-        if input_just_activated {
-            // First check if cursor is in the same window as this camera
-            if let RenderTarget::Window(win_ref) = camera.target {
-                let window = match win_ref {
-                    WindowRef::Primary => primary_windows
-                        .get_single()
-                        .expect("Must exist, since the camera is referencing it"),
-                    WindowRef::Entity(entity) => other_windows
-                        .get(entity)
-                        .expect("Must exist, since the camera is referencing it"),
-                };
-                if let Some(mut cursor_pos) = window.cursor_position() {
-                    // Now check if cursor is within this camera's viewport
-                    if let Some(vp_rect) = camera.logical_viewport_rect() {
-                        // Window coordinates have Y starting at the bottom, so we need to reverse
-                        // the y component before comparing with the viewport rect
-                        cursor_pos.y = window.height() - cursor_pos.y;
-                        let cursor_in_vp = cursor_pos.x > vp_rect.0.x
-                            && cursor_pos.x < vp_rect.1.x
-                            && cursor_pos.y > vp_rect.0.y
-                            && cursor_pos.y < vp_rect.1.y;
+        let north = rectangle.north;
+        let south = rectangle.south;
+        let east = rectangle.east;
+        let west = rectangle.west;
 
-                        // Only set if camera order is higher. This may overwrite a previous value
-                        // in the case the viewport overlapping another viewport.
-                        if cursor_in_vp && camera.order >= max_cam_order {
-                            new_resource = Some(ActiveCameraData {
-                                entity: Some(entity),
-                                viewport_size: camera.logical_viewport_size(),
-                                window_size: Some(Vec2::new(window.width(), window.height())),
-                            });
-                            max_cam_order = camera.order;
-                        }
-                    }
-                }
-            }
+        // If we go across the International Date Line
+        if (west > east) {
+            east += FRAC_PI_2;
         }
+
+        // Find the midpoint latitude.
+        //
+        // EllipsoidGeodesic will fail if the north and south edges are very close to being on opposite sides of the ellipsoid.
+        // Ideally we'd just call EllipsoidGeodesic.setEndPoints and let it throw when it detects this case, but sadly it doesn't
+        // even look for this case in optimized builds, so we have to test for it here instead.
+        //
+        // Fortunately, this case can only happen (here) when north is very close to the north pole and south is very close to the south pole,
+        // so handle it just by using 0 latitude as the center.  It's certainliy possible to use a smaller tolerance
+        // than one degree here, but one degree is safe and putting the center at 0 latitude should be good enough for any
+        // rectangle that spans 178+ of the 180 degrees of latitude.
+        let longitude = (west + east) * 0.5;
+        let latitude;
+        if (south < -FRAC_PI_2 + RADIANS_PER_DEGREE && north > FRAC_PI_2 - RADIANS_PER_DEGREE) {
+            latitude = 0.0;
+        } else {
+            let northCartographic = Cartographic::from_radians(longitude, north, 0.);
+            let southCartographic = Cartographic::from_radians(longitude, south, 0.);
+            let ellipsoidGeodesic = EllipsoidGeodesic::default();
+            ellipsoidGeodesic.setEndPoints(northCartographic, southCartographic);
+            latitude = ellipsoidGeodesic.interpolateUsingFraction(0.5).latitude;
+        }
+
+        let centerCartographic = Cartographic::from_radians(longitude, latitude, 0.0);
+
+        let center = ellipsoid.cartographicToCartesian(&centerCartographic);
+
+        let mut cart = Cartographic::default();
+        cart.longitude = east;
+        cart.latitude = north;
+        let mut northEast = ellipsoid.cartographicToCartesian(&cart);
+        cart.longitude = west;
+        let mut northWest = ellipsoid.cartographicToCartesian(&cart);
+        cart.longitude = longitude;
+        let mut northCenter = ellipsoid.cartographicToCartesian(&cart);
+        cart.latitude = south;
+        let mut southCenter = ellipsoid.cartographicToCartesian(&cart);
+        cart.longitude = east;
+        let mut southEast = ellipsoid.cartographicToCartesian(&cart);
+        cart.longitude = west;
+        let mut southWest = ellipsoid.cartographicToCartesian(&cart);
+
+        northWest = northWest.subtract(center);
+        southEast = southEast.subtract(center);
+        northEast = northEast.subtract(center);
+        southWest = southWest.subtract(center);
+        northCenter = northCenter.subtract(center);
+        southCenter = southCenter.subtract(center);
+
+        let mut direction = ellipsoid.geodeticSurfaceNormal(&center);
+        let mut direction = if let Some(v) = direction {
+            v
+        } else {
+            return None;
+        };
+        direction = direction.negate();
+        let right = direction.cross(DVec3::UNIT_Z).normalize();
+        let up = right.cross(direction);
+        if updateCamera {
+            self.direction = direction.clone();
+            self.up = up.clone();
+            self.right = right.clone();
+        }
+        let d;
+        let tanPhi = (self.frustum.fovy * 0.5).tan();
+        let tanTheta = self.frustum.aspectRatio * tanPhi;
+
+        d = [
+            computeD(&direction, &up, &northWest, tanPhi),
+            computeD(&direction, &up, &southEast, tanPhi),
+            computeD(&direction, &up, &northEast, tanPhi),
+            computeD(&direction, &up, &southWest, tanPhi),
+            computeD(&direction, &up, &northCenter, tanPhi),
+            computeD(&direction, &up, &southCenter, tanPhi),
+            computeD(&direction, &right, &northWest, tanTheta),
+            computeD(&direction, &right, &southEast, tanTheta),
+            computeD(&direction, &right, &northEast, tanTheta),
+            computeD(&direction, &right, &southWest, tanTheta),
+            computeD(&direction, &right, &northCenter, tanTheta),
+            computeD(&direction, &right, &southCenter, tanTheta),
+        ]
+        .iter()
+        .fold(NEG_INFINITY, |a, &b| a.max(b));
+
+        // If the rectangle crosses the equator, compute D at the equator, too, because that's the
+        // widest part of the rectangle when projected onto the globe.
+        if (south < 0. && north > 0.) {
+            let equatorCartographic = Cartographic::from_radians(west, 0.0, 0.0);
+            let equatorPosition = ellipsoid.cartographicToCartesian(&equatorCartographic);
+            equatorPosition = equatorPosition.subtract(center);
+            d = [
+                d,
+                computeD(&direction, &up, &equatorPosition, tanPhi),
+                computeD(&direction, &right, &equatorPosition, tanTheta),
+            ]
+            .iter()
+            .fold(NEG_INFINITY, |a, &b| a.max(b));
+
+            equatorCartographic.longitude = east;
+            equatorPosition = ellipsoid.cartographicToCartesian(&equatorCartographic);
+            equatorPosition = equatorPosition.subtract(center);
+            d = [
+                d,
+                computeD(&direction, &up, &equatorPosition, tanPhi),
+                computeD(&direction, &right, &equatorPosition, tanTheta),
+            ]
+            .iter()
+            .fold(NEG_INFINITY, |a, &b| a.max(b));
+        }
+        return Some(center + direction.multiply_by_scalar(-d));
     }
-
-    if let Some(new_resource) = new_resource {
-        active_cam.set_if_neq(new_resource);
-    }
 }
-
-fn orbit_pressed(
-    pan_orbit: &CameraControl,
-    mouse_input: &Res<Input<MouseButton>>,
-    key_input: &Res<Input<KeyCode>>,
-) -> bool {
-    let is_pressed = pan_orbit
-        .modifier_orbit
-        .map_or(true, |modifier| key_input.pressed(modifier))
-        && mouse_input.pressed(pan_orbit.button_orbit);
-
-    is_pressed
-        && pan_orbit
-            .modifier_pan
-            .map_or(true, |modifier| !key_input.pressed(modifier))
+fn computeD(direction: &DVec3, upOrRight: &DVec3, corner: &DVec3, tanThetaOrPhi: f64) -> f64 {
+    let opposite = upOrRight.dot(*corner).abs();
+    return opposite / tanThetaOrPhi - direction.dot(*corner);
 }
-
-fn orbit_just_pressed(
-    pan_orbit: &CameraControl,
-    mouse_input: &Res<Input<MouseButton>>,
-    key_input: &Res<Input<KeyCode>>,
-) -> bool {
-    let just_pressed = pan_orbit
-        .modifier_orbit
-        .map_or(true, |modifier| key_input.pressed(modifier))
-        && (mouse_input.just_pressed(pan_orbit.button_orbit));
-
-    just_pressed
-        && pan_orbit
-            .modifier_pan
-            .map_or(true, |modifier| !key_input.pressed(modifier))
-}
-
-fn orbit_just_released(
-    pan_orbit: &CameraControl,
-    mouse_input: &Res<Input<MouseButton>>,
-    key_input: &Res<Input<KeyCode>>,
-) -> bool {
-    let just_released = pan_orbit
-        .modifier_orbit
-        .map_or(true, |modifier| key_input.pressed(modifier))
-        && (mouse_input.just_released(pan_orbit.button_orbit));
-
-    just_released
-        && pan_orbit
-            .modifier_pan
-            .map_or(true, |modifier| !key_input.pressed(modifier))
-}
-
-fn pan_pressed(
-    pan_orbit: &CameraControl,
-    mouse_input: &Res<Input<MouseButton>>,
-    key_input: &Res<Input<KeyCode>>,
-) -> bool {
-    let is_pressed = pan_orbit
-        .modifier_pan
-        .map_or(true, |modifier| key_input.pressed(modifier))
-        && mouse_input.pressed(pan_orbit.button_pan);
-
-    is_pressed
-        && pan_orbit
-            .modifier_orbit
-            .map_or(true, |modifier| !key_input.pressed(modifier))
-}
-
-fn pan_just_pressed(
-    pan_orbit: &CameraControl,
-    mouse_input: &Res<Input<MouseButton>>,
-    key_input: &Res<Input<KeyCode>>,
-) -> bool {
-    let just_pressed = pan_orbit
-        .modifier_pan
-        .map_or(true, |modifier| key_input.pressed(modifier))
-        && (mouse_input.just_pressed(pan_orbit.button_pan));
-
-    just_pressed
-        && pan_orbit
-            .modifier_orbit
-            .map_or(true, |modifier| !key_input.pressed(modifier))
-}
-
-// /// Update `transform` based on alpha, beta, and the camera's focus and radius
-// fn update_orbit_transform(
-//     alpha: f32,
-//     beta: f32,
-//     pan_orbit: &CameraControl,
-//     transform: &mut Transform,
-// ) {
-//     let mut rotation = Quat::from_rotation_y(alpha);
-//     rotation *= Quat::from_rotation_x(-beta);
-
-//     transform.rotation = rotation;
-
-//     // Update the translation of the camera so we are always rotating 'around'
-//     // (orbiting) rather than rotating in place
-//     let rot_matrix = Mat3::from_quat(transform.rotation);
-//     transform.translation =
-//         pan_orbit.focus + rot_matrix.mul_vec3(Vec3::new(0.0, 0.0, pan_orbit.radius));
-// }

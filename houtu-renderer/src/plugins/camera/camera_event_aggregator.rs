@@ -75,9 +75,9 @@ pub struct ControlEventData {
     pub release_time: f64,
 }
 pub enum ControlEvent {
-    Tilt(pub ControlEventData),
-    Spin(pub ControlEventData),
-    Zoom(pub ControlEventData),
+    Tilt(ControlEventData),
+    Spin(ControlEventData),
+    Zoom(ControlEventData),
 }
 pub fn default_input_map(
     time: Res<Time>,

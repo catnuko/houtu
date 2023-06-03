@@ -278,13 +278,13 @@ impl Ellipsoid {
         n = n * cartographic.height;
         return k + n;
     }
-    pub fn cartesianToCartographic(&self, vec3: DVec3) -> Option<Cartographic> {
+    pub fn cartesianToCartographic(&self, vec3: &DVec3) -> Option<Cartographic> {
         if let Some(p) = self.scaleToGeodeticSurface(&vec3) {
             if let Some(n) = self.geodeticSurfaceNormal(&p) {
                 let h = vec3.subtract(p);
                 let longitude = n.y.atan2(n.x);
                 let latitude = n.z.asin();
-                let b = h.dot(vec3);
+                let b = h.dot(*vec3);
                 let c = b.signum();
                 let d = c * h.magnitude();
                 let height = d;
@@ -309,7 +309,7 @@ impl Ellipsoid {
     pub fn cartesianArrayToCartographicArray(&self, cartesians: Vec<DVec3>) -> Vec<Cartographic> {
         let mut result = Vec::with_capacity(cartesians.len());
         for cartesian in cartesians {
-            if let Some(cartographic) = self.cartesianToCartographic(cartesian) {
+            if let Some(cartographic) = self.cartesianToCartographic(&cartesian) {
                 result.push(cartographic);
             }
         }
@@ -389,7 +389,7 @@ mod tests {
     #[test]
     fn test_cartesianToCartographic() {
         let ellipsoid = Ellipsoid::WGS84;
-        let result = ellipsoid.cartesianToCartographic(surfaceCartesian);
+        let result = ellipsoid.cartesianToCartographic(&surfaceCartesian);
         assert_eq!(
             result
                 .unwrap()
@@ -413,7 +413,7 @@ mod tests {
     fn test_cartesianToCartographic_close_to_center() {
         let ellipsoid = Ellipsoid::WGS84;
         let expected = Cartographic::new(9.999999999999999e-11, 1.0067394967422763e-20, -6378137.0);
-        let result = ellipsoid.cartesianToCartographic(DVec3::new(1e-50, 1e-60, 1e-70));
+        let result = ellipsoid.cartesianToCartographic(&DVec3::new(1e-50, 1e-60, 1e-70));
         assert_eq!(result.is_none(), true);
     }
 }

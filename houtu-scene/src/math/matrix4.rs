@@ -3,9 +3,9 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use bevy::math::{DMat3, DMat4, DVec3};
+use bevy::math::{DMat3, DMat4, DVec3, DVec4};
 
-use crate::{ellipsoid::Ellipsoid, math::*};
+use crate::{ellipsoid::Ellipsoid, math::*, BoundingRectangle};
 pub trait Matrix3 {
     const COLUMN0ROW0: usize;
     const COLUMN0ROW1: usize;
@@ -92,12 +92,35 @@ pub trait Matrix4 {
     fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3;
     fn set_translation(&mut self, cartesian: &DVec3);
     fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4;
+    fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4;
 }
 impl Matrix4 for DMat4 {
     fn set_translation(&mut self, cartesian: &DVec3) {
         self.x_axis.w = cartesian.x;
         self.y_axis.w = cartesian.y;
         self.z_axis.w = cartesian.z;
+    }
+    fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4 {
+        let mut matrix: [f64; 16] = [
+            0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        ];
+        self.write_cols_to_slice(&mut matrix);
+        let mut result = DVec4::ZERO;
+        let vX = cartesian.x;
+        let vY = cartesian.y;
+        let vZ = cartesian.z;
+        let vW = cartesian.w;
+
+        let x = matrix[0] * vX + matrix[4] * vY + matrix[8] * vZ + matrix[12] * vW;
+        let y = matrix[1] * vX + matrix[5] * vY + matrix[9] * vZ + matrix[13] * vW;
+        let z = matrix[2] * vX + matrix[6] * vY + matrix[10] * vZ + matrix[14] * vW;
+        let w = matrix[3] * vX + matrix[7] * vY + matrix[11] * vZ + matrix[15] * vW;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        result.w = w;
+        return result;
     }
     fn inverse_transformation(&self) -> DMat4 {
         let mut slice: [f64; 16] = [

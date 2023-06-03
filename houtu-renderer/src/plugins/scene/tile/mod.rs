@@ -30,7 +30,7 @@ use tile_state::*;
 use tile_z::*;
 
 use crate::plugins::{
-    camera::GlobeMapCamera,
+    camera::GlobeCameraControl,
     quadtree::{self, QuadtreeNode, QuadtreeTile, QuadtreeTileLoadState, QuadtreeTileValue},
 };
 
@@ -68,7 +68,7 @@ fn layer_system(
     mut tile_layer: Res<QuadTreeTileLayer>,
     mut ellipsoid: Res<Ellipsoid>,
     mut commands: Commands,
-    query: Query<&mut GlobeMapCamera>,
+    query: Query<&mut GlobeCameraControl>,
     mut job_spawner: houtu_jobs::JobSpawner,
     mut frame_count: Res<FrameCount>,
     mut enqueue_evt: EventWriter<EnQueue>,
@@ -89,7 +89,7 @@ fn layer_system(
             None
         }
     };
-    for globe_map_camera in query.iter() {
+    for globe_camera_control in query.iter() {
         for (tile) in tile_layer.quadtree.roots.iter() {
             if !tile.renderable {
                 queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::High);
@@ -98,7 +98,7 @@ fn layer_system(
                     &mut *tile_layer,
                     &mut *tile,
                     &occluders.unwrap(),
-                    &globe_map_camera,
+                    &globe_camera_control,
                     &tile_layer.tiling_scheme.projection,
                     &frame_count,
                     &mut enqueue_evt,
@@ -112,19 +112,19 @@ fn visitIfVisible<P: Projection>(
     tile_layer: &mut QuadTreeTileLayer,
     tile: &mut QuadtreeTile,
     occluders: &EllipsoidalOccluder,
-    globe_map_camera: &GlobeMapCamera,
+    globe_camera_control: &GlobeCameraControl,
     projection: &P,
     frame_count: &Res<FrameCount>,
     mut enqueue_evt: EventWriter<EnQueue>,
 ) {
-    let position_cartographic = &globe_map_camera
+    let position_cartographic = &globe_camera_control
         .position_cartographic
-        .expect("GlobeMapCamera:position_cartographic is undifined");
+        .expect("GlobeCameraControl:position_cartographic is undifined");
     if tile_layer.computeTileVisibility(
         tile,
-        globe_map_camera.cullingVolume,
+        globe_camera_control.cullingVolume,
         occluders,
-        &globe_map_camera.position_cartesian,
+        &globe_camera_control.position_cartesian,
         position_cartographic,
         projection,
     ) != houtu_scene::Visibility::NONE
@@ -173,7 +173,7 @@ fn queueTileLoad(
 //     tile_layer:&QuadTreeTileLayer,
 //     datasource: &dyn DataSource,
 //      tile: &QuadtreeTile,
-//       globe_map_camera: &GlobeMapCamera,
+//       globe_camera_control: &GlobeCameraControl,
 //       ancestorMeetsSse:bool,
 //     mut enqueue_evt: EventWriter<EnQueue>,
 //     frame_count: &Res<FrameCount>,
@@ -181,7 +181,7 @@ fn queueTileLoad(
 // ) {
 
 //       let meetsSse =
-//       screenSpaceError(datasource,tile  ,globe_map_camera) <
+//       screenSpaceError(datasource,tile  ,globe_camera_control) <
 //       tile_layer.maximumScreenSpaceError;
 
 //     let southwestChild = tile.southwestChild;
@@ -398,7 +398,7 @@ fn queueTileLoad(
 //             tile_layer._tileLoadQueueLow.length = loadIndexLow;
 //             tile_layer._tileLoadQueueMedium.length = loadIndexMedium;
 //             tile_layer._tileLoadQueueHigh.length = loadIndexHigh;
-//         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueMedium, tile, globe_map_camera,&mut enqueue_evt);
+//         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueMedium, tile, globe_camera_control,&mut enqueue_evt);
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Medium);
 
 //             traversalDetails.notYetRenderableCount = {
@@ -423,7 +423,7 @@ fn queueTileLoad(
 //         }
 
 //         if (tile_layer.preloadAncestors && !queuedForLoad) {
-//         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueLow, tile, globe_map_camera,&mut enqueue_evt);
+//         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueLow, tile, globe_camera_control,&mut enqueue_evt);
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Low);
 
 //         }
@@ -440,7 +440,7 @@ fn queueTileLoad(
 //     // loading this tile first in order to find that out, so load this refinement blocker with
 //     // high priority.
 //             tile_layer._tilesToRender.push(tile);
-//     // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueHigh, tile, globe_map_camera,&mut enqueue_evt);
+//     // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueHigh, tile, globe_camera_control,&mut enqueue_evt);
 //     queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::High);
 
 //     traversalDetails.allAreRenderable = tile.renderable;
@@ -458,17 +458,17 @@ fn queueTileLoad(
 fn screenSpaceError(
     datasource: &dyn DataSource,
     tile: &QuadtreeTileValue,
-    globe_map_camera: &GlobeMapCamera,
+    globe_camera_control: &GlobeCameraControl,
 ) {
     let maxGeometricError = datasource.getLevelMaximumGeometricError(tile.level);
 
     let distance = tile._distance;
-    let height = globe_map_camera.drawingBufferHeight;
-    let sseDenominator = globe_map_camera.sseDenominator;
+    let height = globe_camera_control.drawingBufferHeight;
+    let sseDenominator = globe_camera_control.sseDenominator;
 
     let error = (maxGeometricError * height) / (distance * sseDenominator);
 
-    error /= globe_map_camera.pixelRatio;
+    error /= globe_camera_control.pixelRatio;
 
     return error;
 }

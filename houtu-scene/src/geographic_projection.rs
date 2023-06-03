@@ -19,6 +19,13 @@ impl Default for GeographicProjection {
         }
     }
 }
+impl GeographicProjection {
+    pub const WGS84: GeographicProjection = GeographicProjection {
+        ellipsoid: Ellipsoid::WGS84,
+        semimajor_axis: 6378137.,
+        one_over_semimajor_axis: 1.567855942887398e-7,
+    };
+}
 impl Projection for GeographicProjection {
     type Output = GeographicProjection;
     fn project(&self, coord: &Cartographic) -> DVec3 {

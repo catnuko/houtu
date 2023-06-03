@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::plugins::{camera::GlobeMapCamera, quadtree::QuadtreeTile};
+use crate::plugins::{camera::GlobeCameraControl, quadtree::QuadtreeTile};
 
 use super::datasource::{DataSource, GlobeSurfaceTileDataSource};
 #[derive(Debug, Resource)]
@@ -47,17 +47,17 @@ impl bevy::prelude::Plugin for Plugin {
 fn enqueue_and_dequeue(
     mut ev_levelup: EventReader<EnQueue>,
     mut tile_layer_laoder: ResMut<TileLayerLoader>,
-    query: Query<&mut GlobeMapCamera>,
+    query: Query<&mut GlobeCameraControl>,
 ) {
-    for globe_map_camera in query.iter() {
+    for globe_camera_control in query.iter() {
         for ev in ev_levelup.iter() {
             if !*(ev.tile).needsLoading {
                 continue;
             }
             let loadPriority = tile_layer_laoder.datasource.computeTileLoadPriority(
                 ev.tile,
-                &globe_map_camera.position_cartesian,
-                &globe_map_camera.direction,
+                &globe_camera_control.position_cartesian,
+                &globe_camera_control.direction,
             );
             *(ev.tile)._loadPriority = loadPriority;
             match ev.queue_tyoe {

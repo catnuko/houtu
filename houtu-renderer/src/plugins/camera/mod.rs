@@ -69,6 +69,18 @@ pub struct GlobeMapCamera {
     pub pixelRatio: f64,
     pub _cameraUnderground: bool,
     pub _minimumPickingTerrainHeight: f64,
+    pub minimumZoomDistance: f64,
+    pub maximumZoomDistance: f64,
+    pub _minimumZoomRate: f64,
+    pub _maximumZoomRate: f64,
+    pub enableCollisionDetection: bool,
+    pub _zoomMouseStart: Vec2,
+    pub _rotatingZoom: bool,
+    pub _zoomingOnVector: bool,
+    pub _useZoomWorldPosition: bool,
+    pub _zoomWorldPosition: DVec3,
+    pub _zoomingUnderground: bool,
+    pub _maxCoord: Vec2,
 }
 impl Default for GlobeMapCamera {
     fn default() -> Self {
@@ -86,6 +98,11 @@ impl Default for GlobeMapCamera {
             _cameraUnderground: false,
             _minimumPickingTerrainHeight: 150000.0,
         }
+    }
+}
+impl GlobeMapCamera {
+    fn getMagnitude(&self) -> f64 {
+        return self.position_cartesian.magnitude();
     }
 }
 

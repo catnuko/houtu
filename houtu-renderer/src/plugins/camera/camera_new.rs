@@ -1,5 +1,5 @@
-use super::egui;
 use super::pan_orbit::pan_orbit_camera;
+use super::{camera_event_aggregator, egui};
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::math::{DMat4, DVec3};
 use bevy::prelude::*;
@@ -15,6 +15,7 @@ pub struct CameraControlPlugin;
 
 impl Plugin for CameraControlPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(camera_event_aggregator::Plugin);
         app.insert_resource(ActiveCameraData::default())
             .add_systems(
                 (active_viewport_data, pan_orbit_camera)

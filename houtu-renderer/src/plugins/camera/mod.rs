@@ -2,7 +2,7 @@ use std::f32::consts::TAU;
 
 use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
-    math::DVec3,
+    math::{DVec2, DVec3},
     prelude::*,
     render::primitives::Frustum,
 };
@@ -67,6 +67,8 @@ pub struct GlobeMapCamera {
     pub drawingBufferWidth: u32,
     pub drawingBufferHeight: u32,
     pub pixelRatio: f64,
+    pub _cameraUnderground: bool,
+    pub _minimumPickingTerrainHeight: f64,
 }
 impl Default for GlobeMapCamera {
     fn default() -> Self {
@@ -81,9 +83,55 @@ impl Default for GlobeMapCamera {
             _sseDenominator: 0.0,
             drawingBufferWidth: 0,
             drawingBufferHeight: 0,
+            _cameraUnderground: false,
+            _minimumPickingTerrainHeight: 150000.0,
         }
     }
 }
+
+pub fn getPickRay(
+    windowPosition: Vec2,
+    window_size: &Vec2,
+    projection: &PerspectiveProjection,
+    camera: &GlobeMapCamera,
+) -> houtu_scene::Ray {
+    if window_size.x <= 0. && window_size.y <= 0. {
+        return None;
+    }
+    return getPickRayPerspective(windowPosition, window_size, projection, camera);
+}
+pub fn getPickRayPerspective(
+    windowPosition: Vec2,
+    window_size: &Vec2,
+    projection: &PerspectiveProjection,
+    camera: &GlobeMapCamera,
+) -> houtu_scene::Ray {
+    let mut result = houtu_scene::Ray::default();
+    let width = window_size.x as f64;
+    let height = window_size.y as f64;
+    let aspectRatio = width / height;
+    let tanPhi = (projection.fov as f64 * 0.5).tan();
+    let tanTheta = aspectRatio * tanPhi;
+    let near = projection.near as f64;
+
+    let x = (2.0 / width) * windowPosition.x as f64 - 1.0;
+    let y = (2.0 / height) * (height - windowPosition.y as f64) - 1.0;
+
+    let position = camera.position_cartesian;
+    result.origin = position.clone();
+
+    let mut nearCenter = camera.direction.multiply_by_scalar(near);
+    nearCenter = position + nearCenter;
+    let xDir = camera.right.multiply_by_scalar(x * near * tanTheta);
+    let yDir = camera.up.multiply_by_scalar(y * near * tanPhi);
+    let mut direction = nearCenter + xDir;
+    direction = direction + yDir;
+    direction = direction + position;
+    direction = direction.normalize();
+    result.direction = direction;
+    return result;
+}
+
 fn globe_map_camera_system(
     mut query: Query<
         (

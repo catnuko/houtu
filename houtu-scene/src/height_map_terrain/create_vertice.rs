@@ -192,7 +192,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let mut minimumHeight: f64 = 65536.0;
     let mut maximumHeight: f64 = -65536.0;
 
-    let fromENU = eastNorthUpToFixedFrame(relativeToCenter, Some(ellipsoid));
+    let fromENU = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
     let toENU = fromENU.inverse_transformation();
     let webMercatorProjection = WebMercatorProjection::default();
     let mut southMercatorY = 0.;

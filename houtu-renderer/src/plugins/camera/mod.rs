@@ -23,7 +23,10 @@ use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_atmosphere::prelude::*;
 use houtu_scene::{Projection, *};
 
-use self::camera_new::{CameraControlPlugin, GlobeCamera};
+use self::{
+    camera_new::{CameraControlPlugin, GlobeCamera},
+    pan_orbit::pan_orbit_camera,
+};
 
 pub struct CameraPlugin;
 
@@ -34,7 +37,8 @@ impl bevy::app::Plugin for CameraPlugin {
             // .add_plugin(PanOrbitCameraPlugin)
             .add_plugin(CameraControlPlugin)
             .add_startup_system(setup)
-            .add_system(globe_map_camera_system);
+            .add_system(pan_orbit_camera);
+        // .add_system(globe_map_camera_system);
 
         // app.add_system(controller::pan_orbit_camera);
     }

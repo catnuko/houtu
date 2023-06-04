@@ -7,14 +7,14 @@ pub struct HeadingPitchRoll {
     pub roll: f64,
 }
 impl HeadingPitchRoll {
-    fn new(heading: f64, pitch: f64, roll: f64) -> Self {
+    pub fn new(heading: f64, pitch: f64, roll: f64) -> Self {
         return Self {
             heading: heading,
             pitch: pitch,
             roll: roll,
         };
     }
-    fn from_quaternion(quaternion: DQuat) -> Self {
+    pub fn from_quaternion(quaternion: DQuat) -> Self {
         let mut result = HeadingPitchRoll::default();
         let mut test = 2. * (quaternion.w * quaternion.y - quaternion.z * quaternion.x);
         let mut denominatorRoll =
@@ -28,21 +28,21 @@ impl HeadingPitchRoll {
         result.pitch = -1.0 * test.clamp(-1.0, 1.0).asin();
         return result;
     }
-    fn from_degrees(heading: f64, pitch: f64, roll: f64) -> Self {
+    pub fn from_degrees(heading: f64, pitch: f64, roll: f64) -> Self {
         return Self {
             heading: heading.to_radians(),
             pitch: pitch.to_radians(),
             roll: roll.to_radians(),
         };
     }
-    fn from_radians(heading: f64, pitch: f64, roll: f64) -> Self {
+    pub fn from_radians(heading: f64, pitch: f64, roll: f64) -> Self {
         return Self {
             heading: heading,
             pitch: pitch,
             roll: roll,
         };
     }
-    fn equals_epsilon(
+    pub fn equals_epsilon(
         &self,
         right: HeadingPitchRoll,
         relative_epsilon: Option<f64>,
@@ -90,7 +90,7 @@ mod tests {
             hpr.pitch = init[1];
             hpr.roll = init[2];
 
-            let result = HeadingPitchRoll::from_quaternion(DQuat::from_heading_pitch_roll(hpr));
+            let result = HeadingPitchRoll::from_quaternion(DQuat::from_heading_pitch_roll(&hpr));
             assert!(equals_epsilon(
                 init[0],
                 result.heading,

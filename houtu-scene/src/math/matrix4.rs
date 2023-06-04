@@ -93,12 +93,28 @@ pub trait Matrix4 {
     fn set_translation(&mut self, cartesian: &DVec3);
     fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4;
     fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4;
+    fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3;
 }
 impl Matrix4 for DMat4 {
     fn set_translation(&mut self, cartesian: &DVec3) {
         self.x_axis.w = cartesian.x;
         self.y_axis.w = cartesian.y;
         self.z_axis.w = cartesian.z;
+    }
+    fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3 {
+        let mut matrix: [f64; 16] = [
+            0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        ];
+        self.write_cols_to_slice(&mut matrix);
+        let vX = cartesian.x;
+        let vY = cartesian.y;
+        let vZ = cartesian.z;
+
+        let x = matrix[0] * vX + matrix[4] * vY + matrix[8] * vZ;
+        let y = matrix[1] * vX + matrix[5] * vY + matrix[9] * vZ;
+        let z = matrix[2] * vX + matrix[6] * vY + matrix[10] * vZ;
+
+        return DVec3::new(x, y, z);
     }
     fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4 {
         let mut matrix: [f64; 16] = [

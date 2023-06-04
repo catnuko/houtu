@@ -14,7 +14,13 @@ struct Test {
     west: DVec3,
     down: DVec3,
 }
-pub fn eastNorthUpToFixedFrame(origin: DVec3, ellipsoid: Option<Ellipsoid>) -> DMat4 {
+pub struct Transforms;
+impl Transforms {
+    pub fn eastNorthUpToFixedFrame(origin: &DVec3, ellipsoid: Option<Ellipsoid>) -> DMat4 {
+        eastNorthUpToFixedFrame(origin, ellipsoid)
+    }
+}
+pub fn eastNorthUpToFixedFrame(origin: &DVec3, ellipsoid: Option<Ellipsoid>) -> DMat4 {
     let mut scratchFirstCartesian = DVec3::default();
     let mut scratchSecondCartesian = DVec3::default();
     let mut scratchThirdCartesian = DVec3::default();
@@ -84,7 +90,7 @@ fn headingPitchRollToFixedFrame(
 ) -> DMat4 {
     let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
     let fixedFrameTransform = eastNorthUpToFixedFrame;
-    let hprQuaternion = DQuat::from_heading_pitch_roll(headingPitchRoll);
+    let hprQuaternion = DQuat::from_heading_pitch_roll(&headingPitchRoll);
 
     let hprMatrix = DMat4::from_scale_rotation_translation(
         DVec3::ZERO,
@@ -95,7 +101,7 @@ fn headingPitchRollToFixedFrame(
             z: 1.,
         },
     );
-    return fixedFrameTransform(origin, Some(ellipsoid)).mul_mat4(&hprMatrix);
+    return fixedFrameTransform(&origin, Some(ellipsoid)).mul_mat4(&hprMatrix);
 }
 #[cfg(test)]
 mod tests {
@@ -105,7 +111,7 @@ mod tests {
     #[test]
     fn test_init() {
         let origin = DVec3::new(0.0, 0.0, 1.0);
-        let result = eastNorthUpToFixedFrame(origin, None);
+        let result = eastNorthUpToFixedFrame(&origin, None);
         let negativeX = DVec4::new(-1., 0., 0., 0.);
         let negativeY = DVec4::new(0., -1., 0., 0.);
         let negativeZ = DVec4::new(0., 0., -1., 0.);

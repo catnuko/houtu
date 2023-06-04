@@ -1,6 +1,6 @@
 use bevy::math::DVec3;
 
-use crate::{Cartesian3, Ellipsoid, Plane, Ray, EPSILON15};
+use crate::{ellipsoid, Cartesian3, Ellipsoid, Plane, Ray, EPSILON15};
 #[derive(Default)]
 pub struct Interval {
     pub start: f64,
@@ -32,8 +32,8 @@ impl IntersectionTests {
 
         return Some(origin + direction.multiply_by_scalar(t));
     }
-    pub fn rayEllipsoid(ray: &Ray) -> Option<Interval> {
-        let ellipsoid = Ellipsoid::WGS84;
+    pub fn rayEllipsoid(ray: &Ray, ellipsoid: Option<&Ellipsoid>) -> Option<Interval> {
+        let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let inverseRadii = ellipsoid.oneOverRadii;
         let q = inverseRadii.multiply_components(&ray.origin);
         let w = inverseRadii.multiply_components(&ray.direction);
@@ -96,5 +96,41 @@ impl IntersectionTests {
 
         // qw >= 0.0.  Looking outward or tangent.
         return None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::f64::consts::PI;
+
+    use crate::math::{equals_epsilon, EPSILON14};
+
+    use super::*;
+
+    #[test]
+    fn ray_inside_pointing_in_intersection() {
+        let origin = DVec3::new(20000.0, 0.0, 0.0);
+        let direction = origin.normalize().negate();
+        let ray = Ray::new(origin, direction);
+        let actual = IntersectionTests::rayEllipsoid(&ray, None);
+        let actual = actual.unwrap();
+        assert!(actual.start == 0.0);
+        assert!(actual.stop == Ellipsoid::WGS84.radii.x + origin.x);
+    }
+    #[test]
+    fn ray_inside_pointing_out_intersection() {
+        let origin = DVec3::new(20000.0, 0.0, 0.0);
+        let direction = origin.normalize();
+        let ray = Ray::new(origin, direction);
+        let actual = IntersectionTests::rayEllipsoid(&ray, None);
+        let actual = actual.unwrap();
+        assert!(actual.start == 0.0);
+        assert!(actual.stop == Ellipsoid::WGS84.radii.x - origin.x);
+    }
+    #[test]
+    fn tangent_intersections() {
+        let ray = Ray::new(DVec3::UNIT_X, DVec3::UNIT_Z);
+        let actual = IntersectionTests::rayEllipsoid(&ray, Some(&Ellipsoid::UNIT_SPHERE));
+        assert!(actual.is_none());
     }
 }

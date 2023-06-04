@@ -1,41 +1,79 @@
 <script setup>
 import { onBeforeUnmount, onMounted } from 'vue';
+const {Cartesian2,Cartesian3,Camera,Scene,defaultValue,GeographicProjection,TweenCollection,MapMode2D   } = Cesium
+const CesiumMath = Cesium.Math
 let viewer
 onMounted(() => {
-    viewer = new Cesium.Viewer('map', {
-        terrainProvider: Cesium.createWorldTerrain()
-    })
-    viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
-        url:"https://maps.omniscale.net/v2/houtu-b8084b0b/style.default/{z}/{x}/{y}.png",
-        tilingScheme:new Cesium.WebMercatorTilingScheme(),
-    }))
-    
+    let scene;
+  let camera;
 
-    let tiling_scheme= new Cesium.GeographicTilingScheme()
-    let level = 0
-    let num_of_x_tiles = tiling_scheme.getNumberOfXTilesAtLevel(level);
-    let num_of_y_tiles = tiling_scheme.getNumberOfYTilesAtLevel(level);
-    for(let y=0;y<num_of_y_tiles;y++){
-      for (let x=0;x<num_of_x_tiles;x++){
-        let width = 16;
-            let height = 16;
-        let heigmapTerrainData = new Cesium.HeightmapTerrainData({
-          buffer: new Uint8Array(width * height),
-          width: width,
-          height: height,
-        })
-        heigmapTerrainData._createMeshSync({tilingScheme:tiling_scheme,x,y,level})
-      }
-    }
-    viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(0.0, 6378137, 0.0),
-        box: {
-            dimensions: new Cesium.Cartesian3(400000.0, 300000.0, 500000.0),
-            material: Cesium.Color.RED.withAlpha(0.5),
-            outline: true,
-            outlineColor: Cesium.Color.BLACK,
-        },
-    })
+  let position;
+  let up;
+  let dir;
+  let right;
+
+  const moveAmount = 3.0;
+  const turnAmount = CesiumMath.PI_OVER_TWO;
+  const rotateAmount = CesiumMath.PI_OVER_TWO;
+  const zoomAmount = 1.0;
+
+  function FakeScene(projection) {
+    this.canvas = {
+      clientWidth: 512,
+      clientHeight: 384,
+    };
+    this.drawingBufferWidth = 1024;
+    this.drawingBufferHeight = 768;
+    this.mapProjection = defaultValue(projection, new GeographicProjection());
+    this.tweens = new TweenCollection();
+    this.screenSpaceCameraController = {
+      minimumZoomDistance: 0,
+      maximumZoomDistance: 5906376272000.0, // distance from the Sun to Pluto in meters.
+    };
+    this.camera = undefined;
+    this.preloadFlightCamera = undefined;
+    this.context = {
+      drawingBufferWidth: 1024,
+      drawingBufferHeight: 768,
+    };
+    this.mapMode2D = MapMode2D.INFINITE_2D;
+  }
+  position = Cartesian3.clone(Cartesian3.UNIT_Z);
+    up = Cartesian3.clone(Cartesian3.UNIT_Y);
+    dir = Cartesian3.negate(Cartesian3.UNIT_Z, new Cartesian3());
+    right = Cartesian3.cross(dir, up, new Cartesian3());
+
+    scene = new FakeScene();
+
+    camera = new Camera(scene);
+    camera.position = Cartesian3.clone(position);
+    camera.up = Cartesian3.clone(up);
+    camera.direction = Cartesian3.clone(dir);
+    camera.right = Cartesian3.clone(right);
+
+    camera.minimumZoomDistance = 0.0;
+
+    scene.camera = camera;
+    scene.preloadFlightCamera = Camera.clone(camera);
+    camera._scene = scene;
+    scene.mapMode2D = MapMode2D.INFINITE_2D;
+  const windowCoord = new Cartesian2(
+      scene.canvas.clientWidth / 2,
+      scene.canvas.clientHeight
+    );
+    const ray = camera.getPickRay(windowCoord);
+
+    const windowHeight =
+      camera.frustum.near * Math.tan(camera.frustum.fovy * 0.5);
+    const expectedDirection = Cartesian3.normalize(
+      new Cartesian3(0.0, -windowHeight, -1.0),
+      new Cartesian3()
+    );
+    console.log(camera)
+    console.log(camera.position)
+    console.log(ray,)
+    console.log(expectedDirection)
+   
 })
 onBeforeUnmount(() => {
     viewer.destroy()

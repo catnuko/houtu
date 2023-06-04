@@ -1,16 +1,17 @@
-use super::pan_orbit::pan_orbit_camera;
+use super::pan_orbit::{pan_orbit_camera, to_mat4_32};
 use super::{camera_event_aggregator, egui};
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::math::{DMat3, DMat4, DQuat, DVec3};
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
+use bevy::render::primitives::Frustum;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_easings::Lerp;
 use bevy_egui::EguiSet;
 use egui::EguiWantsFocus;
 use houtu_scene::{
     acos_clamped, equals_epsilon, zero_to_two_pi, Cartesian3, Cartographic, Ellipsoid,
-    EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll, IntersectionTests, Matrix4,
+    EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4,
     Projection, Quaternion, Rectangle, Transforms, EPSILON2, EPSILON3, RADIANS_PER_DEGREE,
 };
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
@@ -21,6 +22,7 @@ pub struct CameraControlPlugin;
 impl Plugin for CameraControlPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(camera_event_aggregator::Plugin);
+        app.add_system(globe_camera_setup_system);
         // app.init_resource::<EguiWantsFocus>()
         //     .add_system(
         //         egui::check_egui_wants_focus
@@ -53,19 +55,32 @@ pub struct GlobeCameraFrustum {
 }
 impl Default for GlobeCameraFrustum {
     fn default() -> Self {
-        Self {
-            fov: 0.,
+        let mut me = Self {
+            fov: (60.0 as f64).to_radians(),
             near: 1.0,
             far: 500000000.0,
             xOffset: 0.0,
             yOffset: 0.0,
-            aspectRatio: 0.,
+            aspectRatio: 1.,
             _sseDenominator: 0.,
             fovy: 0.,
-        }
+        };
+        me.update_self();
+        return me;
     }
 }
-impl GlobeCameraFrustum {}
+impl GlobeCameraFrustum {
+    fn update_self(&mut self) {
+        self._sseDenominator = (2.0 * (0.5 * self.fov)).tan();
+        self.fovy = {
+            if self.aspectRatio <= 1.0 {
+                self.fov
+            } else {
+                ((self.fov * 0.5).tan() / self.aspectRatio).atan() * 2.0
+            }
+        };
+    }
+}
 
 #[derive(Component)]
 pub struct GlobeCamera {
@@ -110,7 +125,7 @@ pub struct GlobeCamera {
     pub _maxCoord: DVec3,
 
     pub frustum: GlobeCameraFrustum,
-    pub _modeChanged: bool,
+    inited: bool,
 }
 
 impl Default for GlobeCamera {
@@ -156,15 +171,50 @@ impl Default for GlobeCamera {
             hpr: HeadingPitchRoll::default(),
             _maxCoord: max_coord,
             frustum: GlobeCameraFrustum::default(),
-            _modeChanged: false,
+            inited: false,
         };
-        // me.updateViewMatrix();
-        // me.position = me
-        //     .rectangleCameraPosition3D(&GlobeCamera::DEFAULT_VIEW_RECTANGLE, Some(true))
-        //     .unwrap();
         return me;
     }
 }
+fn globe_camera_setup_system(
+    mut query: Query<
+        (
+            &mut GlobeCamera,
+            &mut Transform,
+            &Frustum,
+            &bevy::prelude::Projection,
+            &bevy::prelude::Camera,
+        ),
+        (With<Camera3d>, Changed<Transform>),
+    >,
+) {
+    for (mut globe_camera, transform, frustum, projection, camera) in &mut query {
+        if globe_camera.inited == true {
+            return;
+        }
+        globe_camera.inited = true;
+        if let bevy::prelude::Projection::Perspective(projection) = projection {
+            let frustum = &mut globe_camera.frustum;
+            frustum.far = projection.far as f64;
+            frustum.aspectRatio = projection.aspect_ratio as f64;
+            frustum.near = projection.near as f64;
+            frustum.fov = projection.fov as f64;
+        }
+        globe_camera.position = DVec3::new(
+            transform.translation.x as f64,
+            transform.translation.x as f64,
+            transform.translation.x as f64,
+        );
+        let rotMat = Mat3::from_quat(transform.rotation);
+        let x_axis = rotMat.x_axis;
+        let y_axis = rotMat.y_axis;
+        globe_camera.direction = DVec3::new(x_axis.x as f64, x_axis.y as f64, x_axis.z as f64);
+        globe_camera.up = DVec3::new(y_axis.x as f64, y_axis.y as f64, y_axis.z as f64);
+        globe_camera.right = globe_camera.direction.cross(globe_camera.up);
+        globe_camera.update_self();
+    }
+}
+
 pub struct DirectionUp {
     pub direction: DVec3,
     pub up: DVec3,
@@ -175,20 +225,63 @@ pub enum SetViewOrientation {
 }
 impl GlobeCamera {
     pub const DEFAULT_VIEW_RECTANGLE: Rectangle = Rectangle {
-        west: -95.0,
-        south: -20.0,
-        east: -70.0,
-        north: 90.0,
+        west: -1.6580627893946132,
+        south: -0.3490658503988659,
+        east: -1.2217304763960306,
+        north: 1.5707963267948966,
     };
-    pub fn get_positionWC(&mut self) -> DVec3 {
+    pub const DEFAULT_VIEW_FACTOR: f64 = 0.5;
+    fn update_self(&mut self) {
+        self.frustum.update_self();
         self.updateViewMatrix();
+        self.position = self
+            .rectangleCameraPosition3D(&GlobeCamera::DEFAULT_VIEW_RECTANGLE, Some(true))
+            .unwrap();
+
+        let mut mag = self.position.magnitude();
+        mag += mag * Self::DEFAULT_VIEW_FACTOR;
+        self.position = self.position.normalize().multiply_by_scalar(mag);
+        self.updateMembers();
+    }
+    pub fn get_position_wc(&mut self) -> DVec3 {
+        self.updateMembers();
         return self._positionWC;
     }
+    pub fn get_position_cartographic(&mut self) -> Cartographic {
+        self.updateMembers();
+        return self._positionCartographic;
+    }
+    pub fn get_direction_wc(&mut self) -> DVec3 {
+        self.updateMembers();
+        return self._directionWC;
+    }
+
+    pub fn get_up_wc(&mut self) -> DVec3 {
+        self.updateMembers();
+        return self._upWC;
+    }
+
+    pub fn get_right_wc(&mut self) -> DVec3 {
+        self.updateMembers();
+        return self._rightWC;
+    }
+
     pub fn updateViewMatrix(&mut self) {
         self._viewMatrix =
             DMat4::compute_view(&self.position, &self.direction, &self.up, &self.right);
         self._viewMatrix = self._viewMatrix * self._actualInvTransform;
         self._invViewMatrix = self._viewMatrix.inverse_transformation();
+    }
+    pub fn update_camera_matrix(&self, transform: &mut Transform) {
+        transform.translation = Vec3::new(
+            self.position.x as f32,
+            self.position.y as f32,
+            self.position.z as f32,
+        );
+        transform.rotation = Quat::from_mat4(&to_mat4_32(&self._transform));
+    }
+    pub fn getRectangleCameraCoordinates(&mut self, rectangle: &Rectangle) -> Option<DVec3> {
+        return self.rectangleCameraPosition3D(rectangle, None);
     }
     pub fn set_view(
         &mut self,
@@ -212,7 +305,7 @@ impl GlobeCamera {
         } else {
             HeadingPitchRoll::new(0.0, -FRAC_PI_2, 0.0)
         };
-        self.set_view_3d(&destination, &hpr)
+        self.set_view_3d(&destination, &hpr);
     }
     fn set_view_3d(&mut self, position: &DVec3, hpr: &HeadingPitchRoll) {
         let currentTransform = self._transform.clone();
@@ -231,9 +324,6 @@ impl GlobeCamera {
         self.right = self.direction.cross(self.up);
 
         self._setTransform(&currentTransform);
-    }
-    fn getRectangleCameraCoordinates(&mut self, rectangle: &Rectangle) -> Option<DVec3> {
-        return self.rectangleCameraPosition3D(rectangle, None);
     }
     fn directionUpToHeadingPitchRoll(
         &mut self,
@@ -301,7 +391,7 @@ impl GlobeCamera {
             self._right = self.right.normalize();
         }
 
-        let transformChanged = self._transformChanged || self._modeChanged;
+        let transformChanged = self._transformChanged;
         self._transformChanged = false;
 
         if (transformChanged) {
@@ -310,8 +400,6 @@ impl GlobeCamera {
             self._actualTransform = self._transform.clone();
 
             self._actualInvTransform = self._actualTransform.inverse_transformation();
-
-            self._modeChanged = false;
         }
 
         let transform = self._actualTransform;
@@ -361,46 +449,38 @@ impl GlobeCamera {
             self.updateViewMatrix();
         }
     }
-    pub fn zoom_in(&mut self, amout: Option<f64>) {}
-    pub fn zoom_out(&mut self, amout: Option<f64>) {}
-    pub fn move_direction(&mut self, direction: &DVec3, amout: f64) {
-        let moveScratch = direction.multiply_by_scalar(amout);
+    pub fn zoom_in(&mut self, amount: Option<f64>) {
+        let amount = amount.unwrap_or(self.defaultZoomAmount);
+        self.move_direction(&self.direction.clone(), amount);
+    }
+    pub fn zoom_out(&mut self, amount: Option<f64>) {
+        let amount = amount.unwrap_or(self.defaultZoomAmount);
+        self.move_direction(&self.direction.clone(), -amount);
+    }
+    pub fn move_direction(&mut self, direction: &DVec3, amount: f64) {
+        let moveScratch = direction.multiply_by_scalar(amount);
         let cameraPosition = self.position + moveScratch;
     }
-    pub fn rotate(&mut self, axis: DVec3, angle: f64) {}
-    pub fn getPickRay(
-        &mut self,
-        windowPosition: &Vec2,
-        window_size: &Vec2,
-        projection: &PerspectiveProjection,
-    ) -> Option<houtu_scene::Ray> {
-        if window_size.x <= 0. && window_size.y <= 0. {
-            return None;
-        }
-        return Some(self.getPickRayPerspective(windowPosition, window_size, projection));
+    pub fn rotate(&mut self, axis: DVec3, angle: Option<f64>) {
+        let turnAngle = angle.unwrap_or(self.defaultRotateAmount);
+        let quaternion = DQuat::from_axis_angle(axis, -turnAngle);
+        let rotation = DMat3::from_quat(quaternion);
+        self.position = rotation.multiply_by_vector(&self.position);
+        self.direction = rotation.multiply_by_vector(&self.direction);
+        self.up = rotation.multiply_by_vector(&self.up);
+        self.right = self.direction.cross(self.up);
+        self.up = self.right.cross(self.direction);
     }
-    pub fn pickEllipsoid(
-        &mut self,
-        windowPosition: &Vec2,
-        window_size: &Vec2,
-        projection: &PerspectiveProjection,
-    ) -> Option<DVec3> {
-        return self.pickEllipsoid3D(windowPosition, window_size, projection);
+    pub fn getPickRay(&mut self, windowPosition: &Vec2, window_size: &Vec2) -> houtu_scene::Ray {
+        return self.getPickRayPerspective(windowPosition, window_size);
     }
-    pub fn pickEllipsoid3D(
-        &mut self,
-        windowPosition: &Vec2,
-        window_size: &Vec2,
-        projection: &PerspectiveProjection,
-    ) -> Option<DVec3> {
+    pub fn pickEllipsoid(&mut self, windowPosition: &Vec2, window_size: &Vec2) -> Option<DVec3> {
+        return self.pickEllipsoid3D(windowPosition, window_size);
+    }
+    pub fn pickEllipsoid3D(&mut self, windowPosition: &Vec2, window_size: &Vec2) -> Option<DVec3> {
         let ellipsoid = Ellipsoid::WGS84;
-        let ray = if let Some(v) = self.getPickRay(windowPosition, window_size, projection) {
-            v
-        } else {
-            return None;
-        };
-
-        let intersection = IntersectionTests::rayEllipsoid(&ray);
+        let ray = self.getPickRay(windowPosition, window_size);
+        let intersection = IntersectionTests::rayEllipsoid(&ray, None);
         let intersection = if let Some(v) = intersection {
             v
         } else {
@@ -417,31 +497,26 @@ impl GlobeCamera {
         &mut self,
         windowPosition: &Vec2,
         window_size: &Vec2,
-        projection: &PerspectiveProjection,
     ) -> houtu_scene::Ray {
         let mut result = houtu_scene::Ray::default();
         let width = window_size.x as f64;
         let height = window_size.y as f64;
         let aspectRatio = width / height;
-        let tanPhi = (projection.fov as f64 * 0.5).tan();
+        let tanPhi = (self.frustum.fovy as f64 * 0.5).tan();
         let tanTheta = aspectRatio * tanPhi;
-        let near = projection.near as f64;
+        let near = self.frustum.near as f64;
 
         let x = (2.0 / width) * windowPosition.x as f64 - 1.0;
         let y = (2.0 / height) * (height - windowPosition.y as f64) - 1.0;
 
-        let position = self._positionWC;
+        let position = self.get_position_wc();
         result.origin = position.clone();
 
-        let mut nearCenter = self._directionWC.multiply_by_scalar(near);
+        let mut nearCenter = self.get_direction_wc().multiply_by_scalar(near);
         nearCenter = position + nearCenter;
-        let xDir = self._rightWC.multiply_by_scalar(x * near * tanTheta);
-        let yDir = self._upWC.multiply_by_scalar(y * near * tanPhi);
-        let mut direction = nearCenter + xDir;
-        direction = direction + yDir;
-        direction = direction + position;
-        direction = direction.normalize();
-        result.direction = direction;
+        let xDir = self.get_right_wc().multiply_by_scalar(x * near * tanTheta);
+        let yDir = self.get_up_wc().multiply_by_scalar(y * near * tanPhi);
+        result.direction = (nearCenter + xDir + yDir + position).normalize();
         return result;
     }
     pub fn rectangleCameraPosition3D(
@@ -458,7 +533,7 @@ impl GlobeCamera {
 
         // If we go across the International Date Line
         if (west > east) {
-            east += FRAC_PI_2;
+            east += TAU;
         }
 
         // Find the midpoint latitude.
@@ -599,4 +674,62 @@ fn getRoll(direction: &DVec3, up: &DVec3, right: &DVec3) -> f64 {
     }
 
     return roll;
+}
+
+#[cfg(test)]
+mod tests {
+    use houtu_scene::{EPSILON15, EPSILON6};
+
+    use super::*;
+    const clientWidth: f32 = 512.;
+    const clientHeight: f32 = 384.;
+    const drawingBufferWidth: f32 = 1024.;
+    const drawingBufferHeight: f32 = 768.;
+
+    #[test]
+    fn pick_ray_perspective() {
+        let mut camera = GlobeCamera::default();
+        camera.update_self();
+        camera.position = DVec3::UNIT_Z;
+        camera.up = DVec3::UNIT_Y;
+        camera.direction = DVec3::UNIT_Z.negate();
+        camera.right = camera.direction.cross(camera.up);
+        camera.frustum.aspectRatio = (clientWidth / clientHeight) as f64;
+        // camera.updateMembers();
+        let windowCoord = Vec2::new(clientWidth as f32 / 2.0, clientHeight as f32);
+        let ray = camera.getPickRay(
+            &windowCoord,
+            &Vec2::new(clientWidth as f32, clientHeight as f32),
+        );
+        let windowHeight = camera.frustum.near * (camera.frustum.fovy * 0.5).tan();
+        let expectedDirection = DVec3::new(0.0, -windowHeight, -1.0).normalize();
+        assert!(ray.origin.equals(camera.position));
+        assert!(ray
+            .direction
+            .equals_epsilon(expectedDirection, Some(EPSILON15), None));
+    }
+    #[test]
+    fn getRectangleCameraCoordinates() {
+        let mut camera = GlobeCamera::default();
+        camera.position = DVec3::UNIT_Z;
+        camera.up = DVec3::UNIT_Y;
+        camera.direction = DVec3::UNIT_Z.negate();
+        camera.right = camera.direction.cross(camera.up);
+        camera.frustum.aspectRatio = (clientWidth / clientHeight) as f64;
+        camera.update_self();
+        let rectangle = Rectangle::new(-PI, -FRAC_PI_2, PI, FRAC_PI_2);
+        let mut position = camera.position.clone();
+        let direction = camera.direction.clone();
+        let up = camera.up.clone();
+        let right = camera.right.clone();
+        position = camera.getRectangleCameraCoordinates(&rectangle).unwrap();
+        assert!(position.equals_epsilon(
+            DVec3::new(14680290.639204923, 0.0, 0.0),
+            Some(EPSILON6),
+            None
+        ));
+        assert!(camera.direction.equals(direction));
+        assert!(camera.up.equals(up));
+        assert!(camera.right.equals(right));
+    }
 }

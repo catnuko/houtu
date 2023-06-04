@@ -1,4 +1,6 @@
-use super::camera_event_aggregator::ControlEvent;
+use crate::plugins::camera::camera_new::SetViewOrientation;
+
+use super::camera_event_aggregator::{Aggregator, ControlEvent, EventStartPositionWrap};
 use super::camera_new::GlobeCamera;
 use super::{egui, GlobeCameraControl};
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
@@ -17,13 +19,15 @@ pub fn pan_orbit_camera(
     mut mouse_motion: EventReader<MouseMotion>,
     mut scroll_events: EventReader<MouseWheel>,
     primary_query: Query<&Window, With<PrimaryWindow>>,
+    mut event_start_position_wrap: ResMut<EventStartPositionWrap>,
+    mut aggregator: ResMut<Aggregator>,
     mut orbit_cameras: Query<(
         Entity,
         &mut Transform,
         &mut Projection,
         &mut GlobalTransform,
         &mut GlobeCamera,
-        &GlobeCameraControl,
+        &mut GlobeCameraControl,
     )>,
     mut control_event_rader: EventReader<ControlEvent>,
 ) {
@@ -42,328 +46,325 @@ pub fn pan_orbit_camera(
             mut transform,
             mut projection,
             global_transform,
-            globe_camera,
-            globe_camera_control,
-        ) in orbit_cameras.iter_mut()
+            mut globe_camera,
+            mut globe_camera_control,
+        ) in &mut orbit_cameras
         {
-            // let projection = if let Projection::Perspective(v) = *projection {
-            //     v
-            // } else {
-            //     return;
-            // };
-            // let camera_position_cartographic =
-            //     if let Some(v) = globe_camera_control.position_cartographic {
-            //         v
-            //     } else {
-            //         return;
-            //     };
+            let projection = if let Projection::Perspective(v) = &*projection {
+                v
+            } else {
+                return;
+            };
             match event {
                 ControlEvent::Zoom(data) => {
-                    // let movement = data.movement;
-                    // let mut windowPosition;
-                    // if globe_camera_control._cameraUnderground {
-                    //     windowPosition = movement.startPosition.clone();
-                    // } else {
-                    //     windowPosition = Vec2::ZERO;
-                    //     windowPosition.x = window_size.x / 2.0;
-                    //     windowPosition.y = window_size.y / 2.0;
-                    // }
-                    // let ray = globe_camera.getPickRay(&windowPosition, &window_size, &projection);
-                    // let ray = if let Some(v) = ray {
-                    //     v
-                    // } else {
-                    //     continue;
-                    // };
-                    // let position = ray.origin;
-                    // let direction = ray.direction;
-                    // let height = camera_position_cartographic.height;
-                    // let normal = DVec3::UNIT_X;
-                    // let distance = height;
-                    // let unitPosition = globe_camera_control.position_cartesian.normalize();
-                    // let unitPositionDotDirection = unitPosition.dot(globe_camera_control.direction);
-                    // let mut percentage = 1.0;
-                    // percentage = unitPositionDotDirection.abs().clamp(0.25, 1.0);
-                    // let diff = (movement.endPosition.y - movement.startPosition.y) as f64;
-                    // // distanceMeasure should be the height above the ellipsoid.
-                    // // When approaching the surface, the zoomRate slows and stops minimumZoomDistance above it.
-                    // let distanceMeasure = distance;
-                    // let zoomFactor = globe_camera_control._zoomFactor;
-                    // let approachingSurface = diff > 0.;
-                    // let minHeight = {
-                    //     if approachingSurface {
-                    //         globe_camera_control.minimumZoomDistance * percentage
-                    //     } else {
-                    //         0.
-                    //     }
-                    // };
-                    // let maxHeight = globe_camera_control.maximumZoomDistance;
+                    let startPosition =
+                        aggregator.getStartMousePosition("WHEEL", &event_start_position_wrap);
+                    let movement = &data.movement;
+                    let mut windowPosition;
+                    if globe_camera_control._cameraUnderground {
+                        windowPosition = startPosition.clone();
+                    } else {
+                        windowPosition = Vec2::ZERO;
+                        windowPosition.x = window_size.x / 2.0;
+                        windowPosition.y = window_size.y / 2.0;
+                    }
+                    let ray = globe_camera.getPickRay(&windowPosition, &window_size);
+                    let position = ray.origin;
+                    let direction = ray.direction;
+                    let height = Ellipsoid::WGS84
+                        .cartesianToCartographic(&globe_camera.position)
+                        .unwrap()
+                        .height;
+                    let normal = DVec3::UNIT_X;
+                    let distance = height;
+                    let unitPosition = globe_camera.position.normalize();
+                    let unitPositionDotDirection = unitPosition.dot(globe_camera.direction);
+                    let mut percentage = 1.0;
+                    percentage = unitPositionDotDirection.abs().clamp(0.25, 1.0);
+                    let diff = (movement.endPosition.y - movement.startPosition.y) as f64;
+                    // distanceMeasure should be the height above the ellipsoid.
+                    // When approaching the surface, the zoomRate slows and stops minimumZoomDistance above it.
+                    let distanceMeasure = distance;
+                    let zoomFactor = globe_camera_control._zoomFactor;
+                    let approachingSurface = diff > 0.;
+                    let minHeight = {
+                        if approachingSurface {
+                            globe_camera_control.minimumZoomDistance * percentage
+                        } else {
+                            0.
+                        }
+                    };
+                    let maxHeight = globe_camera_control.maximumZoomDistance;
 
-                    // let minDistance = distanceMeasure - minHeight;
-                    // let zoomRate = zoomFactor * minDistance;
-                    // zoomRate = zoomRate.clamp(
-                    //     globe_camera_control._minimumZoomRate,
-                    //     globe_camera_control._maximumZoomRate,
-                    // );
-                    // let startPosition = movement.startPosition;
-                    // let rangeWindowRatio = diff / window_size.y as f64;
-                    // rangeWindowRatio =
-                    //     rangeWindowRatio.min(globe_camera_control.maximumMovementRatio);
-                    // let distance = zoomRate * rangeWindowRatio;
+                    let minDistance = distanceMeasure - minHeight;
+                    let mut zoomRate = zoomFactor * minDistance;
+                    zoomRate = zoomRate.clamp(
+                        globe_camera_control._minimumZoomRate,
+                        globe_camera_control._maximumZoomRate,
+                    );
+                    let mut rangeWindowRatio = diff / window_size.y as f64;
+                    rangeWindowRatio =
+                        rangeWindowRatio.min(globe_camera_control.maximumMovementRatio);
+                    let mut distance = zoomRate * rangeWindowRatio;
 
-                    // if globe_camera_control.enableCollisionDetection
-                    //     || globe_camera_control.minimumZoomDistance == 0.0
-                    // // || !defined(globe_camera_control._globe)
-                    // // look-at mode
-                    // {
-                    //     if (distance > 0.0 && (distanceMeasure - minHeight).abs() < 1.0) {
-                    //         continue;
-                    //     }
+                    if globe_camera_control.enableCollisionDetection
+                        || globe_camera_control.minimumZoomDistance == 0.0
+                    // || !defined(globe_camera_control._globe)
+                    // look-at mode
+                    {
+                        if (distance > 0.0 && (distanceMeasure - minHeight).abs() < 1.0) {
+                            continue;
+                        }
 
-                    //     if (distance < 0.0 && (distanceMeasure - maxHeight).abs() < 1.0) {
-                    //         continue;
-                    //     }
+                        if (distance < 0.0 && (distanceMeasure - maxHeight).abs() < 1.0) {
+                            continue;
+                        }
 
-                    //     if (distanceMeasure - distance < minHeight) {
-                    //         distance = distanceMeasure - minHeight - 1.0;
-                    //     } else if (distanceMeasure - distance > maxHeight) {
-                    //         distance = distanceMeasure - maxHeight;
-                    //     }
-                    // }
+                        if (distanceMeasure - distance < minHeight) {
+                            distance = distanceMeasure - minHeight - 1.0;
+                        } else if (distanceMeasure - distance > maxHeight) {
+                            distance = distanceMeasure - maxHeight;
+                        }
+                    }
 
-                    // // let scene = globe_camera_control._scene;
-                    // // let camera = scene.camera;
-                    // // let mode = scene.mode;
+                    // let scene = globe_camera_control._scene;
+                    // let camera = scene.camera;
+                    // let mode = scene.mode;
 
-                    // let orientation = HeadingPitchRoll::default();
-                    // orientation.heading = globe_camera.hpr.heading;
-                    // orientation.pitch = globe_camera.hpr.pitch;
-                    // orientation.roll = globe_camera.hpr.roll;
+                    let mut hpr = HeadingPitchRoll::default();
+                    hpr.heading = globe_camera.hpr.heading;
+                    hpr.pitch = globe_camera.hpr.pitch;
+                    hpr.roll = globe_camera.hpr.roll;
 
-                    // let sameStartPosition = startPosition.eq(&globe_camera_control._zoomMouseStart);
-                    // let zoomingOnVector = globe_camera_control._zoomingOnVector;
-                    // let rotatingZoom = globe_camera_control._rotatingZoom;
-                    // let pickedPosition;
+                    let sameStartPosition = startPosition.eq(&globe_camera_control._zoomMouseStart);
+                    let mut zoomingOnVector = globe_camera_control._zoomingOnVector;
+                    let mut rotatingZoom = globe_camera_control._rotatingZoom;
+                    let pickedPosition;
 
-                    // if (!sameStartPosition) {
-                    //     pickedPosition =
-                    //         globe_camera.pickEllipsoid(&startPosition, &window_size, &projection);
+                    if (!sameStartPosition) {
+                        pickedPosition = globe_camera.pickEllipsoid(&startPosition, &window_size);
 
-                    //     globe_camera_control._zoomMouseStart = startPosition.clone();
-                    //     if (pickedPosition.is_some()) {
-                    //         globe_camera_control._useZoomWorldPosition = true;
-                    //         globe_camera_control._zoomWorldPosition =
-                    //             pickedPosition.unwrap().clone();
-                    //     } else {
-                    //         globe_camera_control._useZoomWorldPosition = false;
-                    //     }
+                        globe_camera_control._zoomMouseStart = startPosition.clone();
+                        if (pickedPosition.is_some()) {
+                            globe_camera_control._useZoomWorldPosition = true;
+                            globe_camera_control._zoomWorldPosition =
+                                pickedPosition.unwrap().clone();
+                        } else {
+                            globe_camera_control._useZoomWorldPosition = false;
+                        }
 
-                    //     zoomingOnVector = false;
-                    //     globe_camera_control._zoomingOnVector = false;
-                    //     rotatingZoom = false;
-                    //     globe_camera_control._rotatingZoom = false;
-                    //     globe_camera_control._zoomingUnderground =
-                    //         globe_camera_control._cameraUnderground;
-                    // }
+                        zoomingOnVector = false;
+                        globe_camera_control._zoomingOnVector = false;
+                        rotatingZoom = false;
+                        globe_camera_control._rotatingZoom = false;
+                        globe_camera_control._zoomingUnderground =
+                            globe_camera_control._cameraUnderground;
+                    }
 
-                    // if (!globe_camera_control._useZoomWorldPosition) {
-                    //     globe_camera.zoom_in(Some(distance));
-                    //     return;
-                    // }
+                    if (!globe_camera_control._useZoomWorldPosition) {
+                        globe_camera.zoom_in(Some(distance));
+                        globe_camera.update_camera_matrix(&mut transform);
+                        return;
+                    }
 
-                    // let zoomOnVector = false;
+                    let mut zoomOnVector = false;
 
-                    // if (camera_position_cartographic.height < 2000000.) {
-                    //     rotatingZoom = true;
-                    // }
+                    if (globe_camera._positionCartographic.height < 2000000.) {
+                        rotatingZoom = true;
+                    }
 
-                    // if (!sameStartPosition || rotatingZoom) {
-                    //     let cameraPositionNormal =
-                    //         globe_camera_control.position_cartesian.normalize();
-                    //     if (globe_camera_control._cameraUnderground
-                    //         || globe_camera_control._zoomingUnderground
-                    //         || (camera_position_cartographic.height < 3000.0
-                    //             && (globe_camera_control.direction.dot(cameraPositionNormal))
-                    //                 .abs()
-                    //                 < 0.6))
-                    //     {
-                    //         zoomOnVector = true;
-                    //     } else {
-                    //         let centerPixel = Vec2::ZERO;
-                    //         centerPixel.x = window_size.x / 2.;
-                    //         centerPixel.y = window_size.y / 2.;
-                    //         //TODO: pickEllipsoid取代globe.pick，此刻还没加载地形和模型，所以暂时这么做
-                    //         let centerPosition =
-                    //             globe_camera.pickEllipsoid(&centerPixel, &window_size, &projection);
-                    //         // If centerPosition is not defined, it means the globe does not cover the center position of screen
+                    if (!sameStartPosition || rotatingZoom) {
+                        let cameraPositionNormal = globe_camera.position.normalize();
+                        if (globe_camera_control._cameraUnderground
+                            || globe_camera_control._zoomingUnderground
+                            || (globe_camera._positionCartographic.height < 3000.0
+                                && (globe_camera.direction.dot(cameraPositionNormal)).abs() < 0.6))
+                        {
+                            zoomOnVector = true;
+                        } else {
+                            let mut centerPixel = Vec2::ZERO;
+                            centerPixel.x = window_size.x / 2.;
+                            centerPixel.y = window_size.y / 2.;
+                            //TODO: pickEllipsoid取代globe.pick，此刻还没加载地形和模型，所以暂时这么做
+                            let centerPosition =
+                                globe_camera.pickEllipsoid(&centerPixel, &window_size);
+                            // If centerPosition is not defined, it means the globe does not cover the center position of screen
 
-                    //         if (centerPosition.is_none()) {
-                    //             zoomOnVector = true;
-                    //         } else if (camera_position_cartographic.height < 1000000.) {
-                    //             // The math in the else block assumes the camera
-                    //             // points toward the earth surface, so we check it here.
-                    //             // Theoretically, we should check for 90 degree, but it doesn't behave well when parallel
-                    //             // to the earth surface
-                    //             if (globe_camera_control.direction.dot(cameraPositionNormal)
-                    //                 >= -0.5)
-                    //             {
-                    //                 zoomOnVector = true;
-                    //             } else {
-                    //                 let cameraPosition =
-                    //                     globe_camera_control.position_cartesian.clone();
-                    //                 let target = globe_camera_control._zoomWorldPosition;
+                            if (centerPosition.is_none()) {
+                                zoomOnVector = true;
+                            } else if (globe_camera._positionCartographic.height < 1000000.) {
+                                // The math in the else block assumes the camera
+                                // points toward the earth surface, so we check it here.
+                                // Theoretically, we should check for 90 degree, but it doesn't behave well when parallel
+                                // to the earth surface
+                                if (globe_camera.direction.dot(cameraPositionNormal) >= -0.5) {
+                                    zoomOnVector = true;
+                                } else {
+                                    let mut cameraPosition = globe_camera.position.clone();
+                                    let target = globe_camera_control._zoomWorldPosition;
 
-                    //                 let targetNormal = DVec3::ZERO;
+                                    let mut targetNormal = DVec3::ZERO;
 
-                    //                 targetNormal = target.normalize();
+                                    targetNormal = target.normalize();
 
-                    //                 if (targetNormal.dot(cameraPositionNormal) < 0.0) {
-                    //                     return;
-                    //                 }
+                                    if (targetNormal.dot(cameraPositionNormal) < 0.0) {
+                                        globe_camera.update_camera_matrix(&mut transform);
+                                        return;
+                                    }
 
-                    //                 let center = DVec3::ZERO;
-                    //                 let forward = DVec3::ZERO;
-                    //                 forward = globe_camera_control.direction.clone();
-                    //                 center = cameraPosition + forward.multiply_by_scalar(1000.);
+                                    let mut center = DVec3::ZERO;
+                                    let mut forward = DVec3::ZERO;
+                                    forward = globe_camera.direction.clone();
+                                    center = cameraPosition + forward.multiply_by_scalar(1000.);
 
-                    //                 let positionToTarget = DVec3::ZERO;
-                    //                 let positionToTargetNormal = DVec3::ZERO;
-                    //                 positionToTarget = target.subtract(cameraPosition);
+                                    let mut positionToTarget = DVec3::ZERO;
+                                    let mut positionToTargetNormal = DVec3::ZERO;
+                                    positionToTarget = target.subtract(cameraPosition);
 
-                    //                 positionToTargetNormal = positionToTarget.normalize();
+                                    positionToTargetNormal = positionToTarget.normalize();
 
-                    //                 let alphaDot = cameraPositionNormal.dot(positionToTargetNormal);
-                    //                 if (alphaDot >= 0.0) {
-                    //                     // We zoomed past the target, and this zoom is not valid anymore.
-                    //                     // This line causes the next zoom movement to pick a new starting point.
-                    //                     globe_camera_control._zoomMouseStart.x = -1.0;
-                    //                     return;
-                    //                 }
-                    //                 let alpha = (-alphaDot).acos();
-                    //                 let cameraDistance = cameraPosition.magnitude();
-                    //                 let targetDistance = target.magnitude();
-                    //                 let remainingDistance = cameraDistance - distance;
-                    //                 let positionToTargetDistance = positionToTarget.magnitude();
+                                    let alphaDot = cameraPositionNormal.dot(positionToTargetNormal);
+                                    if (alphaDot >= 0.0) {
+                                        // We zoomed past the target, and this zoom is not valid anymore.
+                                        // This line causes the next zoom movement to pick a new starting point.
+                                        globe_camera_control._zoomMouseStart.x = -1.0;
+                                        globe_camera.update_camera_matrix(&mut transform);
+                                        return;
+                                    }
+                                    let alpha = (-alphaDot).acos();
+                                    let cameraDistance = cameraPosition.magnitude();
+                                    let targetDistance = target.magnitude();
+                                    let remainingDistance = cameraDistance - distance;
+                                    let positionToTargetDistance = positionToTarget.magnitude();
 
-                    //                 let gamma = ((positionToTargetDistance / targetDistance)
-                    //                     * alpha.sin())
-                    //                 .clamp(-1.0, 1.0)
-                    //                 .asin();
+                                    let gamma = ((positionToTargetDistance / targetDistance)
+                                        * alpha.sin())
+                                    .clamp(-1.0, 1.0)
+                                    .asin();
 
-                    //                 let delta = ((remainingDistance / targetDistance)
-                    //                     * alpha.sin())
-                    //                 .clamp(-1.0, 1.0)
-                    //                 .asin();
+                                    let delta = ((remainingDistance / targetDistance)
+                                        * alpha.sin())
+                                    .clamp(-1.0, 1.0)
+                                    .asin();
 
-                    //                 let beta = gamma - delta + alpha;
+                                    let beta = gamma - delta + alpha;
 
-                    //                 let mut up = DVec3::ZERO;
-                    //                 up = cameraPosition.normalize();
-                    //                 let right = DVec3::ZERO;
-                    //                 right = positionToTargetNormal.cross(up);
-                    //                 right = right.normalize();
+                                    let mut up = DVec3::ZERO;
+                                    up = cameraPosition.normalize();
+                                    let mut right = DVec3::ZERO;
+                                    right = positionToTargetNormal.cross(up);
+                                    right = right.normalize();
 
-                    //                 forward = up.cross(right).normalize();
+                                    forward = up.cross(right).normalize();
 
-                    //                 // Calculate new position to move to
-                    //                 center = center
-                    //                     .normalize()
-                    //                     .multiply_by_scalar(center.magnitude() - distance);
-                    //                 cameraPosition = cameraPosition.normalize();
-                    //                 cameraPosition.multiply_by_scalar(remainingDistance);
+                                    // Calculate new position to move to
+                                    center = center
+                                        .normalize()
+                                        .multiply_by_scalar(center.magnitude() - distance);
+                                    cameraPosition = cameraPosition.normalize();
+                                    cameraPosition.multiply_by_scalar(remainingDistance);
 
-                    //                 // Pan
-                    //                 let pMid = DVec3::ZERO;
-                    //                 pMid = (up.multiply_by_scalar(beta.cos() - 1.)
-                    //                     + forward.multiply_by_scalar(beta.sin()))
-                    //                 .multiply_by_scalar(remainingDistance);
-                    //                 cameraPosition = cameraPosition + pMid;
+                                    // Pan
+                                    let mut pMid = DVec3::ZERO;
+                                    pMid = (up.multiply_by_scalar(beta.cos() - 1.)
+                                        + forward.multiply_by_scalar(beta.sin()))
+                                    .multiply_by_scalar(remainingDistance);
+                                    cameraPosition = cameraPosition + pMid;
 
-                    //                 up = center.normalize();
-                    //                 forward = up.cross(right).normalize();
+                                    up = center.normalize();
+                                    forward = up.cross(right).normalize();
 
-                    //                 let cMid = DVec3::ZERO;
-                    //                 cMid = (up.multiply_by_scalar(beta.cos() - 1.)
-                    //                     + forward.multiply_by_scalar(beta.sin()))
-                    //                 .multiply_by_scalar(center.magnitude());
-                    //                 center = center + cMid;
+                                    let mut cMid = DVec3::ZERO;
+                                    cMid = (up.multiply_by_scalar(beta.cos() - 1.)
+                                        + forward.multiply_by_scalar(beta.sin()))
+                                    .multiply_by_scalar(center.magnitude());
+                                    center = center + cMid;
 
-                    //                 // Update camera
+                                    // Update camera
 
-                    //                 // Set new position
-                    //                 globe_camera_control.position_cartesian = cameraPosition;
+                                    // Set new position
+                                    globe_camera.position = cameraPosition;
 
-                    //                 // Set new direction
-                    //                 globe_camera_control.direction =
-                    //                     center.subtract(cameraPosition).normalize();
-                    //                 globe_camera_control.direction =
-                    //                     globe_camera_control.direction.clone();
-                    //                 // Set new right & up vectors
-                    //                 globe_camera_control.right = globe_camera_control
-                    //                     .direction
-                    //                     .cross(globe_camera_control.up);
-                    //                 globe_camera_control.up = globe_camera_control
-                    //                     .right
-                    //                     .cross(globe_camera_control.direction);
+                                    // Set new direction
+                                    globe_camera.direction =
+                                        center.subtract(cameraPosition).normalize();
+                                    globe_camera.direction = globe_camera.direction.clone();
+                                    // Set new right & up vectors
+                                    globe_camera.right =
+                                        globe_camera.direction.cross(globe_camera.up);
+                                    globe_camera.up =
+                                        globe_camera.right.cross(globe_camera.direction);
 
-                    //                 globe_camera.set_view(None, Some(orientation), None, None);
-                    //                 return;
-                    //             }
-                    //         } else {
-                    //             let positionNormal = centerPosition.unwrap().normalize();
-                    //             let pickedNormal =
-                    //                 globe_camera_control._zoomWorldPosition.normalize();
-                    //             let dotProduct = pickedNormal.dot(positionNormal);
+                                    globe_camera.set_view(
+                                        None,
+                                        Some(SetViewOrientation::HeadingPitchRoll(hpr)),
+                                        None,
+                                        None,
+                                    );
+                                    return;
+                                }
+                            } else {
+                                let positionNormal = centerPosition.unwrap().normalize();
+                                let pickedNormal =
+                                    globe_camera_control._zoomWorldPosition.normalize();
+                                let dotProduct = pickedNormal.dot(positionNormal);
 
-                    //             if (dotProduct > 0.0 && dotProduct < 1.0) {
-                    //                 let angle = acos_clamped(dotProduct);
-                    //                 let axis = pickedNormal.cross(positionNormal);
+                                if (dotProduct > 0.0 && dotProduct < 1.0) {
+                                    let angle = acos_clamped(dotProduct);
+                                    let axis = pickedNormal.cross(positionNormal);
 
-                    //                 let denom = {
-                    //                     if angle.abs() > (20.0 as f64).to_radians() {
-                    //                         camera_position_cartographic.height * 0.75
-                    //                     } else {
-                    //                         camera_position_cartographic.height - distance
-                    //                     }
-                    //                 };
+                                    let denom = {
+                                        if angle.abs() > (20.0 as f64).to_radians() {
+                                            globe_camera._positionCartographic.height * 0.75
+                                        } else {
+                                            globe_camera._positionCartographic.height - distance
+                                        }
+                                    };
 
-                    //                 let scalar = distance / denom;
-                    //                 globe_camera.rotate(axis, angle * scalar);
-                    //             }
-                    //         }
-                    //     }
+                                    let scalar = distance / denom;
+                                    globe_camera.rotate(axis, Some(angle * scalar));
+                                }
+                            }
+                        }
 
-                    //     globe_camera_control._rotatingZoom = !zoomOnVector;
-                    // }
+                        globe_camera_control._rotatingZoom = !zoomOnVector;
+                    }
 
-                    // if ((!sameStartPosition && zoomOnVector) || zoomingOnVector) {
-                    //     let ray;
-                    //     let zoomMouseStart = SceneTransforms::wgs84ToWindowCoordinates(
-                    //         &globe_camera_control._zoomWorldPosition,
-                    //         &window_size,
-                    //         &global_transform.compute_matrix(),
-                    //         projection.get_projection_matrix(),
-                    //     );
-                    //     if (startPosition.eq(&globe_camera_control._zoomMouseStart)
-                    //         && zoomMouseStart.is_some())
-                    //     {
-                    //         let v = zoomMouseStart.unwrap();
-                    //         ray = globe_camera
-                    //             .getPickRay(&v, &window_size, &projection)
-                    //             .unwrap();
-                    //     }
+                    if ((!sameStartPosition && zoomOnVector) || zoomingOnVector) {
+                        let ray;
+                        let zoomMouseStart = SceneTransforms::wgs84ToWindowCoordinates(
+                            &globe_camera_control._zoomWorldPosition,
+                            &window_size,
+                            &to_mat4_64(&global_transform.compute_matrix()),
+                            &to_mat4_64(&projection.get_projection_matrix()),
+                        );
+                        if (startPosition.eq(&globe_camera_control._zoomMouseStart)
+                            && zoomMouseStart.is_some())
+                        {
+                            let v = zoomMouseStart.unwrap();
+                            ray = globe_camera.getPickRay(&v, &window_size)
+                        } else {
+                            ray = globe_camera.getPickRay(&startPosition, &window_size);
+                        }
 
-                    //     let rayDirection = ray.direction;
+                        let rayDirection = ray.direction;
 
-                    //     globe_camera.move_direction(&rayDirection, distance);
+                        globe_camera.move_direction(&rayDirection, distance);
 
-                    //     globe_camera_control._zoomingOnVector = true;
-                    // } else {
-                    //     globe_camera.zoom_in(Some(distance));
-                    // }
+                        globe_camera_control._zoomingOnVector = true;
+                    } else {
+                        globe_camera.zoom_in(Some(distance));
+                    }
 
-                    // if (!globe_camera_control._cameraUnderground) {
-                    //     globe_camera.set_view(None, Some(orientation), None, None);
-                    // }
+                    if (!globe_camera_control._cameraUnderground) {
+                        globe_camera.set_view(
+                            None,
+                            Some(SetViewOrientation::HeadingPitchRoll(hpr)),
+                            None,
+                            None,
+                        );
+                    }
+                    globe_camera.update_camera_matrix(&mut transform);
                     println!("controlevent zoom {:?}", data);
                 }
 
@@ -377,6 +378,30 @@ pub fn pan_orbit_camera(
             }
         }
     }
+}
+pub fn to_mat4_64(mat4: &Mat4) -> DMat4 {
+    let mut matrix: [f32; 16] = [
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+    ];
+    mat4.write_cols_to_slice(&mut matrix);
+    let mut new_matrix: [f64; 16] = [0.; 16];
+    matrix
+        .iter()
+        .enumerate()
+        .for_each(|(i, x)| new_matrix[i] = x.clone() as f64);
+    return DMat4::from_cols_array(&new_matrix);
+}
+pub fn to_mat4_32(mat4: &DMat4) -> Mat4 {
+    let mut matrix: [f64; 16] = [
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+    ];
+    mat4.write_cols_to_slice(&mut matrix);
+    let mut new_matrix: [f32; 16] = [0.; 16];
+    matrix
+        .iter()
+        .enumerate()
+        .for_each(|(i, x)| new_matrix[i] = x.clone() as f32);
+    return Mat4::from_cols_array(&new_matrix);
 }
 // pub fn getZoomDistanceUnderground(
 //     ellipsoid: &Ellipsoid,

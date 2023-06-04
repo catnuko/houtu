@@ -39,7 +39,7 @@ fn setup(
         mesh: meshes.add(mesh),
         material: debug_material.into(),
         transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        visibility: Visibility::Hidden,
+        // visibility: Visibility::Hidden,
         ..default()
     },));
     commands.spawn((MaterialMeshBundle {

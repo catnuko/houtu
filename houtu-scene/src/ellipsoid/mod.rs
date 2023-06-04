@@ -198,7 +198,7 @@ impl Ellipsoid {
         let intersection = cartesian.multiply_by_scalar(ratio);
         // If the position is near the center, the iteration will not converge.
         if (squaredNorm < centerToleranceSquared) {
-            if !ratio.is_infinite() {
+            if !ratio.is_finite() {
                 return None;
             } else {
                 return Some(intersection);

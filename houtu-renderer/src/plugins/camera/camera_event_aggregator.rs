@@ -15,6 +15,9 @@ use bevy::{
     utils::HashMap,
     window::{PrimaryWindow, WindowRef},
 };
+use bevy_egui::EguiSet;
+
+use super::egui::{self, EguiWantsFocus};
 pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
@@ -65,6 +68,18 @@ pub struct Aggregator {
     _currentMousePosition: Vec2,
     _buttonsDown: u32,
     _eventStartPosition: Vec2,
+}
+impl Aggregator {
+    pub fn getStartMousePosition(
+        &self,
+        typeName: &'static str,
+        event_start_position_wrap: &EventStartPositionWrap,
+    ) -> Vec2 {
+        if typeName == WHEEL {
+            return self._currentMousePosition.clone();
+        }
+        return event_start_position_wrap.get(typeName).unwrap().clone();
+    }
 }
 const WHEEL: &'static str = "WHEEL";
 const LEFT_DRAG: &'static str = "LEFT_DRAG";
@@ -270,7 +285,10 @@ pub fn default_input_map(
         update_wrap.insert(typeName, true);
     }
 }
-
+/// Base system set to allow ordering of `PanOrbitCamera`
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[system_set(base)]
+pub struct PanOrbitCameraSystemSet;
 pub struct ScreenSpaceEventHandlerPlugin;
 impl bevy::prelude::Plugin for ScreenSpaceEventHandlerPlugin {
     fn build(&self, app: &mut App) {
@@ -279,9 +297,24 @@ impl bevy::prelude::Plugin for ScreenSpaceEventHandlerPlugin {
         app.insert_resource(PreviousPositionsWrap::default());
         app.insert_resource(IsButtonDownWrap::default());
         app.add_event::<MouseEvent>();
-        app.add_system(screen_space_event_hanlder_system);
+        app.add_system(screen_space_event_hanlder_system.in_base_set(PanOrbitCameraSystemSet));
+        {
+            app.init_resource::<EguiWantsFocus>()
+                .add_system(
+                    egui::check_egui_wants_focus
+                        .after(EguiSet::InitContexts)
+                        .before(PanOrbitCameraSystemSet),
+                )
+                .configure_set(
+                    PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
+                        prev: false,
+                        curr: false,
+                    })),
+                );
+        }
     }
 }
+
 const Left: &'static str = "Left";
 const Right: &'static str = "Right";
 const Middle: &'static str = "Middle";
@@ -374,8 +407,8 @@ pub fn screen_space_event_hanlder_system(
             return;
         };
         let position = Vec2::new(
-            raw_position.x - left_top.x as f32,
-            raw_position.y - left_top.y as f32,
+            raw_position.x as f32,
+            window.height() - raw_position.y as f32,
         );
 
         //收集移动事件

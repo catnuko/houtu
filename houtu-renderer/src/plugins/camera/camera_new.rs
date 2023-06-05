@@ -188,7 +188,7 @@ fn globe_camera_setup_system(
         (With<Camera3d>, Changed<Transform>),
     >,
 ) {
-    for (mut globe_camera, transform, frustum, projection, camera) in &mut query {
+    for (mut globe_camera, mut transform, frustum, projection, camera) in &mut query {
         if globe_camera.inited == true {
             return;
         }
@@ -212,6 +212,7 @@ fn globe_camera_setup_system(
         globe_camera.up = DVec3::new(y_axis.x as f64, y_axis.y as f64, y_axis.z as f64);
         globe_camera.right = globe_camera.direction.cross(globe_camera.up);
         globe_camera.update_self();
+        globe_camera.update_camera_matrix(&mut transform);
     }
 }
 
@@ -264,6 +265,63 @@ impl GlobeCamera {
     pub fn get_right_wc(&mut self) -> DVec3 {
         self.updateMembers();
         return self._rightWC;
+    }
+    pub fn get_transform(&mut self) -> DMat4 {
+        return self._transform;
+    }
+    pub fn get_inverse_transform(&mut self) -> DMat4 {
+        self.updateMembers();
+        return self._transform;
+    }
+    pub fn get_view_matrix(&mut self) -> DMat4 {
+        self.updateMembers();
+        return self._transform;
+    }
+    pub fn get_inverse_view_matrix(&mut self) -> DMat4 {
+        self.updateMembers();
+        return self._transform;
+    }
+    pub fn get_heading(&mut self) -> f64 {
+        let ellipsoid = Ellipsoid::WGS84;
+
+        let oldTransform = self._transform.clone();
+        let transform =
+            Transforms::eastNorthUpToFixedFrame(&self.get_position_wc(), Some(ellipsoid));
+        self._setTransform(&transform);
+
+        let heading = getHeading(&self.direction, &self.up);
+
+        self._setTransform(&oldTransform);
+
+        return heading;
+    }
+    pub fn get_pitch(&mut self) -> f64 {
+        let ellipsoid = Ellipsoid::WGS84;
+
+        let oldTransform = self._transform.clone();
+        let transform =
+            Transforms::eastNorthUpToFixedFrame(&self.get_position_wc(), Some(ellipsoid));
+        self._setTransform(&transform);
+
+        let pitch = getPitch(&self.direction);
+
+        self._setTransform(&oldTransform);
+
+        return pitch;
+    }
+    pub fn get_roll(&mut self) -> f64 {
+        let ellipsoid = Ellipsoid::WGS84;
+
+        let oldTransform = self._transform.clone();
+        let transform =
+            Transforms::eastNorthUpToFixedFrame(&self.get_position_wc(), Some(ellipsoid));
+        self._setTransform(&transform);
+
+        let roll = getRoll(&self.direction, &self.up, &self.right);
+
+        self._setTransform(&oldTransform);
+
+        return roll;
     }
 
     pub fn updateViewMatrix(&mut self) {
@@ -516,7 +574,7 @@ impl GlobeCamera {
         nearCenter = position + nearCenter;
         let xDir = self.get_right_wc().multiply_by_scalar(x * near * tanTheta);
         let yDir = self.get_up_wc().multiply_by_scalar(y * near * tanPhi);
-        result.direction = (nearCenter + xDir + yDir + position).normalize();
+        result.direction = (nearCenter + xDir + yDir - position).normalize();
         return result;
     }
     pub fn rectangleCameraPosition3D(
@@ -678,13 +736,27 @@ fn getRoll(direction: &DVec3, up: &DVec3, right: &DVec3) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use houtu_scene::{EPSILON15, EPSILON6};
+    use houtu_scene::{EPSILON10, EPSILON15, EPSILON6};
 
     use super::*;
     const clientWidth: f32 = 512.;
     const clientHeight: f32 = 384.;
     const drawingBufferWidth: f32 = 1024.;
     const drawingBufferHeight: f32 = 768.;
+
+    const moveAmount: f64 = 3.0;
+    const turnAmount: f64 = FRAC_PI_2;
+    const rotateAmount: f64 = FRAC_PI_2;
+    const zoomAmount: f64 = 1.0;
+
+    const position: DVec3 = DVec3::UNIT_Z;
+    const up: DVec3 = DVec3::UNIT_Y;
+    const direction: DVec3 = DVec3 {
+        x: 0.,
+        y: 0.,
+        z: -1.0,
+    };
+    const right: DVec3 = DVec3::UNIT_X;
 
     #[test]
     fn pick_ray_perspective() {
@@ -695,6 +767,7 @@ mod tests {
         camera.direction = DVec3::UNIT_Z.negate();
         camera.right = camera.direction.cross(camera.up);
         camera.frustum.aspectRatio = (clientWidth / clientHeight) as f64;
+        camera.frustum.update_self();
         // camera.updateMembers();
         let windowCoord = Vec2::new(clientWidth as f32 / 2.0, clientHeight as f32);
         let ray = camera.getPickRay(
@@ -718,18 +791,59 @@ mod tests {
         camera.frustum.aspectRatio = (clientWidth / clientHeight) as f64;
         camera.update_self();
         let rectangle = Rectangle::new(-PI, -FRAC_PI_2, PI, FRAC_PI_2);
-        let mut position = camera.position.clone();
-        let direction = camera.direction.clone();
-        let up = camera.up.clone();
-        let right = camera.right.clone();
-        position = camera.getRectangleCameraCoordinates(&rectangle).unwrap();
-        assert!(position.equals_epsilon(
+        let mut position_1 = camera.position.clone();
+        let direction_1 = camera.direction.clone();
+        let up_1 = camera.up.clone();
+        let right_1 = camera.right.clone();
+        position_1 = camera.getRectangleCameraCoordinates(&rectangle).unwrap();
+        assert!(position_1.equals_epsilon(
             DVec3::new(14680290.639204923, 0.0, 0.0),
             Some(EPSILON6),
             None
         ));
-        assert!(camera.direction.equals(direction));
+        assert!(camera.direction.equals(direction_1));
+        assert!(camera.up.equals(up_1));
+        assert!(camera.right.equals(right_1));
+    }
+    #[test]
+    fn move_test() {
+        let mut camera = get_camera();
+        let dir = DVec3::new(1.0, 1.0, 1.0).normalize();
+        camera.move_direction(&dir, moveAmount);
+        assert!(camera.position.equals_epsilon(
+            DVec3::new(dir.x * moveAmount, dir.y * moveAmount, 1.0),
+            Some(EPSILON10),
+            None
+        ));
         assert!(camera.up.equals(up));
+        assert!(camera.direction.equals(direction));
         assert!(camera.right.equals(right));
+    }
+    fn get_camera() -> GlobeCamera {
+        let mut camera = GlobeCamera::default();
+        camera.update_self();
+        camera.position = DVec3::UNIT_Z;
+        camera.up = DVec3::UNIT_Y;
+        camera.direction = DVec3::UNIT_Z.negate();
+        camera.right = camera.direction.cross(camera.up);
+        camera.frustum.aspectRatio = (clientWidth / clientHeight) as f64;
+        camera.update_self();
+        return camera;
+    }
+    #[test]
+    fn set_transform() {
+        let mut camera = get_camera();
+        camera._setTransform(&DMat4::from_cols(
+            [5.0, 0.0, 0.0, 0.0].into(),
+            [0.0, 5.0, 0.0, 0.0].into(),
+            [0.0, 0.0, 5.0, 0.0].into(),
+            [1.0, 2.0, 3.0, 1.0].into(),
+        ));
+        assert!(camera.get_transform() == camera.get_inverse_transform());
+    }
+    #[test]
+    fn get_inverse_view_matrix() {
+        let mut camera = get_camera();
+        assert!(camera.get_view_matrix().inverse() == camera.get_inverse_view_matrix());
     }
 }

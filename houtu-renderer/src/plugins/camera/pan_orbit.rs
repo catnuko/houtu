@@ -132,9 +132,9 @@ pub fn pan_orbit_camera(
                     // let mode = scene.mode;
 
                     let mut hpr = HeadingPitchRoll::default();
-                    hpr.heading = globe_camera.hpr.heading;
-                    hpr.pitch = globe_camera.hpr.pitch;
-                    hpr.roll = globe_camera.hpr.roll;
+                    hpr.heading = globe_camera.get_heading();
+                    hpr.pitch = globe_camera.get_pitch();
+                    hpr.roll = globe_camera.get_roll();
 
                     let sameStartPosition = startPosition.eq(&globe_camera_control._zoomMouseStart);
                     let mut zoomingOnVector = globe_camera_control._zoomingOnVector;

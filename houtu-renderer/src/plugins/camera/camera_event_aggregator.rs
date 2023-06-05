@@ -517,7 +517,8 @@ pub fn screen_space_event_hanlder_system(
                         "Scroll (line units): vertical: {}, horizontal: {}",
                         ev.y, ev.x
                     );
-                    delta = -ev.y * 40.0;
+                    //[-1,1]=>[-100,100]
+                    delta = ev.y * 100.;
                 }
                 MouseScrollUnit::Pixel => {
                     delta = -ev.y;

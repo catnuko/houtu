@@ -169,7 +169,7 @@ pub fn pan_orbit_camera(
 
                     let mut zoomOnVector = false;
 
-                    if (globe_camera._positionCartographic.height < 2000000.) {
+                    if (globe_camera.get_position_cartographic().height < 2000000.) {
                         rotatingZoom = true;
                     }
 
@@ -177,7 +177,7 @@ pub fn pan_orbit_camera(
                         let cameraPositionNormal = globe_camera.position.normalize();
                         if (globe_camera_control._cameraUnderground
                             || globe_camera_control._zoomingUnderground
-                            || (globe_camera._positionCartographic.height < 3000.0
+                            || (globe_camera.get_position_cartographic().height < 3000.0
                                 && (globe_camera.direction.dot(cameraPositionNormal)).abs() < 0.6))
                         {
                             zoomOnVector = true;
@@ -192,7 +192,7 @@ pub fn pan_orbit_camera(
 
                             if (centerPosition.is_none()) {
                                 zoomOnVector = true;
-                            } else if (globe_camera._positionCartographic.height < 1000000.) {
+                            } else if (globe_camera.get_position_cartographic().height < 1000000.) {
                                 // The math in the else block assumes the camera
                                 // points toward the earth surface, so we check it here.
                                 // Theoretically, we should check for 90 degree, but it doesn't behave well when parallel
@@ -315,9 +315,10 @@ pub fn pan_orbit_camera(
 
                                     let denom = {
                                         if angle.abs() > (20.0 as f64).to_radians() {
-                                            globe_camera._positionCartographic.height * 0.75
+                                            globe_camera.get_position_cartographic().height * 0.75
                                         } else {
-                                            globe_camera._positionCartographic.height - distance
+                                            globe_camera.get_position_cartographic().height
+                                                - distance
                                         }
                                     };
 

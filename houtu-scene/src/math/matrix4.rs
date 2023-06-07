@@ -3,7 +3,7 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use bevy::math::{DMat3, DMat4, DVec3, DVec4};
+use bevy::math::{DMat3, DMat4, DQuat, DVec3, DVec4};
 
 use crate::{ellipsoid::Ellipsoid, math::*, BoundingRectangle};
 pub trait Matrix3 {
@@ -21,6 +21,9 @@ pub trait Matrix3 {
     fn set_column(&mut self, index: usize, cartesian: &DVec3);
     fn multiply_by_vector(&self, cartesian: &DVec3) -> DVec3;
     fn get_column(&self, index: usize) -> DVec3;
+    fn equals_epsilon(&self, right: &DMat3, epsilon: f64) -> bool;
+    fn from_quaternion(quaternion: &DQuat) -> DMat3;
+    fn from_row_list(slice: [f64; 9]) -> DMat3;
 }
 impl Matrix3 for DMat3 {
     const COLUMN0ROW0: usize = 0;
@@ -32,6 +35,52 @@ impl Matrix3 for DMat3 {
     const COLUMN2ROW0: usize = 6;
     const COLUMN2ROW1: usize = 7;
     const COLUMN2ROW2: usize = 8;
+    fn from_quaternion(quaternion: &DQuat) -> DMat3 {
+        let x2 = quaternion.x * quaternion.x;
+        let xy = quaternion.x * quaternion.y;
+        let xz = quaternion.x * quaternion.z;
+        let xw = quaternion.x * quaternion.w;
+        let y2 = quaternion.y * quaternion.y;
+        let yz = quaternion.y * quaternion.z;
+        let yw = quaternion.y * quaternion.w;
+        let z2 = quaternion.z * quaternion.z;
+        let zw = quaternion.z * quaternion.w;
+        let w2 = quaternion.w * quaternion.w;
+
+        let m00 = x2 - y2 - z2 + w2;
+        let m01 = 2.0 * (xy - zw);
+        let m02 = 2.0 * (xz + yw);
+
+        let m10 = 2.0 * (xy + zw);
+        let m11 = -x2 + y2 - z2 + w2;
+        let m12 = 2.0 * (yz - xw);
+
+        let m20 = 2.0 * (xz - yw);
+        let m21 = 2.0 * (yz + xw);
+        let m22 = -x2 - y2 + z2 + w2;
+        return Self::from_row_list([m00, m01, m02, m10, m11, m12, m20, m21, m22]);
+        // return Matrix3(m00, m01, m02, m10, m11, m12, m20, m21, m22);
+    }
+    fn from_row_list(slice: [f64; 9]) -> DMat3 {
+        return make_matrix3_from_row(slice);
+    }
+    fn equals_epsilon(&self, right: &DMat3, epsilon: f64) -> bool {
+        let mut slice: [f64; 9] = [0.; 9];
+        self.write_cols_to_slice(&mut slice);
+
+        let mut slice2: [f64; 9] = [0.; 9];
+        right.write_cols_to_slice(&mut slice2);
+
+        return (slice[0] - slice2[0]).abs() <= epsilon
+            && (slice[1] - slice2[1]).abs() <= epsilon
+            && (slice[2] - slice2[2]).abs() <= epsilon
+            && (slice[3] - slice2[3]).abs() <= epsilon
+            && (slice[4] - slice2[4]).abs() <= epsilon
+            && (slice[5] - slice2[5]).abs() <= epsilon
+            && (slice[6] - slice2[6]).abs() <= epsilon
+            && (slice[7] - slice2[7]).abs() <= epsilon
+            && (slice[8] - slice2[8]).abs() <= epsilon;
+    }
     fn multiply_by_scale(&self, scale: DVec3) -> DMat3 {
         let mut result = self.clone();
         result.x_axis = result.x_axis * scale.x;
@@ -87,6 +136,22 @@ impl Matrix3 for DMat3 {
         return result;
     }
 }
+fn make_matrix4_from_row(slice: [f64; 16]) -> DMat4 {
+    DMat4 {
+        x_axis: [slice[0], slice[4], slice[8], slice[12]].into(),
+        y_axis: [slice[1], slice[5], slice[9], slice[13]].into(),
+        z_axis: [slice[2], slice[6], slice[10], slice[14]].into(),
+        w_axis: [slice[3], slice[7], slice[11], slice[15]].into(),
+    }
+}
+fn make_matrix3_from_row(slice: [f64; 9]) -> DMat3 {
+    DMat3 {
+        x_axis: [slice[0], slice[3], slice[6]].into(),
+        y_axis: [slice[1], slice[4], slice[7]].into(),
+        z_axis: [slice[2], slice[5], slice[8]].into(),
+    }
+}
+
 pub trait Matrix4 {
     fn inverse_transformation(&self) -> DMat4;
     fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3;
@@ -183,23 +248,14 @@ impl Matrix4 for DMat4 {
     fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3 {
         let mut slice: [f64; 16] = [0.; 16];
         self.write_cols_to_slice(&mut slice);
-        let matrix0 = slice[0];
-        let matrix1 = slice[1];
-        let matrix2 = slice[2];
-        let matrix4 = slice[4];
-        let matrix5 = slice[5];
-        let matrix6 = slice[6];
-        let matrix8 = slice[8];
-        let matrix9 = slice[9];
-        let matrix10 = slice[10];
 
         let vX = cartesian.x;
         let vY = cartesian.y;
         let vZ = cartesian.z;
 
-        let x = matrix0 * vX + matrix1 * vY + matrix2 * vZ + slice[12];
-        let y = matrix4 * vX + matrix5 * vY + matrix6 * vZ + slice[13];
-        let z = matrix8 * vX + matrix9 * vY + matrix10 * vZ + slice[14];
+        let x = slice[0] * vX + slice[4] * vY + slice[8] * vZ + slice[12];
+        let y = slice[1] * vX + slice[5] * vY + slice[9] * vZ + slice[13];
+        let z = slice[2] * vX + slice[6] * vY + slice[10] * vZ + slice[14];
         return DVec3::new(x, y, z);
     }
     fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4 {

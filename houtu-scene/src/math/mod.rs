@@ -12,6 +12,7 @@ use bevy::{
 mod cartesian3;
 mod cartesian4;
 mod cartographic;
+mod heading_pitch_range;
 mod heading_pitch_roll;
 mod matrix4;
 mod transform;
@@ -19,6 +20,7 @@ pub use cartesian3::*;
 mod quaternion;
 pub use cartesian4::*;
 pub use cartographic::*;
+pub use heading_pitch_range::*;
 pub use heading_pitch_roll::*;
 pub use matrix4::*;
 pub use quaternion::*;
@@ -156,7 +158,7 @@ pub fn zero_to_two_pi(angle: f64) -> f64 {
     if angle >= 0. && angle <= TAU {
         return angle;
     }
-    let mode = angle % TAU;
+    let mode = angle.get_mod(TAU);
     if mode.abs() < epsilon::EPSILON14 && angle.abs() > epsilon::EPSILON14 {
         return TAU;
     }

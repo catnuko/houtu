@@ -4,7 +4,7 @@ use bevy::math::DVec3;
 
 use crate::ellipsoid::Ellipsoid;
 use crate::math::*;
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct Cartographic {
     pub longitude: f64,
     pub latitude: f64,

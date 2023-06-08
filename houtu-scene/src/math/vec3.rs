@@ -19,6 +19,17 @@ pub fn to_col_major(v: &[f64; 9]) -> [f64; 9] {
     result[8] = v[8];
     return result;
 }
+pub fn equals_epsilon_f32(
+    left: f32,
+    right: f32,
+    relative_epsilon: Option<f32>,
+    absolute_epsilon: Option<f32>,
+) -> bool {
+    let relative_epsilon = relative_epsilon.unwrap_or(0.0);
+    let absolute_epsilon = absolute_epsilon.unwrap_or(relative_epsilon);
+    let diff = (left - right).abs();
+    return diff <= absolute_epsilon || diff <= relative_epsilon * left.abs();
+}
 pub fn equals_epsilon(
     left: f64,
     right: f64,

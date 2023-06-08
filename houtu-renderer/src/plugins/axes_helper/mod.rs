@@ -35,7 +35,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
 ) {
-    let length = (Ellipsoid::WGS84.maximumRadius as f32) + 1000000.0;
+    let length = (Ellipsoid::WGS84.maximumRadius as f32) + 10000000.0;
     // Spawn a list of lines with start and end points for each lines
     commands.spawn(MaterialMeshBundle {
         mesh: meshes.add(Mesh::from(LineList {

@@ -244,7 +244,6 @@ impl GlobeCamera {
             .rectangleCameraPosition3D(&GlobeCamera::DEFAULT_VIEW_RECTANGLE, Some(true))
             .unwrap();
         self.position = DVec3::new(0., 0., 11347315.0);
-
         // let mut mag = self.position.magnitude();
         // mag += mag * Self::DEFAULT_VIEW_FACTOR;
         // self.position = self.position.normalize().multiply_by_scalar(mag);

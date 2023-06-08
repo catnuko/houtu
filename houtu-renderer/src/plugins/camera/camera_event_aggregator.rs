@@ -16,6 +16,7 @@ use bevy::{
     window::{PrimaryWindow, WindowRef},
 };
 use bevy_egui::EguiSet;
+use houtu_scene::{epsilon_f32::EPSILON14, Cartesian2};
 
 use super::egui::{self, EguiWantsFocus};
 pub struct Plugin;
@@ -24,6 +25,7 @@ impl bevy::app::Plugin for Plugin {
         app.add_plugin(ScreenSpaceEventHandlerPlugin);
         app.add_event::<ControlEvent>();
         app.add_system(default_input_map);
+        app.add_system(maintain_inertia_system);
         app.insert_resource(Aggregator::default());
 
         app.insert_resource(UpdateWrap::default());
@@ -34,6 +36,8 @@ impl bevy::app::Plugin for Plugin {
         app.insert_resource(LastMovementWrap::default());
         app.insert_resource(PressTimetWrap::default());
         app.insert_resource(ReleaseTimeWrap::default());
+
+        app.insert_resource(MovementStateWrap::default());
         app.add_startup_system(setup);
     }
 }
@@ -48,6 +52,15 @@ pub struct LastMovement {
 pub struct Movement {
     pub startPosition: Vec2,
     pub endPosition: Vec2,
+}
+impl Movement {
+    fn into_state(&self, v: bool) -> MovementState {
+        MovementState {
+            startPosition: self.startPosition.clone(),
+            endPosition: self.endPosition.clone(),
+            inertiaEnabled: v,
+        }
+    }
 }
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct UpdateWrap(HashMap<&'static str, bool>);
@@ -89,9 +102,9 @@ const PINCH: &'static str = "PINCH";
 const cameraEventType: [&'static str; 4] = [WHEEL, LEFT_DRAG, RIGHT_DRAG, MIDDLE_DRAG];
 #[derive(Debug)]
 pub struct ControlEventData {
-    pub movement: Movement,
-    // pub press_time: f64,
-    // pub release_time: f64,
+    pub movement: MovementState,
+    pub startPosition: Vec2, // pub press_time: f64,
+                             // pub release_time: f64,
 }
 pub enum ControlEvent {
     Tilt(ControlEventData),
@@ -109,7 +122,6 @@ fn setup(
 }
 pub fn default_input_map(
     time: Res<Time>,
-    mut control_event_writer: EventWriter<ControlEvent>,
     mut update_wrap: ResMut<UpdateWrap>,
     mut is_down_wrap: ResMut<IsDownWrap>,
     mut event_start_position_wrap: ResMut<EventStartPositionWrap>,
@@ -252,38 +264,246 @@ pub fn default_input_map(
             _ => {}
         }
     }
+}
 
+#[derive(Debug, Default, Clone)]
+pub struct MovementState {
+    pub startPosition: Vec2,
+    pub endPosition: Vec2,
+    pub inertiaEnabled: bool,
+}
+#[derive(Default, Debug, Resource, Deref, DerefMut)]
+pub struct MovementStateWrap(HashMap<&'static str, MovementState>);
+
+pub fn maintain_inertia_system(
+    mut control_event_writer: EventWriter<ControlEvent>,
+    mut update_wrap: ResMut<UpdateWrap>,
+    mut movement_wrap: ResMut<MovementWrap>,
+    mut event_start_position_wrap: ResMut<EventStartPositionWrap>,
+    mut last_movement_wrap: ResMut<LastMovementWrap>,
+    mut press_time_wrap: ResMut<PressTimetWrap>,
+    mut release_time_wrap: ResMut<ReleaseTimeWrap>,
+    mut aggregator: ResMut<Aggregator>,
+    mut mouse_event_reader: EventReader<MouseEvent>,
+    mut movement_state_wrap: ResMut<MovementStateWrap>,
+    mut is_down_wrap: ResMut<IsDownWrap>,
+    time: Res<Time>,
+) {
     for typeName in cameraEventType {
         //isMoving
         if !update_wrap.get(typeName).unwrap() {
+            let startPosition =
+                aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
             if let Some(movement) = movement_wrap.get(typeName) {
-                // let press_time = press_time_wrap.get(typeName).unwrap();
-                // let release_time = release_time_wrap.get(typeName).unwrap();
                 match typeName {
-                    WHEEL => control_event_writer.send(ControlEvent::Zoom(ControlEventData {
-                        movement: movement.clone(),
-                        // press_time: press_time.clone(),
-                        // release_time: release_time.clone(),
-                    })),
-                    LEFT_DRAG => control_event_writer.send(ControlEvent::Spin(ControlEventData {
-                        movement: movement.clone(),
-                        // press_time: press_time.clone(),
-                        // release_time: release_time.clone(),
-                    })),
+                    WHEEL => {
+                        control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+                            movement: movement.into_state(false),
+                            startPosition: startPosition,
+                        }));
+                        activate_inertia(&mut movement_state_wrap, "_lastInertiaZoomMovement");
+                    }
+                    LEFT_DRAG => {
+                        control_event_writer.send(ControlEvent::Spin(ControlEventData {
+                            movement: movement.into_state(false),
+                            startPosition: startPosition,
+                        }));
+                        activate_inertia(&mut movement_state_wrap, "_lastInertiaSpinMovement");
+                    }
                     MIDDLE_DRAG => {
                         control_event_writer.send(ControlEvent::Tilt(ControlEventData {
-                            movement: movement.clone(),
-                            // press_time: press_time.clone(),
-                            // release_time: release_time.clone(),
-                        }))
+                            movement: movement.into_state(false),
+                            startPosition: startPosition,
+                        }));
+                        activate_inertia(&mut movement_state_wrap, "_lastInertiaTiltMovement");
                     }
                     _ => {}
                 }
+            }
+        } else {
+            match typeName {
+                WHEEL => {
+                    if maintain_inertia(
+                        &mut movement_state_wrap,
+                        typeName,
+                        "_lastInertiaZoomMovement",
+                        0.9,
+                        &press_time_wrap,
+                        &release_time_wrap,
+                        &last_movement_wrap,
+                        &is_down_wrap,
+                        &event_start_position_wrap,
+                        &aggregator,
+                        &time,
+                    ) {
+                        let startPosition =
+                            aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+                        let movement = movement_state_wrap.get("_lastInertiaZoomMovement").unwrap();
+                        control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+                            movement: movement.clone(),
+                            startPosition: startPosition,
+                        }))
+                    }
+                }
+                LEFT_DRAG => {
+                    if maintain_inertia(
+                        &mut movement_state_wrap,
+                        typeName,
+                        "_lastInertiaSpinMovement",
+                        0.9,
+                        &press_time_wrap,
+                        &release_time_wrap,
+                        &last_movement_wrap,
+                        &is_down_wrap,
+                        &event_start_position_wrap,
+                        &aggregator,
+                        &time,
+                    ) {
+                        let startPosition =
+                            aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+                        let movement = movement_state_wrap.get("_lastInertiaSpinMovement").unwrap();
+                        control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+                            movement: movement.clone(),
+                            startPosition: startPosition,
+                        }))
+                    }
+                }
+                MIDDLE_DRAG => {
+                    if maintain_inertia(
+                        &mut movement_state_wrap,
+                        typeName,
+                        "_lastInertiaTiltMovement",
+                        0.9,
+                        &press_time_wrap,
+                        &release_time_wrap,
+                        &last_movement_wrap,
+                        &is_down_wrap,
+                        &event_start_position_wrap,
+                        &aggregator,
+                        &time,
+                    ) {
+                        let startPosition =
+                            aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+                        let movement = movement_state_wrap.get("_lastInertiaTiltMovement").unwrap();
+                        control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+                            movement: movement.clone(),
+                            startPosition: startPosition,
+                        }))
+                    }
+                }
+                _ => {}
             }
         }
         //重置状态
         update_wrap.insert(typeName, true);
     }
+}
+fn activate_inertia(
+    movement_state_wrap: &mut ResMut<MovementStateWrap>,
+    lastMovementName: &'static str,
+) {
+    if let Some(movement_state) = movement_state_wrap.get_mut(lastMovementName) {
+        movement_state.inertiaEnabled = true;
+    }
+    let mut last_movement_name_list: Vec<&'static str>;
+    if lastMovementName == "_lastInertiaZoomMovement" {
+        last_movement_name_list = [
+            "_lastInertiaSpinMovement",
+            "_lastInertiaTranslateMovement",
+            "_lastInertiaTiltMovement",
+        ]
+        .into();
+    } else if lastMovementName == "_lastInertiaTiltMovement" {
+        last_movement_name_list =
+            ["_lastInertiaSpinMovement", "_lastInertiaTranslateMovement"].into();
+    } else {
+        last_movement_name_list = Vec::new();
+    }
+    for last_movement_name in last_movement_name_list {
+        if let Some(movement_state) = movement_state_wrap.get_mut(last_movement_name) {
+            movement_state.inertiaEnabled = false;
+        }
+    }
+}
+const inertiaMaxClickTimeThreshold: f64 = 0.4;
+fn maintain_inertia(
+    movement_state_wrap: &mut ResMut<MovementStateWrap>,
+    typeName: &'static str,
+    lastMovementName: &'static str,
+    inertiaConstant: f64,
+    press_time_wrap: &ResMut<PressTimetWrap>,
+    release_time_wrap: &ResMut<ReleaseTimeWrap>,
+    last_movement_wrap: &ResMut<LastMovementWrap>,
+    is_down_wrap: &ResMut<IsDownWrap>,
+    event_start_position_wrap: &ResMut<EventStartPositionWrap>,
+    aggregator: &ResMut<Aggregator>,
+    time: &Res<Time>,
+) -> bool {
+    let mut movement_state = match movement_state_wrap.get_mut(lastMovementName) {
+        None => {
+            let v = MovementState::default();
+            movement_state_wrap.insert(lastMovementName, v);
+            movement_state_wrap.get_mut(lastMovementName).unwrap()
+        }
+        Some(v) => v,
+    };
+
+    let ts = press_time_wrap.get(typeName);
+    let tr = release_time_wrap.get(typeName);
+    if ts.is_none() || tr.is_none() {
+        return false;
+    }
+    let ts = ts.unwrap();
+    let tr = tr.unwrap();
+
+    let threshold = (tr - ts);
+    let now = time.elapsed_seconds_f64();
+    let fromNow = (now - tr);
+
+    if (threshold < inertiaMaxClickTimeThreshold) {
+        let d = decay(fromNow, inertiaConstant);
+
+        let lastMovement = last_movement_wrap.get(typeName);
+        if lastMovement.is_none() || !movement_state.inertiaEnabled {
+            return false;
+        }
+        let lastMovement = lastMovement.unwrap();
+        if lastMovement.startPosition.equals_epsilon(
+            lastMovement.endPosition,
+            Some(EPSILON14),
+            None,
+        ) {
+            return false;
+        }
+        let mut motion = Vec2::ZERO;
+        motion.x = (lastMovement.endPosition.x - lastMovement.startPosition.x) * 0.5;
+        motion.y = (lastMovement.endPosition.y - lastMovement.startPosition.y) * 0.5;
+
+        movement_state.startPosition = lastMovement.startPosition.clone();
+
+        movement_state.endPosition = motion.multiply_by_scalar(d as f32);
+        movement_state.endPosition = movement_state.startPosition + movement_state.endPosition;
+
+        // If value from the decreasing exponential function is close to zero,
+        // the end coordinates may be NaN.
+        if (movement_state.endPosition.x.is_nan()
+            || movement_state.endPosition.y.is_nan()
+            || movement_state
+                .startPosition
+                .distance(movement_state.endPosition)
+                < 0.5)
+        {
+            return false;
+        }
+
+        if (is_down_wrap.get(typeName).is_none()) {
+            // let startPosition =
+            //     aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+            // action(object, startPosition, movement_state);
+            return true;
+        }
+    }
+    return false;
 }
 /// Base system set to allow ordering of `PanOrbitCamera`
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -369,6 +589,14 @@ impl Default for ScreenSpaceEventHandler {
             _isPinching: false,
         }
     }
+}
+fn decay(time: f64, coefficient: f64) -> f64 {
+    if (time < 0.) {
+        return 0.0;
+    }
+
+    let tau = (1.0 - coefficient) * 25.0;
+    return (-tau * time).exp();
 }
 pub enum MouseEvent {
     MouseMove(Movement),

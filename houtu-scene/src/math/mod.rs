@@ -9,13 +9,16 @@ use bevy::{
     // math::{DMat3, DVec3},
     prelude::*,
 };
+mod cartesian2;
 mod cartesian3;
 mod cartesian4;
 mod cartographic;
+pub mod epsilon_f32;
 mod heading_pitch_range;
 mod heading_pitch_roll;
 mod matrix4;
 mod transform;
+pub use cartesian2::*;
 pub use cartesian3::*;
 mod quaternion;
 pub use cartesian4::*;

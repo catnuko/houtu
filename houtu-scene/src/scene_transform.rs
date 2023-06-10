@@ -1,7 +1,4 @@
-use bevy::{
-    math::{DMat4, DVec2, DVec3, DVec4},
-    prelude::Vec2,
-};
+use bevy::math::{DMat4, DVec2, DVec3, DVec4};
 
 use crate::{
     lerp, BoundingRectangle, Cartesian3, Cartesian4, Ellipsoid, GeographicProjection, Matrix4,
@@ -13,10 +10,10 @@ pub struct SceneTransforms;
 impl SceneTransforms {
     pub fn wgs84ToWindowCoordinates(
         position: &DVec3,
-        window_size: &Vec2,
+        window_size: &DVec2,
         view_matrix: &DMat4,
         projection_matrix: &DMat4,
-    ) -> Option<Vec2> {
+    ) -> Option<DVec2> {
         return SceneTransforms::wgs84WithEyeOffsetToWindowCoordinates(
             position,
             &DVec3::ZERO,
@@ -28,10 +25,10 @@ impl SceneTransforms {
     pub fn wgs84WithEyeOffsetToWindowCoordinates(
         position: &DVec3,
         eyeOffset: &DVec3,
-        window_size: &Vec2,
+        window_size: &DVec2,
         view_matrix: &DMat4,
         projection_matrix: &DMat4,
-    ) -> Option<Vec2> {
+    ) -> Option<DVec2> {
         // let frameState = scene.frameState;
         let actualPosition = SceneTransforms::computeActualWgs84Position(position);
         if actualPosition.is_none() {
@@ -48,7 +45,7 @@ impl SceneTransforms {
 
         // let camera = scene.camera;
         let cameraCentered = false;
-        let mut result = Vec2::ZERO;
+        let mut result = DVec2::ZERO;
         if (cameraCentered) {
             // View-projection matrix to transform from world coordinates to clip coordinates
             let positionCC =
@@ -79,7 +76,7 @@ impl SceneTransforms {
             return None;
         }
     }
-    pub fn clipToGLWindowCoordinates(viewport: &BoundingRectangle, position: &DVec4) -> Vec2 {
+    pub fn clipToGLWindowCoordinates(viewport: &BoundingRectangle, position: &DVec4) -> DVec2 {
         // Perspective divide to transform from clip coordinates to normalized device coordinates
         let new_position = DVec3::from_elements(position.x, position.y, position.z);
         let positionNDC = new_position.divide_by_scalar(position.w);
@@ -88,7 +85,7 @@ impl SceneTransforms {
         let mut viewportTransform = viewport.computeViewportTransformation(0.0, 1.0);
         let positionWC = viewportTransform.multiply_by_point(&positionNDC);
 
-        return Vec2::new(positionWC.x as f32, positionWC.y as f32);
+        return DVec2::new(positionWC.x, positionWC.y);
     }
 }
 

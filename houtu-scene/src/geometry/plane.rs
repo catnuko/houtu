@@ -6,9 +6,12 @@ pub struct Plane {
     pub distance: f64,
 }
 impl Plane {
-    pub fn fromPointNormal(point: DVec3, normal: DVec3) -> Self {
-        let distance = -normal.dot(point);
-        Self { normal, distance }
+    pub fn fromPointNormal(point: &DVec3, normal: &DVec3) -> Self {
+        let distance = -normal.dot(*point);
+        Self {
+            normal: normal.clone(),
+            distance,
+        }
     }
     pub fn getPointDistance(&self, point: DVec3) -> f64 {
         return self.normal.dot(point) + self.distance;

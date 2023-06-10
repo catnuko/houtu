@@ -22,7 +22,7 @@ impl EllipsoidTangentPlane {
         let yAxis = DVec3::from_cartesian4(eastNorthUp.col(1));
         let zAxis = DVec3::from_cartesian4(eastNorthUp.col(2));
         let normal = zAxis;
-        let plane = Plane::fromPointNormal(origin, normal);
+        let plane = Plane::fromPointNormal(&origin, &normal);
         return Self {
             plane,
             origin,

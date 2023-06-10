@@ -17,17 +17,17 @@ mod camera;
 mod camera_event_aggregator;
 mod camera_new;
 mod camera_old;
+mod debug_system;
 mod egui;
 mod pan_orbit;
 use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
 
-use bevy_atmosphere::prelude::*;
-use houtu_scene::{Projection, *};
-
 use self::{
     camera_new::{CameraControlPlugin, GlobeCamera},
+    debug_system::debug_system,
     pan_orbit::pan_orbit_camera,
 };
+use houtu_scene::{Projection, *};
 
 pub struct CameraPlugin;
 
@@ -35,6 +35,7 @@ impl bevy::app::Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Msaa::default())
             .add_plugin(CameraControlPlugin)
+            .add_plugin(debug_system::Plugin)
             .add_startup_system(setup)
             .add_system(pan_orbit_camera);
     }
@@ -70,23 +71,49 @@ pub struct GlobeCameraControl {
     pub drawingBufferWidth: u32,
     pub drawingBufferHeight: u32,
     pub pixelRatio: f64,
-    pub _cameraUnderground: bool,
-    pub _minimumPickingTerrainHeight: f64,
     pub minimumZoomDistance: f64,
     pub maximumZoomDistance: f64,
     pub _minimumZoomRate: f64,
     pub _maximumZoomRate: f64,
+    pub _maximumRotateRate: f64,
+    pub _minimumRotateRate: f64,
+    pub _minimumUndergroundPickDistance: f64,
+    pub _maximumUndergroundPickDistance: f64,
     pub enableCollisionDetection: bool,
-    pub _zoomMouseStart: Vec2,
-    pub _rotatingZoom: bool,
-    pub _zoomingOnVector: bool,
-    pub _useZoomWorldPosition: bool,
-    pub _zoomWorldPosition: DVec3,
-    pub _zoomingUnderground: bool,
     pub _maxCoord: DVec3,
     pub _zoomFactor: f64,
     pub maximumMovementRatio: f64,
     pub bounceAnimationTime: f64,
+    pub _tiltCenterMousePosition: DVec2,
+    pub _tiltCenter: DVec2,
+    pub _rotateMousePosition: DVec2,
+    pub _rotateStartPosition: DVec3,
+    pub _strafeStartPosition: DVec3,
+    pub _strafeMousePosition: DVec2,
+    pub _strafeEndMousePosition: DVec2,
+    pub _zoomMouseStart: DVec2,
+    pub _zoomWorldPosition: DVec3,
+    pub minimumTrackBallHeight: f64,
+    pub _minimumTrackBallHeight: f64,
+    pub minimumCollisionTerrainHeight: f64,
+    pub _minimumCollisionTerrainHeight: f64,
+    pub minimumPickingTerrainHeight: f64,
+    pub _minimumPickingTerrainHeight: f64,
+    pub minimumPickingTerrainDistanceWithInertia: f64,
+    pub _useZoomWorldPosition: bool,
+    pub _tiltCVOffMap: bool,
+    pub _looking: bool,
+    pub _rotating: bool,
+    pub _strafing: bool,
+    pub _zoomingOnVector: bool,
+    pub _zoomingUnderground: bool,
+    pub _rotatingZoom: bool,
+    pub _adjustedHeightForTerrain: bool,
+    pub _cameraUnderground: bool,
+    pub _tiltOnEllipsoid: bool,
+    pub _rotateFactor: f64,
+    pub _rotateRateRangeAdjustment: f64,
+    pub _horizontalRotationAxis: Option<DVec3>,
 }
 impl Default for GlobeCameraControl {
     fn default() -> Self {
@@ -96,7 +123,6 @@ impl Default for GlobeCameraControl {
             drawingBufferWidth: 0,
             drawingBufferHeight: 0,
             _cameraUnderground: false,
-            _minimumPickingTerrainHeight: 150000.0,
             _zoomFactor: 5.0,
             maximumMovementRatio: 1.0,
             bounceAnimationTime: 3.0,
@@ -105,13 +131,40 @@ impl Default for GlobeCameraControl {
             _minimumZoomRate: 20.0,
             _maximumZoomRate: 5906376272000.0,
             enableCollisionDetection: true,
-            _zoomMouseStart: Vec2::ZERO,
             _rotatingZoom: false,
             _zoomingOnVector: false,
             _useZoomWorldPosition: false,
-            _zoomWorldPosition: DVec3::ZERO,
             _zoomingUnderground: false,
             _maxCoord: max_coord,
+            _tiltCenterMousePosition: DVec2::new(-1.0, -1.0),
+            _tiltCenter: DVec2::new(0.0, 0.0),
+            _rotateMousePosition: DVec2::new(-1.0, -1.0),
+            _rotateStartPosition: DVec3::new(0.0, 0.0, 0.0),
+            _strafeStartPosition: DVec3::new(0.0, 0.0, 0.0),
+            _strafeMousePosition: DVec2::new(0.0, 0.0),
+            _strafeEndMousePosition: DVec2::new(0.0, 0.0),
+            _zoomMouseStart: DVec2::new(-1.0, -1.0),
+            _zoomWorldPosition: DVec3::new(0.0, 0.0, 0.0),
+            minimumTrackBallHeight: 7500000.0,
+            _minimumTrackBallHeight: 7500000.0,
+            minimumCollisionTerrainHeight: 150000.0,
+            _minimumCollisionTerrainHeight: 150000.0,
+            minimumPickingTerrainHeight: 150000.0,
+            _minimumPickingTerrainHeight: 150000.0,
+            minimumPickingTerrainDistanceWithInertia: 4000.0,
+            _tiltCVOffMap: false,
+            _looking: false,
+            _rotating: false,
+            _strafing: false,
+            _adjustedHeightForTerrain: false,
+            _tiltOnEllipsoid: false,
+            _maximumRotateRate: 1.77,
+            _minimumRotateRate: 1.0 / 5000.0,
+            _minimumUndergroundPickDistance: 2000.0,
+            _maximumUndergroundPickDistance: 10000.0,
+            _rotateFactor: 1.0,
+            _rotateRateRangeAdjustment: 1.0,
+            _horizontalRotationAxis: None,
         }
     }
 }

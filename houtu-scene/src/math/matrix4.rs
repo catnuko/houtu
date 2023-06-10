@@ -279,3 +279,27 @@ impl Matrix4 for DMat4 {
         return DMat4::from_cols_array(&result);
     }
 }
+pub fn to_mat4_64(mat4: &Mat4) -> DMat4 {
+    let mut matrix: [f32; 16] = [
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+    ];
+    mat4.write_cols_to_slice(&mut matrix);
+    let mut new_matrix: [f64; 16] = [0.; 16];
+    matrix
+        .iter()
+        .enumerate()
+        .for_each(|(i, x)| new_matrix[i] = x.clone() as f64);
+    return DMat4::from_cols_array(&new_matrix);
+}
+pub fn to_mat4_32(mat4: &DMat4) -> Mat4 {
+    let mut matrix: [f64; 16] = [
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+    ];
+    mat4.write_cols_to_slice(&mut matrix);
+    let mut new_matrix: [f32; 16] = [0.; 16];
+    matrix
+        .iter()
+        .enumerate()
+        .for_each(|(i, x)| new_matrix[i] = x.clone() as f32);
+    return Mat4::from_cols_array(&new_matrix);
+}

@@ -1,10 +1,12 @@
 use crate::plugins::camera::camera_new::SetViewOrientation;
 
-use super::camera_event_aggregator::{Aggregator, ControlEvent, EventStartPositionWrap};
+use super::camera_event_aggregator::{
+    Aggregator, ControlEvent, EventStartPositionWrap, MovementState,
+};
 use super::camera_new::GlobeCamera;
 use super::{egui, GlobeCameraControl};
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
-use bevy::math::{DMat4, DVec3};
+use bevy::math::{DMat4, DVec2, DVec3};
 use bevy::prelude::*;
 use bevy::render::camera::{CameraProjection, RenderTarget};
 use bevy::window::{PrimaryWindow, WindowRef};
@@ -12,9 +14,11 @@ use bevy_easings::Lerp;
 use bevy_egui::{EguiSet, WindowSize};
 use egui::EguiWantsFocus;
 use houtu_scene::{
-    acos_clamped, Cartesian3, Cartographic, Ellipsoid, HeadingPitchRoll, SceneTransforms,
+    acos_clamped, to_mat4_64, Cartesian3, Cartographic, Ellipsoid, HeadingPitchRoll,
+    IntersectionTests, Plane, Ray, SceneTransforms, EPSILON14, EPSILON2, EPSILON3, EPSILON4,
 };
 use std::f64::consts::{PI, TAU};
+use std::ops::Neg;
 pub fn pan_orbit_camera(
     mut mouse_motion: EventReader<MouseMotion>,
     mut scroll_events: EventReader<MouseWheel>,
@@ -34,12 +38,11 @@ pub fn pan_orbit_camera(
     let Ok(primary) = primary_query.get_single() else {
         return;
     };
-    let window_size = Vec2 {
-        x: primary.width(),
-        y: primary.height(),
+    let window_size = DVec2 {
+        x: primary.width() as f64,
+        y: primary.height() as f64,
     };
 
-    let mouse_delta = mouse_motion.iter().map(|event| event.delta).sum::<Vec2>();
     for event in control_event_rader.iter() {
         for (
             entity,
@@ -64,21 +67,23 @@ pub fn pan_orbit_camera(
                     if globe_camera_control._cameraUnderground {
                         windowPosition = startPosition.clone();
                     } else {
-                        windowPosition = Vec2::ZERO;
+                        windowPosition = DVec2::ZERO;
                         windowPosition.x = window_size.x / 2.0;
                         windowPosition.y = window_size.y / 2.0;
                     }
-                    let ray = globe_camera.getPickRay(&windowPosition, &window_size);
-                    let position = ray.origin;
-                    let direction = ray.direction;
+
+                    // let ray = globe_camera.getPickRay(&windowPosition, &window_size);
+
                     let height = Ellipsoid::WGS84
                         .cartesianToCartographic(&globe_camera.position)
                         .unwrap()
                         .height;
-                    let normal = DVec3::UNIT_X;
+
                     let distance = height;
                     let unitPosition = globe_camera.position.normalize();
                     let unitPositionDotDirection = unitPosition.dot(globe_camera.direction);
+
+                    //以下是handleZoom函数
                     let mut percentage = 1.0;
                     percentage = unitPositionDotDirection.abs().clamp(0.25, 1.0);
                     let diff = (movement.endPosition.y - movement.startPosition.y) as f64;
@@ -182,7 +187,7 @@ pub fn pan_orbit_camera(
                         {
                             zoomOnVector = true;
                         } else {
-                            let mut centerPixel = Vec2::ZERO;
+                            let mut centerPixel = DVec2::ZERO;
                             centerPixel.x = window_size.x / 2.;
                             centerPixel.y = window_size.y / 2.;
                             //TODO: pickEllipsoid取代globe.pick，此刻还没加载地形和模型，所以暂时这么做
@@ -219,7 +224,7 @@ pub fn pan_orbit_camera(
 
                                     let mut positionToTarget = DVec3::ZERO;
                                     let mut positionToTargetNormal = DVec3::ZERO;
-                                    positionToTarget = target.subtract(cameraPosition);
+                                    positionToTarget = target - cameraPosition;
 
                                     positionToTargetNormal = positionToTarget.normalize();
 
@@ -371,103 +376,513 @@ pub fn pan_orbit_camera(
 
                 ControlEvent::Spin(data) => {
                     println!("controlevent spin {:?}", data);
+                    let startPosition =
+                        aggregator.getStartMousePosition("LEFT_DRAG", &event_start_position_wrap);
+                    let mut movement = data.movement.clone();
+                    spin3D(
+                        &mut globe_camera_control,
+                        &mut globe_camera,
+                        &startPosition,
+                        &mut movement,
+                        &window_size,
+                    );
+                    globe_camera.update_camera_matrix(&mut transform);
                 }
 
                 ControlEvent::Tilt(data) => {
                     println!("controlevent tilt {:?}", data);
+                    let startPosition =
+                        aggregator.getStartMousePosition("MIDDLE_DRAG", &event_start_position_wrap);
+                    let mut movement = data.movement.clone();
+                    tilt3D(
+                        &mut globe_camera_control,
+                        &mut globe_camera,
+                        &startPosition,
+                        &mut movement,
+                        &window_size,
+                    );
+                    globe_camera.update_camera_matrix(&mut transform);
                 }
             }
         }
     }
 }
-pub fn to_mat4_64(mat4: &Mat4) -> DMat4 {
-    let mut matrix: [f32; 16] = [
-        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-    ];
-    mat4.write_cols_to_slice(&mut matrix);
-    let mut new_matrix: [f64; 16] = [0.; 16];
-    matrix
-        .iter()
-        .enumerate()
-        .for_each(|(i, x)| new_matrix[i] = x.clone() as f64);
-    return DMat4::from_cols_array(&new_matrix);
+
+fn tilt3DOnEllipsoid(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    startPosition: &DVec2,
+    movement: &MovementState,
+    window_size: &DVec2,
+) {
+    let ellipsoid = Ellipsoid::WGS84;
+    let minHeight = controller.minimumZoomDistance * 0.25;
+    let height = ellipsoid
+        .cartesianToCartographic(&camera.get_position_wc())
+        .unwrap()
+        .height;
+    if (height - minHeight - 1.0 < EPSILON3
+        && movement.endPosition.y - movement.startPosition.y < 0.)
+    {
+        return;
+    }
+
+    let mut windowPosition = DVec2::ZERO;
+    windowPosition.x = window_size[0] / 2.;
+    windowPosition.y = window_size[1] / 2.;
+    let ray = camera.getPickRay(&windowPosition, window_size);
+
+    let center;
+    let intersection = IntersectionTests::rayEllipsoid(&ray, Some(&ellipsoid));
+    if (intersection.is_some()) {
+        let intersection = intersection.unwrap();
+        center = Ray::getPoint(&ray, intersection.start);
+    } else if (height > controller._minimumTrackBallHeight) {
+        let grazingAltitudeLocation =
+            IntersectionTests::grazingAltitudeLocation(&ray, Some(&ellipsoid));
+        if grazingAltitudeLocation.is_none() {
+            return;
+        }
+        let grazingAltitudeLocation = grazingAltitudeLocation.unwrap();
+        let mut grazingAltitudeCart = ellipsoid
+            .cartesianToCartographic(&grazingAltitudeLocation)
+            .unwrap();
+        grazingAltitudeCart.height = 0.0;
+        center = ellipsoid.cartographicToCartesian(&grazingAltitudeCart);
+    } else {
+        controller._looking = true;
+        let up = ellipsoid.geodeticSurfaceNormal(&camera.position);
+        look3D(controller, camera, startPosition, movement, up, window_size);
+        controller._tiltCenterMousePosition = startPosition.clone();
+        return;
+    }
 }
-pub fn to_mat4_32(mat4: &DMat4) -> Mat4 {
-    let mut matrix: [f64; 16] = [
-        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-    ];
-    mat4.write_cols_to_slice(&mut matrix);
-    let mut new_matrix: [f32; 16] = [0.; 16];
-    matrix
-        .iter()
-        .enumerate()
-        .for_each(|(i, x)| new_matrix[i] = x.clone() as f32);
-    return Mat4::from_cols_array(&new_matrix);
+fn tilt3D(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    startPosition: &DVec2,
+    movement: &MovementState,
+    window_size: &DVec2,
+) {
+    if (!(camera.get_transform() == DMat4::IDENTITY)) {
+        return;
+    }
+
+    // if movement.angleAndHeight.is_some() {
+    //     movement = movement.angleAndHeight;
+    // }
+
+    if (!startPosition.eq(&controller._tiltCenterMousePosition)) {
+        controller._tiltOnEllipsoid = false;
+        controller._looking = false;
+    }
+
+    if (controller._looking) {
+        let up = Ellipsoid::WGS84.geodeticSurfaceNormal(&camera.position);
+        look3D(controller, camera, startPosition, movement, up, window_size);
+        return;
+    }
+    let mut cartographic = Ellipsoid::WGS84
+        .cartesianToCartographic(&camera.position)
+        .unwrap();
+
+    if (controller._tiltOnEllipsoid
+        || cartographic.height > controller._minimumCollisionTerrainHeight)
+    {
+        controller._tiltOnEllipsoid = true;
+        tilt3DOnEllipsoid(controller, camera, startPosition, movement, window_size);
+    } else {
+        // tilt3DOnTerrain(controller, startPosition, movement);
+        panic!("暂时没有地形")
+    }
 }
-// pub fn getZoomDistanceUnderground(
-//     ellipsoid: &Ellipsoid,
-//     ray: houtu_scene::Ray,
-//     camera: &GlobeCameraControl,
-// ) -> f64 {
-//     let origin = ray.origin;
-//     let direction = ray.direction;
-//     let distanceFromSurface = getDistanceFromSurface(camera);
 
-//     // Weight zoom distance based on how strongly the pick ray is pointing inward.
-//     // Geocentric normal is accurate enough for these purposes
-//     let surfaceNormal = origin.normalize();
-//     let mut strength = (surfaceNormal.dot(direction)).abs();
-//     strength = strength.max(0.5) * 2.0;
-//     return distanceFromSurface * strength;
-// }
-// pub fn getDistanceFromSurface(camera: &GlobeCameraControl) -> f64 {
-//     let mut height = 0.0;
-//     let cartographic =
-//         Ellipsoid::WGS84.cartesianToCartographic(&globe_camera_control.position_cartesian);
-//     if let Some(v) = cartographic {
-//         height = v.height;
-//     }
-//     let globeHeight = 0.;
-//     let distanceFromSurface = (globeHeight - height).abs();
-//     return distanceFromSurface;
-// }
-// pub fn pickGlobe(camera:&GlobeCameraControl, mousePosition:Vec2) ->DVec3{
-//     let scene = controller._scene;
-//     let globe = controller._globe;
-//     let camera = scene.camera;
+fn spin3D(
+    controller: &mut GlobeCameraControl,
 
-//     if (!defined(globe)) {
-//       return undefined;
-//     }
+    camera: &mut GlobeCamera,
+    startPosition: &DVec2,
+    movement: &mut MovementState,
+    window_size: &DVec2,
+) {
+    let cameraUnderground = controller._cameraUnderground;
+    let mut ellipsoid = Ellipsoid::WGS84;
 
-//     let cullBackFaces = !globe_camera_control._cameraUnderground;
+    if (!camera.get_transform().eq(&DMat4::IDENTITY)) {
+        rotate3D(
+            controller,
+            camera,
+            startPosition,
+            movement,
+            window_size,
+            None,
+            None,
+            None,
+        );
+        return;
+    }
 
-//     let depthIntersection;
-//     if (scene.pickPositionSupported) {
-//       depthIntersection = scene.pickPositionWorldCoordinates(
-//         mousePosition,
-//         scratchDepthIntersection
-//       );
-//     }
+    let mut magnitude;
+    let mut radii;
 
-//     let ray = globe_camera_control.getPickRay(mousePosition, pickGlobeScratchRay);
-//     let rayIntersection = globe.pickWorldCoordinates(
-//       ray,
-//       scene,
-//       cullBackFaces,
-//       scratchRayIntersection
-//     );
+    let up = ellipsoid.geodeticSurfaceNormal(&camera.position);
 
-//     let pickDistance = defined(depthIntersection)
-//       ? Cartesian3.distance(depthIntersection, globe_camera_control.positionWC)
-//       : Number.POSITIVE_INFINITY;
-//     let rayDistance = defined(rayIntersection)
-//       ? Cartesian3.distance(rayIntersection, globe_camera_control.positionWC)
-//       : Number.POSITIVE_INFINITY;
+    if (startPosition.eq(&controller._rotateMousePosition)) {
+        if (controller._looking) {
+            look3D(controller, camera, startPosition, movement, up, window_size);
+        } else if (controller._rotating) {
+            rotate3D(
+                controller,
+                camera,
+                startPosition,
+                movement,
+                window_size,
+                None,
+                None,
+                None,
+            );
+        } else if (controller._strafing) {
+            continueStrafing(controller, camera, movement, window_size);
+        } else {
+            if (camera.position.magnitude() < controller._rotateStartPosition.length()) {
+                // Pan action is no longer valid if camera moves below the pan ellipsoid
+                return;
+            }
+            magnitude = controller._rotateStartPosition.length();
+            radii = DVec3::ZERO;
+            radii.x = magnitude;
+            radii.y = magnitude;
+            radii.z = magnitude;
+            ellipsoid = Ellipsoid::from_vec3(radii);
+            pan3D(controller, camera, startPosition, movement, window_size);
+        }
+        return;
+    }
+    controller._looking = false;
+    controller._rotating = false;
+    controller._strafing = false;
+    let height = ellipsoid
+        .cartesianToCartographic(&camera.get_position_wc())
+        .unwrap()
+        .height;
+    let globe = false;
+    let spin3DPick = camera.pickEllipsoid(&movement.startPosition, window_size);
+    if (spin3DPick.is_some()) {
+        pan3D(controller, camera, startPosition, movement, window_size);
+        controller._rotateStartPosition = spin3DPick.unwrap();
+    } else if height > controller._minimumTrackBallHeight {
+        controller._rotating = true;
+        rotate3D(
+            controller,
+            camera,
+            startPosition,
+            movement,
+            window_size,
+            None,
+            None,
+            None,
+        );
+    } else {
+        controller._looking = true;
+        look3D(
+            controller,
+            camera,
+            startPosition,
+            movement,
+            None,
+            window_size,
+        );
+    }
+    controller._rotateMousePosition = startPosition.clone();
+}
+fn rotate3D(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    startPosition: &DVec2,
+    movement: &MovementState,
+    window_size: &DVec2,
+    constrainedAxis: Option<DVec3>,
+    rotateOnlyVertical: Option<bool>,
+    rotateOnlyHorizontal: Option<bool>,
+) {
+    let rotateOnlyVertical = rotateOnlyVertical.unwrap_or(false);
+    let rotateOnlyHorizontal = rotateOnlyHorizontal.unwrap_or(false);
 
-//     if (pickDistance < rayDistance) {
-//       return Cartesian3.clone(depthIntersection, result);
-//     }
+    let oldAxis = camera.constrainedAxis;
+    if (constrainedAxis.is_some()) {
+        camera.constrainedAxis = constrainedAxis;
+    }
 
-//     return Cartesian3.clone(rayIntersection, result);
-//   }
+    let rho = camera.position.magnitude();
+    let mut rotateRate = controller._rotateFactor * (rho - controller._rotateRateRangeAdjustment);
+
+    if (rotateRate > controller._maximumRotateRate) {
+        rotateRate = controller._maximumRotateRate;
+    }
+
+    if (rotateRate < controller._minimumRotateRate) {
+        rotateRate = controller._minimumRotateRate;
+    }
+
+    let mut phiWindowRatio =
+        ((movement.startPosition.x - movement.endPosition.x) / window_size.x) as f64;
+    let mut thetaWindowRatio =
+        ((movement.startPosition.y - movement.endPosition.y) / window_size.y) as f64;
+    phiWindowRatio = phiWindowRatio.min(controller.maximumMovementRatio);
+    thetaWindowRatio = thetaWindowRatio.min(controller.maximumMovementRatio);
+
+    let deltaPhi = rotateRate * phiWindowRatio * PI * 2.0;
+    let deltaTheta = rotateRate * thetaWindowRatio * PI;
+
+    if (!rotateOnlyVertical) {
+        camera.rotate_right(Some(deltaPhi));
+    }
+
+    if (!rotateOnlyHorizontal) {
+        camera.rotate_up(Some(deltaTheta));
+    }
+
+    camera.constrainedAxis = oldAxis;
+}
+
+fn pan3D(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    startPosition: &DVec2,
+    movement: &MovementState,
+    window_size: &DVec2,
+) {
+    let startMousePosition = movement.startPosition.clone();
+    let endMousePosition = movement.endPosition.clone();
+
+    let p0 = camera.pickEllipsoid(&startMousePosition, window_size);
+    let p1 = camera.pickEllipsoid(&endMousePosition, window_size);
+
+    if (p0.is_none() || p1.is_none()) {
+        controller._rotating = true;
+        rotate3D(
+            controller,
+            camera,
+            startPosition,
+            movement,
+            window_size,
+            None,
+            None,
+            None,
+        );
+        return;
+    }
+    let mut p0 = p0.unwrap();
+    let mut p1 = p1.unwrap();
+
+    p0 = camera.worldToCameraCoordinates(&p0);
+    p1 = camera.worldToCameraCoordinates(&p1);
+
+    if camera.constrainedAxis.is_none() {
+        p0 = p0.normalize();
+        p1 = p1.normalize();
+        let dot = p0.dot(p1);
+        let axis = p0.cross(p1);
+
+        if (dot < 1.0 && !axis.equals_epsilon(DVec3::ZERO, Some(EPSILON14), None)) {
+            // dot is in [0, 1]
+            let angle = dot.acos();
+            camera.rotate(axis, Some(angle));
+        }
+    } else {
+        let basis0 = camera.constrainedAxis.unwrap();
+        let mut basis1 = basis0.most_orthogonal_axis();
+        basis1 = basis1.cross(basis0);
+        basis1 = basis1.normalize();
+        let basis2 = basis0.cross(basis1);
+
+        let startRho = p0.magnitude();
+        let startDot = basis0.dot(p0);
+        let startTheta = (startDot / startRho).acos();
+        let mut startRej = basis0.multiply_by_scalar(startDot);
+        startRej = p0.subtract(startRej).normalize();
+
+        let endRho = p1.magnitude();
+        let endDot = basis0.dot(p1);
+        let endTheta = (endDot / endRho).acos();
+        let mut endRej = basis0.multiply_by_scalar(endDot);
+        endRej = p1.subtract(endRej).normalize();
+
+        let mut startPhi = (startRej.dot(basis1)).acos();
+        if (startRej.dot(basis2) < 0.) {
+            startPhi = TAU - startPhi;
+        }
+
+        let mut endPhi = (endRej.dot(basis1)).acos();
+        if (endRej.dot(basis2) < 0.) {
+            endPhi = TAU - endPhi;
+        }
+
+        let deltaPhi = startPhi - endPhi;
+
+        let east;
+        if (basis0.equals_epsilon(camera.position, Some(EPSILON2), None)) {
+            east = camera.right;
+        } else {
+            east = basis0.cross(camera.position);
+        }
+
+        let planeNormal = basis0.cross(east);
+        let side0 = planeNormal.dot(p0.subtract(basis0));
+        let side1 = planeNormal.dot(p1.subtract(basis0));
+
+        let deltaTheta;
+        if (side0 > 0. && side1 > 0.) {
+            deltaTheta = endTheta - startTheta;
+        } else if (side0 > 0. && side1 <= 0.) {
+            if (camera.position.dot(basis0) > 0.) {
+                deltaTheta = -startTheta - endTheta;
+            } else {
+                deltaTheta = startTheta + endTheta;
+            }
+        } else {
+            deltaTheta = startTheta - endTheta;
+        }
+
+        camera.rotate_right(Some(deltaPhi));
+        camera.rotate_up(Some(deltaTheta));
+    }
+}
+
+fn look3D(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    startPosition: &DVec2,
+    movement: &MovementState,
+    rotationAxis: Option<DVec3>,
+    window_size: &DVec2,
+) {
+    let mut startPos = DVec2::ZERO;
+    startPos.x = movement.startPosition.x as f64;
+    startPos.y = 0.0;
+    let mut endPos = DVec2::ZERO;
+    endPos.x = movement.endPosition.x as f64;
+    endPos.y = 0.0;
+
+    let mut startRay = camera.getPickRay(&startPos, window_size);
+    let mut endRay = camera.getPickRay(&endPos, window_size);
+    let mut angle = 0.0;
+    let mut start;
+    let mut end;
+    start = startRay.direction;
+    end = endRay.direction;
+
+    let mut dot = start.dot(end);
+    if (dot < 1.0) {
+        // dot is in [0, 1]
+        angle = dot.acos();
+    }
+    angle = if movement.startPosition.x > movement.endPosition.x {
+        -angle
+    } else {
+        angle
+    };
+
+    let horizontalRotationAxis = controller._horizontalRotationAxis;
+    if (rotationAxis.is_some()) {
+        camera.look(&rotationAxis.unwrap(), Some(-angle));
+    } else if (horizontalRotationAxis.is_some()) {
+        camera.look(&horizontalRotationAxis.unwrap(), Some(-angle));
+    } else {
+        camera.look_left(Some(angle));
+    }
+
+    startPos.x = 0.0;
+    startPos.y = movement.startPosition.y;
+    endPos.x = 0.0;
+    endPos.y = movement.endPosition.y;
+
+    startRay = camera.getPickRay(&startPos, window_size);
+    endRay = camera.getPickRay(&endPos, window_size);
+    angle = 0.0;
+
+    start = startRay.direction;
+    end = endRay.direction;
+
+    dot = start.dot(end);
+    if (dot < 1.0) {
+        // dot is in [0, 1]
+        angle = dot.acos();
+    }
+    angle = if movement.startPosition.y > movement.endPosition.y {
+        -angle
+    } else {
+        angle
+    };
+
+    let rotationAxis = rotationAxis.unwrap_or(horizontalRotationAxis.unwrap_or(DVec3::ZERO));
+    if (rotationAxis != DVec3::ZERO) {
+        let direction = camera.direction;
+        let negativeRotationAxis = rotationAxis.neg();
+        let northParallel = direction.equals_epsilon(rotationAxis, Some(EPSILON2), None);
+        let southParallel = direction.equals_epsilon(negativeRotationAxis, Some(EPSILON2), None);
+        if (!northParallel && !southParallel) {
+            dot = direction.dot(rotationAxis);
+            let mut angleToAxis = acos_clamped(dot);
+            if (angle > 0. && angle > angleToAxis) {
+                angle = angleToAxis - EPSILON4;
+            }
+
+            dot = direction.dot(negativeRotationAxis);
+            angleToAxis = acos_clamped(dot);
+            if (angle < 0. && -angle > angleToAxis) {
+                angle = -angleToAxis + EPSILON4;
+            }
+
+            let tangent = rotationAxis.cross(direction);
+            camera.look(&tangent, Some(angle));
+        } else if ((northParallel && angle < 0.) || (southParallel && angle > 0.)) {
+            camera.look(&camera.right.clone(), Some(-angle));
+        }
+    } else {
+        camera.look_up(Some(angle));
+    }
+}
+
+fn continueStrafing(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    movement: &mut MovementState,
+    window_size: &DVec2,
+) {
+    // Update the end position continually based on the inertial delta
+    let originalEndPosition = movement.endPosition;
+    let inertialDelta = movement.endPosition - movement.startPosition;
+    let mut endPosition = controller._strafeEndMousePosition;
+    endPosition = endPosition + inertialDelta;
+    movement.endPosition = endPosition;
+    strafe(
+        controller,
+        camera,
+        movement,
+        &controller._strafeStartPosition.clone(),
+        window_size,
+    );
+    movement.endPosition = originalEndPosition;
+}
+
+fn strafe(
+    controller: &mut GlobeCameraControl,
+    camera: &mut GlobeCamera,
+    movement: &MovementState,
+    strafeStartPosition: &DVec3,
+    window_size: &DVec2,
+) {
+    let ray = camera.getPickRay(&movement.endPosition, window_size);
+
+    let mut direction = camera.direction.clone();
+    let plane = Plane::fromPointNormal(&strafeStartPosition, &direction);
+    let intersection = IntersectionTests::rayPlane(&ray, &plane);
+    if (intersection.is_none()) {
+        return;
+    }
+    let intersection = intersection.unwrap();
+    direction = *strafeStartPosition - intersection;
+
+    camera.position = camera.position + direction;
+}

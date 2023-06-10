@@ -237,7 +237,7 @@ impl OrientedBoundingBox {
 
         let planeYAxis = DVec3::UNIT_Z;
         let planeXAxis = planeNormal.cross(planeYAxis);
-        plane = Plane::fromPointNormal(planeOrigin, planeNormal);
+        plane = Plane::fromPointNormal(&planeOrigin, &planeNormal);
 
         // Get the horizon point relative to the center. This will be the farthest extent in the plane's X dimension.
         let horizonCartesian = DVec3::from_radians(

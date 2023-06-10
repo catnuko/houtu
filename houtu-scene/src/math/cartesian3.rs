@@ -78,8 +78,27 @@ pub trait Cartesian3 {
     fn magnitude(&self) -> f64;
     fn negate(&self) -> DVec3;
     fn from_cartesian4(vec4: DVec4) -> DVec3;
+    fn most_orthogonal_axis(&self) -> DVec3;
 }
 impl Cartesian3 for DVec3 {
+    fn most_orthogonal_axis(&self) -> DVec3 {
+        let mut f = self.normalize();
+        f = f.abs();
+        let mut result: DVec3;
+        if (f.x <= f.y) {
+            if (f.x <= f.z) {
+                result = DVec3::UNIT_X.clone();
+            } else {
+                result = DVec3::UNIT_Z.clone();
+            }
+        } else if (f.y <= f.z) {
+            result = DVec3::UNIT_Y.clone();
+        } else {
+            result = DVec3::UNIT_Z.clone();
+        }
+
+        return result;
+    }
     fn negate(&self) -> DVec3 {
         return DVec3::new(-self.x, -self.y, -self.z);
     }

@@ -16,7 +16,7 @@ use bevy::{
     window::{PrimaryWindow, WindowRef},
 };
 use bevy_egui::EguiSet;
-use houtu_scene::{epsilon_f32::EPSILON14, Cartesian2};
+use houtu_scene::{Cartesian2, EPSILON14};
 
 use super::egui::{self, EguiWantsFocus};
 pub struct Plugin;
@@ -44,14 +44,14 @@ impl bevy::app::Plugin for Plugin {
 
 #[derive(Default, Debug, Clone)]
 pub struct LastMovement {
-    startPosition: Vec2,
-    endPosition: Vec2,
+    startPosition: DVec2,
+    endPosition: DVec2,
     valid: bool,
 }
 #[derive(Default, Debug, Clone)]
 pub struct Movement {
-    pub startPosition: Vec2,
-    pub endPosition: Vec2,
+    pub startPosition: DVec2,
+    pub endPosition: DVec2,
 }
 impl Movement {
     fn into_state(&self, v: bool) -> MovementState {
@@ -67,7 +67,7 @@ pub struct UpdateWrap(HashMap<&'static str, bool>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct IsDownWrap(HashMap<&'static str, bool>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
-pub struct EventStartPositionWrap(HashMap<&'static str, Vec2>);
+pub struct EventStartPositionWrap(HashMap<&'static str, DVec2>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct MovementWrap(HashMap<&'static str, Movement>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
@@ -78,16 +78,16 @@ pub struct PressTimetWrap(HashMap<&'static str, f64>);
 pub struct ReleaseTimeWrap(HashMap<&'static str, f64>);
 #[derive(Resource, Default)]
 pub struct Aggregator {
-    _currentMousePosition: Vec2,
+    _currentMousePosition: DVec2,
     _buttonsDown: u32,
-    _eventStartPosition: Vec2,
+    _eventStartPosition: DVec2,
 }
 impl Aggregator {
     pub fn getStartMousePosition(
         &self,
         typeName: &'static str,
         event_start_position_wrap: &EventStartPositionWrap,
-    ) -> Vec2 {
+    ) -> DVec2 {
         if typeName == WHEEL {
             return self._currentMousePosition.clone();
         }
@@ -103,8 +103,8 @@ const cameraEventType: [&'static str; 4] = [WHEEL, LEFT_DRAG, RIGHT_DRAG, MIDDLE
 #[derive(Debug)]
 pub struct ControlEventData {
     pub movement: MovementState,
-    pub startPosition: Vec2, // pub press_time: f64,
-                             // pub release_time: f64,
+    pub startPosition: DVec2, // pub press_time: f64,
+                              // pub release_time: f64,
 }
 pub enum ControlEvent {
     Tilt(ControlEventData),
@@ -213,13 +213,13 @@ pub fn default_input_map(
                 is_down_wrap.insert(LEFT_DRAG, true);
                 press_time_wrap.insert(LEFT_DRAG, cur_time);
                 event_start_position_wrap.insert(LEFT_DRAG, p.clone());
-                println!("left down");
+                // println!("left down");
             }
             MouseEvent::LeftUp(p) => {
                 aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
                 is_down_wrap.insert(LEFT_DRAG, false);
                 release_time_wrap.insert(LEFT_DRAG, cur_time);
-                println!("left up");
+                // println!("left up");
             }
             MouseEvent::RightDown(p) => {
                 let mut lastMovement = match last_movement_wrap.get_mut(RIGHT_DRAG) {
@@ -268,8 +268,8 @@ pub fn default_input_map(
 
 #[derive(Debug, Default, Clone)]
 pub struct MovementState {
-    pub startPosition: Vec2,
-    pub endPosition: Vec2,
+    pub startPosition: DVec2,
+    pub endPosition: DVec2,
     pub inertiaEnabled: bool,
 }
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
@@ -339,6 +339,7 @@ pub fn maintain_inertia_system(
                         let startPosition =
                             aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaZoomMovement").unwrap();
+                        println!("{:?}", startPosition);
                         control_event_writer.send(ControlEvent::Zoom(ControlEventData {
                             movement: movement.clone(),
                             startPosition: startPosition,
@@ -475,13 +476,13 @@ fn maintain_inertia(
         ) {
             return false;
         }
-        let mut motion = Vec2::ZERO;
+        let mut motion = DVec2::ZERO;
         motion.x = (lastMovement.endPosition.x - lastMovement.startPosition.x) * 0.5;
         motion.y = (lastMovement.endPosition.y - lastMovement.startPosition.y) * 0.5;
 
         movement_state.startPosition = lastMovement.startPosition.clone();
 
-        movement_state.endPosition = motion.multiply_by_scalar(d as f32);
+        movement_state.endPosition = motion * (d as f64);
         movement_state.endPosition = movement_state.startPosition + movement_state.endPosition;
 
         // If value from the decreasing exponential function is close to zero,
@@ -563,28 +564,28 @@ fn getMyMouseButtonName(mouseButton: MouseButton) -> &'static str {
     };
 }
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
-pub struct PositionsWrap(HashMap<&'static str, Vec2>);
+pub struct PositionsWrap(HashMap<&'static str, DVec2>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
-pub struct PreviousPositionsWrap(HashMap<&'static str, Vec2>);
+pub struct PreviousPositionsWrap(HashMap<&'static str, DVec2>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct IsButtonDownWrap(HashMap<&'static str, bool>);
 
 #[derive(Resource)]
 pub struct ScreenSpaceEventHandler {
-    _primaryPosition: Vec2,
-    _primaryStartPosition: Vec2,
-    _primaryPreviousPosition: Vec2,
+    _primaryPosition: DVec2,
+    _primaryStartPosition: DVec2,
+    _primaryPreviousPosition: DVec2,
     _isPinching: bool,
-    _pinchingPosition: Vec2,
-    _clickPixelTolerance: f32,
+    _pinchingPosition: DVec2,
+    _clickPixelTolerance: f64,
 }
 impl Default for ScreenSpaceEventHandler {
     fn default() -> Self {
         Self {
-            _primaryPreviousPosition: Vec2::ZERO,
-            _pinchingPosition: Vec2::ZERO,
-            _primaryStartPosition: Vec2::ZERO,
-            _primaryPosition: Vec2::ZERO,
+            _primaryPreviousPosition: DVec2::ZERO,
+            _pinchingPosition: DVec2::ZERO,
+            _primaryStartPosition: DVec2::ZERO,
+            _primaryPosition: DVec2::ZERO,
             _clickPixelTolerance: 5.0,
             _isPinching: false,
         }
@@ -602,16 +603,16 @@ pub enum MouseEvent {
     MouseMove(Movement),
     PinchStart(Movement),
     PinchEnd(Movement),
-    Wheel(f32),
-    LeftDown(Vec2),
-    RightDown(Vec2),
-    MiddleDown(Vec2),
-    LeftUp(Vec2),
-    RightUp(Vec2),
-    MiddleUp(Vec2),
-    LeftClick(Vec2),
-    RightClick(Vec2),
-    MiddleClick(Vec2),
+    Wheel(f64),
+    LeftDown(DVec2),
+    RightDown(DVec2),
+    MiddleDown(DVec2),
+    LeftUp(DVec2),
+    RightUp(DVec2),
+    MiddleUp(DVec2),
+    LeftClick(DVec2),
+    RightClick(DVec2),
+    MiddleClick(DVec2),
 }
 pub fn screen_space_event_hanlder_system(
     mut events: EventWriter<MouseEvent>,
@@ -634,9 +635,9 @@ pub fn screen_space_event_hanlder_system(
         let Some((left_top,_)) = camera.physical_viewport_rect() else {
             return;
         };
-        let position = Vec2::new(
-            raw_position.x as f32,
-            window.height() - raw_position.y as f32,
+        let position = DVec2::new(
+            raw_position.x as f64,
+            window.height() as f64 - raw_position.y as f64,
         );
 
         //收集移动事件
@@ -738,25 +739,21 @@ pub fn screen_space_event_hanlder_system(
             events.send(MouseEvent::PinchEnd(movement));
         }
         for ev in mouse_wheel_reader.iter() {
-            let delta: f32;
+            let delta: f64;
             match ev.unit {
                 MouseScrollUnit::Line => {
-                    println!(
-                        "Scroll (line units): vertical: {}, horizontal: {}",
-                        ev.y, ev.x
-                    );
                     //[-1,1]=>[-100,100]
-                    delta = ev.y * 100.;
+                    delta = (ev.y as f64) * 100.;
                 }
                 MouseScrollUnit::Pixel => {
-                    delta = -ev.y;
+                    delta = -(ev.y as f64);
                 }
             };
             events.send(MouseEvent::Wheel(delta));
         }
     }
 }
-fn checkPixelTolerance(startPosition: &Vec2, endPosition: &Vec2, pixelTolerance: f32) -> bool {
+fn checkPixelTolerance(startPosition: &DVec2, endPosition: &DVec2, pixelTolerance: f64) -> bool {
     let xDiff = startPosition.x - endPosition.x;
     let yDiff = startPosition.y - endPosition.y;
     let totalPixels = (xDiff * xDiff + yDiff * yDiff).sqrt();

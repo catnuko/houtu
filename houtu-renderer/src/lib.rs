@@ -1,6 +1,7 @@
 use bevy::{
     pbr::wireframe::{WireframeConfig, WireframePlugin},
     prelude::*,
+    window::WindowResolution,
 };
 
 mod events;
@@ -28,10 +29,22 @@ pub struct RendererPlugin;
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(WebAssetPlugin::default())
-            .add_plugins(DefaultPlugins.build().disable::<AssetPlugin>())
+            .add_plugins(
+                DefaultPlugins
+                    .build()
+                    .disable::<AssetPlugin>()
+                    .set(WindowPlugin {
+                        primary_window: Some(Window {
+                            title: "houtu!".into(),
+                            // resolution: WindowResolution::new(900., 900.0 / 0.660105980317941),
+                            ..default()
+                        }),
+                        ..default()
+                    }),
+            )
             .add_plugin(WireframePlugin)
             .add_plugin(WorldInspectorPlugin::new())
-            .add_plugin(axes_helper::Plugin)
+            // .add_plugin(axes_helper::Plugin)
             .add_plugin(houtu_jobs::Plugin)
             // .add_plugin(quadtree::Plugin)
             .add_plugin(plugins::globe::GlobePlugin)

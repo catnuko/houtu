@@ -173,7 +173,8 @@ impl TileBoundingRegion {
             let southCenterCartesian = ellipsoid.cartographicToCartesian(&cartographicScratch);
             rayScratch.origin = southCenterCartesian;
             rayScratch.direction = eastWestNormal.clone();
-            let westPlane = Plane::fromPointNormal(self.southwestCornerCartesian, self.westNormal);
+            let westPlane =
+                Plane::fromPointNormal(&self.southwestCornerCartesian, &self.westNormal);
             // Find a point that is on the west and the south planes
             self.southwestCornerCartesian =
                 IntersectionTests::rayPlane(&rayScratch, &westPlane).unwrap();
@@ -198,7 +199,8 @@ impl TileBoundingRegion {
             let northCenterCartesian = ellipsoid.cartographicToCartesian(&cartographicScratch);
             rayScratch.origin = northCenterCartesian;
             rayScratch.direction = eastWestNormal.negate();
-            let eastPlane = Plane::fromPointNormal(self.northeastCornerCartesian, self.eastNormal);
+            let eastPlane =
+                Plane::fromPointNormal(&self.northeastCornerCartesian, &self.eastNormal);
             // Find a point that is on the east and the north planes
             self.northeastCornerCartesian =
                 IntersectionTests::rayPlane(&rayScratch, &eastPlane).unwrap();

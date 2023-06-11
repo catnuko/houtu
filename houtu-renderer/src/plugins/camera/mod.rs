@@ -114,10 +114,12 @@ pub struct GlobeCameraControl {
     pub _rotateFactor: f64,
     pub _rotateRateRangeAdjustment: f64,
     pub _horizontalRotationAxis: Option<DVec3>,
+    pub _ellipsoid: Ellipsoid,
 }
 impl Default for GlobeCameraControl {
     fn default() -> Self {
         let max_coord = GeographicProjection::WGS84.project(&Cartographic::new(PI, FRAC_PI_2, 0.));
+        let ellipsoid = Ellipsoid::WGS84;
         Self {
             pixelRatio: 1.0,
             drawingBufferWidth: 0,
@@ -162,9 +164,21 @@ impl Default for GlobeCameraControl {
             _minimumRotateRate: 1.0 / 5000.0,
             _minimumUndergroundPickDistance: 2000.0,
             _maximumUndergroundPickDistance: 10000.0,
+            _ellipsoid: ellipsoid,
             _rotateFactor: 1.0,
             _rotateRateRangeAdjustment: 1.0,
             _horizontalRotationAxis: None,
         }
+    }
+}
+impl GlobeCameraControl {
+    pub fn update(&mut self, camera: &mut GlobeCamera) {
+        if camera.get_transform() != DMat4::IDENTITY {
+            self._ellipsoid = Ellipsoid::UNIT_SPHERE;
+        } else {
+            self._ellipsoid = Ellipsoid::WGS84;
+        }
+        self._rotateFactor = 1.0 / self._ellipsoid.maximumRadius;
+        self._rotateRateRangeAdjustment = self._ellipsoid.maximumRadius;
     }
 }

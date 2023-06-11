@@ -332,14 +332,11 @@ pub fn maintain_inertia_system(
                         &release_time_wrap,
                         &last_movement_wrap,
                         &is_down_wrap,
-                        &event_start_position_wrap,
-                        &aggregator,
                         &time,
                     ) {
                         let startPosition =
                             aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaZoomMovement").unwrap();
-                        println!("{:?}", startPosition);
                         control_event_writer.send(ControlEvent::Zoom(ControlEventData {
                             movement: movement.clone(),
                             startPosition: startPosition,
@@ -356,8 +353,6 @@ pub fn maintain_inertia_system(
                         &release_time_wrap,
                         &last_movement_wrap,
                         &is_down_wrap,
-                        &event_start_position_wrap,
-                        &aggregator,
                         &time,
                     ) {
                         let startPosition =
@@ -379,8 +374,6 @@ pub fn maintain_inertia_system(
                         &release_time_wrap,
                         &last_movement_wrap,
                         &is_down_wrap,
-                        &event_start_position_wrap,
-                        &aggregator,
                         &time,
                     ) {
                         let startPosition =
@@ -436,8 +429,6 @@ fn maintain_inertia(
     release_time_wrap: &ResMut<ReleaseTimeWrap>,
     last_movement_wrap: &ResMut<LastMovementWrap>,
     is_down_wrap: &ResMut<IsDownWrap>,
-    event_start_position_wrap: &ResMut<EventStartPositionWrap>,
-    aggregator: &ResMut<Aggregator>,
     time: &Res<Time>,
 ) -> bool {
     let mut movement_state = match movement_state_wrap.get_mut(lastMovementName) {
@@ -460,8 +451,9 @@ fn maintain_inertia(
     let threshold = (tr - ts);
     let now = time.elapsed_seconds_f64();
     let fromNow = (now - tr);
-
+    //如果按键释放事件和点击事件之间的时间差在0.4秒内才会保持惯性，滚轮缩放时，阈值=0，所以会保持惯性，而spin和tilt大于0.4，一般不会保持惯性，除非很快的拉动地球才会。
     if (threshold < inertiaMaxClickTimeThreshold) {
+        //随时间增加，从1无限接近于0
         let d = decay(fromNow, inertiaConstant);
 
         let lastMovement = last_movement_wrap.get(typeName);
@@ -476,12 +468,18 @@ fn maintain_inertia(
         ) {
             return false;
         }
+        //不清楚为什么乘以0.5,可能想减小动作幅度
         let mut motion = DVec2::ZERO;
         motion.x = (lastMovement.endPosition.x - lastMovement.startPosition.x) * 0.5;
         motion.y = (lastMovement.endPosition.y - lastMovement.startPosition.y) * 0.5;
 
         movement_state.startPosition = lastMovement.startPosition.clone();
-
+        // println!(
+        //     "startPositin={:?},endPosition={:?},motion={:?}",
+        //     lastMovement.startPosition.clone(),
+        //     lastMovement.endPosition.clone(),
+        //     motion.clone() * d
+        // );
         movement_state.endPosition = motion * (d as f64);
         movement_state.endPosition = movement_state.startPosition + movement_state.endPosition;
 
@@ -498,12 +496,11 @@ fn maintain_inertia(
         }
 
         if (is_down_wrap.get(typeName).is_none()) {
-            // let startPosition =
-            //     aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
-            // action(object, startPosition, movement_state);
+            //可以保持惯性，更新相机
             return true;
         }
     }
+    //不可更新相机
     return false;
 }
 /// Base system set to allow ordering of `PanOrbitCamera`
@@ -591,6 +588,7 @@ impl Default for ScreenSpaceEventHandler {
         }
     }
 }
+
 fn decay(time: f64, coefficient: f64) -> f64 {
     if (time < 0.) {
         return 0.0;

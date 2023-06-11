@@ -251,6 +251,7 @@ impl GlobeCamera {
         mag += mag * Self::DEFAULT_VIEW_FACTOR;
         self.position = self.position.normalize().multiply_by_scalar(mag);
         self.direction = (DVec3::ZERO - self.position).normalize();
+        self.constrainedAxis = Some(DVec3::UNIT_Z);
     }
     pub fn get_position_wc(&mut self) -> DVec3 {
         self.updateMembers();
@@ -485,7 +486,7 @@ impl GlobeCamera {
 
         return result;
     }
-    fn _setTransform(&mut self, transform: &DMat4) {
+    pub fn _setTransform(&mut self, transform: &DMat4) {
         let position = self.get_position_wc().clone();
         let up = self.get_up_wc().clone();
         let direction = self.get_direction_wc().clone();

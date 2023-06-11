@@ -15,7 +15,8 @@ use bevy_egui::{EguiSet, WindowSize};
 use egui::EguiWantsFocus;
 use houtu_scene::{
     acos_clamped, to_mat4_64, Cartesian3, Cartographic, Ellipsoid, HeadingPitchRoll,
-    IntersectionTests, Plane, Ray, SceneTransforms, EPSILON14, EPSILON2, EPSILON3, EPSILON4,
+    IntersectionTests, Plane, Ray, SceneTransforms, Transforms, EPSILON14, EPSILON2, EPSILON3,
+    EPSILON4,
 };
 use std::f64::consts::{PI, TAU};
 use std::ops::Neg;
@@ -58,10 +59,15 @@ pub fn pan_orbit_camera(
             } else {
                 return;
             };
+            globe_camera_control.update(&mut globe_camera);
             match event {
                 ControlEvent::Zoom(data) => {
                     let startPosition =
                         aggregator.getStartMousePosition("WHEEL", &event_start_position_wrap);
+                    for key in event_start_position_wrap.keys().into_iter() {
+                        let value = event_start_position_wrap.get(key).unwrap();
+                        info!("key={},value={}", key, value)
+                    }
                     let movement = &data.movement;
                     let mut windowPosition;
                     if globe_camera_control._cameraUnderground {
@@ -165,15 +171,17 @@ pub fn pan_orbit_camera(
                         globe_camera_control._zoomingUnderground =
                             globe_camera_control._cameraUnderground;
                     }
-
+                    //用startPosition在球面上拾取不到坐标时,放大一些距离
                     if (!globe_camera_control._useZoomWorldPosition) {
                         globe_camera.zoom_in(Some(distance));
                         globe_camera.update_camera_matrix(&mut transform);
                         return;
                     }
+                    //以下是拾取到坐标是时执行以下代码
 
                     let mut zoomOnVector = false;
 
+                    //相机高度小于两百万米时，开启rotatingZoom
                     if (globe_camera.get_position_cartographic().height < 2000000.) {
                         rotatingZoom = true;
                     }
@@ -194,7 +202,7 @@ pub fn pan_orbit_camera(
                             let centerPosition =
                                 globe_camera.pickEllipsoid(&centerPixel, &window_size);
                             // If centerPosition is not defined, it means the globe does not cover the center position of screen
-
+                            // 如果centerPosition没定义，意味着屏幕的中心点处没有地球，开启zoomOnVector
                             if (centerPosition.is_none()) {
                                 zoomOnVector = true;
                             } else if (globe_camera.get_position_cartographic().height < 1000000.) {
@@ -202,6 +210,7 @@ pub fn pan_orbit_camera(
                                 // points toward the earth surface, so we check it here.
                                 // Theoretically, we should check for 90 degree, but it doesn't behave well when parallel
                                 // to the earth surface
+                                // 相机方向向量和相机位置向量的夹角在0-120°之间，开启zoomOnVector
                                 if (globe_camera.direction.dot(cameraPositionNormal) >= -0.5) {
                                     zoomOnVector = true;
                                 } else {
@@ -306,6 +315,7 @@ pub fn pan_orbit_camera(
                                         None,
                                         None,
                                     );
+                                    globe_camera.update_camera_matrix(&mut transform);
                                     return;
                                 }
                             } else {
@@ -314,11 +324,13 @@ pub fn pan_orbit_camera(
                                     globe_camera_control._zoomWorldPosition.normalize();
                                 let dotProduct = pickedNormal.dot(positionNormal);
 
+                                //夹角在0-90度之间
                                 if (dotProduct > 0.0 && dotProduct < 1.0) {
                                     let angle = acos_clamped(dotProduct);
                                     let axis = pickedNormal.cross(positionNormal);
 
                                     let denom = {
+                                        //大于20度时，denom为相机高度的0.75倍，小于20度时denom为相机高度减去distance
                                         if angle.abs() > (20.0 as f64).to_radians() {
                                             globe_camera.get_position_cartographic().height * 0.75
                                         } else {
@@ -456,6 +468,34 @@ fn tilt3DOnEllipsoid(
         controller._tiltCenterMousePosition = startPosition.clone();
         return;
     }
+
+    let transform = Transforms::eastNorthUpToFixedFrame(&center, None);
+
+    let oldEllipsoid = controller._ellipsoid;
+    controller._ellipsoid = Ellipsoid::UNIT_SPHERE;
+    controller._rotateFactor = 1.0;
+    controller._rotateRateRangeAdjustment = 1.0;
+
+    let oldTransform = camera.get_transform().clone();
+    camera._setTransform(&transform);
+
+    rotate3D(
+        controller,
+        camera,
+        startPosition,
+        movement,
+        window_size,
+        Some(DVec3::UNIT_Z),
+        None,
+        None,
+    );
+
+    camera._setTransform(&oldTransform);
+    controller._ellipsoid = oldEllipsoid;
+
+    let radius = oldEllipsoid.maximumRadius;
+    controller._rotateFactor = 1.0 / radius;
+    controller._rotateRateRangeAdjustment = radius;
 }
 fn tilt3D(
     controller: &mut GlobeCameraControl,
@@ -886,3 +926,54 @@ fn strafe(
 
     camera.position = camera.position + direction;
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use crate::plugins::camera::camera_event_aggregator::{ControlEventData, MouseEvent};
+
+//     use super::*;
+//     fn create_app() -> App {
+//         let mut app = App::new();
+//         app.add_plugins(DefaultPlugins.build().set(WindowPlugin {
+//             primary_window: Some(Window {
+//                 title: "houtu!".into(),
+//                 // resolution: WindowResolution::new(900., 900.0 / 0.660105980317941),
+//                 ..default()
+//             }),
+//             ..default()
+//         }))
+//         .add_plugin(crate::plugins::camera::CameraPlugin);
+//         return app;
+//     }
+//     #[test]
+//     fn zoom_in_3d() {
+//         let mut app = create_app();
+//         let setup = |mut control_event_writer: EventWriter<ControlEvent>,
+//                      primary_query: Query<&Window, With<PrimaryWindow>>,
+//                      mut events: EventWriter<MouseEvent>| {
+//             let Ok(primary) = primary_query.get_single() else {
+//                             return;
+//                         };
+//             let window_size = DVec2 {
+//                 x: primary.width() as f64,
+//                 y: primary.height() as f64,
+//             };
+//             // control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+//             //     movement: MovementState {
+//             //         startPosition: DVec2 {
+//             //             x: primary.width() / 2.0,
+//             //             y: primary.height()() / 4.0,
+//             //         },
+//             //         endPosition: DVec2 {
+//             //             x: primary.width() / 2.0,
+//             //             y: primary.height() / 2.0,
+//             //         },
+//             //         inertiaEnabled: false,
+//             //     },
+//             //     startPosition:
+//             // }))
+//         };
+//         app.add_startup_system(setup);
+//         app.update();
+//     }
+// }

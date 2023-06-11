@@ -127,7 +127,7 @@ pub struct GlobeCamera {
     pub _maxCoord: DVec3,
 
     pub frustum: GlobeCameraFrustum,
-    inited: bool,
+    pub inited: bool,
     pub constrainedAxis: Option<DVec3>,
 }
 

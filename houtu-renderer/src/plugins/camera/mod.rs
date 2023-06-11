@@ -13,7 +13,6 @@ use bevy::{
     render::primitives::Frustum,
     window::PrimaryWindow,
 };
-mod camera;
 mod camera_event_aggregator;
 mod camera_new;
 mod camera_old;

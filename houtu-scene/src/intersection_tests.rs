@@ -331,4 +331,11 @@ mod tests {
         let actual = IntersectionTests::rayEllipsoid(&ray, Some(&Ellipsoid::UNIT_SPHERE));
         assert!(actual.is_none());
     }
+    #[test]
+    fn grazingAltitudeLocation_inside_ellipsoid() {
+        let ellipsoid = Ellipsoid::UNIT_SPHERE;
+        let ray = Ray::new(DVec3::new(0.5, 0.0, 0.0), DVec3::UNIT_Z);
+        let actual = IntersectionTests::grazingAltitudeLocation(&ray, Some(&ellipsoid));
+        assert!(actual.unwrap().eq(&ray.origin));
+    }
 }

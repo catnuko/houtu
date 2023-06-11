@@ -11,7 +11,8 @@ mod systems;
 mod z_index;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
-use plugins::axes_helper;
+use houtu_scene::Ellipsoid;
+use plugins::{helpers, pan_orbit_camera};
 // use plugins::quadtree;
 use z_index::ZIndex;
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
@@ -42,19 +43,25 @@ impl Plugin for RendererPlugin {
                         ..default()
                     }),
             )
+            .add_plugin(helpers::Plugin)
             .add_plugin(WireframePlugin)
             .add_plugin(WorldInspectorPlugin::new())
-            // .add_plugin(axes_helper::Plugin)
             .add_plugin(houtu_jobs::Plugin)
             // .add_plugin(quadtree::Plugin)
             .add_plugin(plugins::globe::GlobePlugin)
             .add_plugin(plugins::camera::CameraPlugin)
             .add_plugin(plugins::tileset::Plugin)
             // .add_plugin(plugins::scene::ScenePlugin)
-            .add_system(setup);
+            .add_startup_system(setup);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
 }
-fn setup(mut wireframe_config: ResMut<WireframeConfig>) {
-    wireframe_config.global = false
+fn setup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
+    wireframe_config.global = false;
+    // let ellipsoid = Ellipsoid::WGS84;
+    // let x = ellipsoid.semimajor_axis() as f32;
+    // commands.spawn((Camera3dBundle {
+    //     transform: Transform::from_xyz(0., 0.0, 18478136.0).looking_at(Vec3::ZERO, Vec3::Y),
+    //     ..Default::default()
+    // },));
 }

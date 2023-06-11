@@ -24,9 +24,9 @@
 
 ## 路线
 1. - [x] 3d globe
-2. - [ ] camera
+2. - [x] camera
 3. - [ ] basic geometry，poline，polygon，point，box，sphere等
-4. - [ ] raster tile
+4. - [x] raster tile
 5. - [ ] vector tile
 6. - [ ] 3d tile
 7. - [ ] terrain

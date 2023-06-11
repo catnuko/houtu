@@ -62,7 +62,12 @@ impl Default for TileLayerBundle {
         }
     }
 }
-
+/// 推进LayerBundle的状态
+///
+/// 任务：
+/// 1. 计算生成TileBundle所需的顶点数据
+/// 2. 生成TileBundle
+/// 3. 维护瓦片的四叉树
 pub fn layer_system(
     mut command: Commands,
     mut query: Query<

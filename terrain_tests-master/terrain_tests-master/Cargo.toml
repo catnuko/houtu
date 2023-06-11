@@ -1,0 +1,20 @@
+[workspace]
+
+members = [
+   "amethyst_terrain",
+   "game",
+   "cnquadtree"
+]
+
+
+[profile.test] 
+opt-level = 0
+
+[profile.dev]
+opt-level = 1
+
+
+# [patch.crates-io]
+# gfx-hal = { git = "https://github.com/gfx-rs/gfx.git" }
+# gfx-backend-vulkan = { git = "https://github.com/gfx-rs/gfx.git" }
+# gfx-backend-empty = { git = "https://github.com/gfx-rs/gfx.git" }

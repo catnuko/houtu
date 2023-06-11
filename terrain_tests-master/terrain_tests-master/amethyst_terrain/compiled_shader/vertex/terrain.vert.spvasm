@@ -1,0 +1,232 @@
+; SPIR-V
+; Version: 1.0
+; Generator: Google Shaderc over Glslang; 7
+; Bound: 143
+; Schema: 0
+               OpCapability Shader
+          %2 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Vertex %main "main" %in_pos %in_patch_scale %in_patch_origin %vertex %in_normal %in_neighbour_scales %__0 %in_uv
+          %1 = OpString "shader/vertex/terrain.vert"
+               OpSource GLSL 450 %1 "// OpModuleProcessed entry-point main
+// OpModuleProcessed client vulkan100
+// OpModuleProcessed target-env vulkan1.0
+// OpModuleProcessed entry-point main
+#line 1
+#version 450
+
+//
+// Inputs
+//
+layout(location = 0) in vec3 in_pos;
+layout(location = 1) in vec3 in_normal;
+layout(location = 2) in vec2 in_uv;
+
+layout(location = 3) in float in_patch_scale; // Instanced
+layout(location = 4) in vec3 in_patch_origin; // Instanced
+layout(location = 5) in ivec4 in_neighbour_scales; // Instanced
+
+//
+// Uniforms
+//
+layout (std140, set = 0, binding = 0) uniform Projview {
+    mat4 proj;
+    mat4 view;
+};
+
+layout(std140, set = 1, binding = 0) uniform TerrainArgs {
+    mat4 model;
+    ivec2 terrain_size;
+    float terrain_height_scale;
+    float terrain_height_offset;
+    bool wireframe;
+};
+
+
+// Outputs
+// layout(location = 0) out VertexData {
+//     vec4 position;
+//     vec2 tex_coord;
+// } vertex;
+layout(location = 0) out VertexData {
+    vec3 position;
+    vec3 normal;
+    vec2 tex_coord;
+    ivec4 neighbour_scales;
+} vertex;
+// layout(location = 0) out vec3 out_normal;
+// layout(location = 1) out vec2 out_uv;
+// layout(location = 2) out vec4 out_neighbour_scales;
+
+vec2 calcTerrainTexCoord(in vec4 pos)
+{
+    return vec2(abs(pos.x - model[3][0]) / terrain_size.x, abs(pos.z - model[3][2]) / terrain_size.y);
+}
+
+void main()
+{
+    // Calcuate texture coordantes (u,v) relative to entire terrain
+    vec4 vertex_position = model * vec4((in_pos * in_patch_scale) + in_patch_origin, 1.0);
+    vertex.position = vertex_position.xyz;
+    vertex.normal = mat3(model) * in_normal;
+    vertex.neighbour_scales = in_neighbour_scales;
+    vertex.tex_coord = calcTerrainTexCoord(vertex_position);
+    gl_Position = vertex_position;
+
+}"
+               OpSourceExtension "GL_GOOGLE_cpp_style_line_directive"
+               OpSourceExtension "GL_GOOGLE_include_directive"
+               OpName %main "main"
+               OpName %TerrainArgs "TerrainArgs"
+               OpMemberName %TerrainArgs 0 "model"
+               OpMemberName %TerrainArgs 1 "terrain_size"
+               OpMemberName %TerrainArgs 2 "terrain_height_scale"
+               OpMemberName %TerrainArgs 3 "terrain_height_offset"
+               OpMemberName %TerrainArgs 4 "wireframe"
+               OpName %_ ""
+               OpName %in_pos "in_pos"
+               OpName %in_patch_scale "in_patch_scale"
+               OpName %in_patch_origin "in_patch_origin"
+               OpName %VertexData "VertexData"
+               OpMemberName %VertexData 0 "position"
+               OpMemberName %VertexData 1 "normal"
+               OpMemberName %VertexData 2 "tex_coord"
+               OpMemberName %VertexData 3 "neighbour_scales"
+               OpName %vertex "vertex"
+               OpName %in_normal "in_normal"
+               OpName %in_neighbour_scales "in_neighbour_scales"
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex 3 "gl_CullDistance"
+               OpName %__0 ""
+               OpName %in_uv "in_uv"
+               OpMemberDecorate %TerrainArgs 0 ColMajor
+               OpMemberDecorate %TerrainArgs 0 Offset 0
+               OpMemberDecorate %TerrainArgs 0 MatrixStride 16
+               OpMemberDecorate %TerrainArgs 1 Offset 64
+               OpMemberDecorate %TerrainArgs 2 Offset 72
+               OpMemberDecorate %TerrainArgs 3 Offset 76
+               OpMemberDecorate %TerrainArgs 4 Offset 80
+               OpDecorate %TerrainArgs Block
+               OpDecorate %_ DescriptorSet 1
+               OpDecorate %_ Binding 0
+               OpDecorate %in_pos Location 0
+               OpDecorate %in_patch_scale Location 3
+               OpDecorate %in_patch_origin Location 4
+               OpDecorate %VertexData Block
+               OpDecorate %vertex Location 0
+               OpDecorate %in_normal Location 1
+               OpDecorate %in_neighbour_scales Location 5
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex 3 BuiltIn CullDistance
+               OpDecorate %gl_PerVertex Block
+               OpDecorate %in_uv Location 2
+       %void = OpTypeVoid
+          %4 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+    %v2float = OpTypeVector %float 2
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+%mat4v4float = OpTypeMatrix %v4float 4
+        %int = OpTypeInt 32 1
+      %v2int = OpTypeVector %int 2
+%TerrainArgs = OpTypeStruct %mat4v4float %v2int %float %float %uint
+%_ptr_Uniform_TerrainArgs = OpTypePointer Uniform %TerrainArgs
+          %_ = OpVariable %_ptr_Uniform_TerrainArgs Uniform
+      %int_0 = OpConstant %int 0
+      %int_3 = OpConstant %int 3
+%_ptr_Uniform_float = OpTypePointer Uniform %float
+      %int_1 = OpConstant %int 1
+%_ptr_Uniform_int = OpTypePointer Uniform %int
+     %uint_2 = OpConstant %uint 2
+     %uint_1 = OpConstant %uint 1
+%_ptr_Uniform_mat4v4float = OpTypePointer Uniform %mat4v4float
+    %v3float = OpTypeVector %float 3
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+     %in_pos = OpVariable %_ptr_Input_v3float Input
+%_ptr_Input_float = OpTypePointer Input %float
+%in_patch_scale = OpVariable %_ptr_Input_float Input
+%in_patch_origin = OpVariable %_ptr_Input_v3float Input
+    %float_1 = OpConstant %float 1
+      %v4int = OpTypeVector %int 4
+ %VertexData = OpTypeStruct %v3float %v3float %v2float %v4int
+%_ptr_Output_VertexData = OpTypePointer Output %VertexData
+     %vertex = OpVariable %_ptr_Output_VertexData Output
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+%mat3v3float = OpTypeMatrix %v3float 3
+  %in_normal = OpVariable %_ptr_Input_v3float Input
+%_ptr_Input_v4int = OpTypePointer Input %v4int
+%in_neighbour_scales = OpVariable %_ptr_Input_v4int Input
+%_ptr_Output_v4int = OpTypePointer Output %v4int
+      %int_2 = OpConstant %int 2
+%_ptr_Output_v2float = OpTypePointer Output %v2float
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex = OpTypePointer Output %gl_PerVertex
+        %__0 = OpVariable %_ptr_Output_gl_PerVertex Output
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%_ptr_Input_v2float = OpTypePointer Input %v2float
+      %in_uv = OpVariable %_ptr_Input_v2float Input
+       %main = OpFunction %void None %4
+          %6 = OpLabel
+               OpLine %1 54 0
+         %56 = OpAccessChain %_ptr_Uniform_mat4v4float %_ %int_0
+         %57 = OpLoad %mat4v4float %56
+         %61 = OpLoad %v3float %in_pos
+         %64 = OpLoad %float %in_patch_scale
+         %65 = OpVectorTimesScalar %v3float %61 %64
+         %67 = OpLoad %v3float %in_patch_origin
+         %68 = OpFAdd %v3float %65 %67
+         %70 = OpCompositeExtract %float %68 0
+         %71 = OpCompositeExtract %float %68 1
+         %72 = OpCompositeExtract %float %68 2
+         %73 = OpCompositeConstruct %v4float %70 %71 %72 %float_1
+         %74 = OpMatrixTimesVector %v4float %57 %73
+         %80 = OpVectorShuffle %v3float %74 %74 0 1 2
+         %82 = OpAccessChain %_ptr_Output_v3float %vertex %int_0
+               OpStore %82 %80
+         %86 = OpCompositeExtract %v4float %57 0
+         %87 = OpVectorShuffle %v3float %86 %86 0 1 2
+         %88 = OpCompositeExtract %v4float %57 1
+         %89 = OpVectorShuffle %v3float %88 %88 0 1 2
+         %90 = OpCompositeExtract %v4float %57 2
+         %91 = OpVectorShuffle %v3float %90 %90 0 1 2
+         %92 = OpCompositeConstruct %mat3v3float %87 %89 %91
+         %94 = OpLoad %v3float %in_normal
+         %95 = OpMatrixTimesVector %v3float %92 %94
+         %96 = OpAccessChain %_ptr_Output_v3float %vertex %int_1
+               OpStore %96 %95
+               OpLine %1 57 0
+         %99 = OpLoad %v4int %in_neighbour_scales
+        %101 = OpAccessChain %_ptr_Output_v4int %vertex %int_3
+               OpStore %101 %99
+        %123 = OpCompositeExtract %float %74 0
+        %124 = OpAccessChain %_ptr_Uniform_float %_ %int_0 %int_3 %uint_0
+        %125 = OpLoad %float %124
+        %126 = OpFSub %float %123 %125
+        %127 = OpExtInst %float %2 FAbs %126
+        %128 = OpAccessChain %_ptr_Uniform_int %_ %int_1 %uint_0
+        %129 = OpLoad %int %128
+        %130 = OpConvertSToF %float %129
+        %131 = OpFDiv %float %127 %130
+        %133 = OpCompositeExtract %float %74 2
+        %134 = OpAccessChain %_ptr_Uniform_float %_ %int_0 %int_3 %uint_2
+        %135 = OpLoad %float %134
+        %136 = OpFSub %float %133 %135
+        %137 = OpExtInst %float %2 FAbs %136
+        %138 = OpAccessChain %_ptr_Uniform_int %_ %int_1 %uint_1
+        %139 = OpLoad %int %138
+        %140 = OpConvertSToF %float %139
+        %141 = OpFDiv %float %137 %140
+        %142 = OpCompositeConstruct %v2float %131 %141
+        %107 = OpAccessChain %_ptr_Output_v2float %vertex %int_2
+               OpStore %107 %142
+        %114 = OpAccessChain %_ptr_Output_v4float %__0 %int_0
+               OpStore %114 %74
+               OpReturn
+               OpFunctionEnd

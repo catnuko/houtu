@@ -64,10 +64,6 @@ pub fn pan_orbit_camera(
                 ControlEvent::Zoom(data) => {
                     let startPosition =
                         aggregator.getStartMousePosition("WHEEL", &event_start_position_wrap);
-                    for key in event_start_position_wrap.keys().into_iter() {
-                        let value = event_start_position_wrap.get(key).unwrap();
-                        info!("key={},value={}", key, value)
-                    }
                     let movement = &data.movement;
                     let mut windowPosition;
                     if globe_camera_control._cameraUnderground {
@@ -255,7 +251,9 @@ pub fn pan_orbit_camera(
                                         * alpha.sin())
                                     .clamp(-1.0, 1.0)
                                     .asin();
-
+                                    // 已推断出alpha和gamma角，找不到delta角在哪，如果有明白的人，请指点，下面给出研究成果，帮助理解。
+                                    // https://www.geogebra.org/m/qxn5dvhk
+                                    // 如果能找到delta就能找到beta，从而推断出pMid和cMid的含义
                                     let delta = ((remainingDistance / targetDistance)
                                         * alpha.sin())
                                     .clamp(-1.0, 1.0)

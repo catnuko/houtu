@@ -1,0 +1,23 @@
+[package]
+name = "game"
+version = "0.1.0"
+authors = ["Rudi Floren <rudi.floren@gmail.com>"]
+edition = "2018"
+description = "Test game"
+
+[dependencies]
+amethyst = { git = "https://github.com/amethyst/amethyst", rev = "ac3de03", version = "0.12.0", features= ["gltf"]}
+amethyst_derive = { git = "https://github.com/amethyst/amethyst", rev = "ac3de03" }
+amethyst_terrain = {path = "../amethyst_terrain", version = "0.1.0" }
+derivative = "1.0"
+log = "0.4.8"
+serde = { version = "1.0", features = ["derive"] }
+spinner = "0.4.0"
+flo_curves = "0.2.1"
+smallvec = "0.6.10"
+
+[features]
+default = ["vulkan"]
+
+vulkan = ["amethyst/vulkan", "amethyst_terrain/vulkan"]
+metal = ["amethyst/metal", "amethyst_terrain/metal"]

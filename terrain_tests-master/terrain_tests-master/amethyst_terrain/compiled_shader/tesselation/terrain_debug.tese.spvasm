@@ -1,0 +1,305 @@
+; SPIR-V
+; Version: 1.0
+; Generator: Google Shaderc over Glslang; 7
+; Bound: 284
+; Schema: 0
+               OpCapability Tessellation
+          %2 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint TessellationEvaluation %main "main" %gl_TessCoord %gl_in %out_uv %in_uv %out_normal %in_normal %__0 %out_view_vec %out_world_pos %out_tesselation_level %in_tesselation_level
+               OpExecutionMode %main Quads
+               OpExecutionMode %main SpacingFractionalEven
+               OpExecutionMode %main VertexOrderCw
+          %1 = OpString "shader/tesselation/terrain_debug.tese"
+               OpSource GLSL 450 %1 "// OpModuleProcessed entry-point main
+// OpModuleProcessed client vulkan100
+// OpModuleProcessed target-env vulkan1.0
+// OpModuleProcessed entry-point main
+#line 1
+#version 450
+
+// Inputs
+layout(quads, fractional_even_spacing, cw) in;
+
+layout(location = 0) in vec3 in_normal[];
+layout(location = 4) in vec2 in_uv[];
+layout(location = 8) in float in_tesselation_level[];
+
+
+// Uniforms
+layout (std140, set = 0, binding = 0) uniform Projview {
+    mat4 proj;
+    mat4 view;
+};
+layout (std140, set = 1, binding = 0) uniform TerrainArgs {
+    mat4 model;
+    ivec2 terrain_size;
+    float terrain_height_scale;
+    float terrain_height_offset;
+    bool wireframe;
+};
+
+// layout (std140, set = 0, binding = 1) uniform TessArgs {
+//     vec2 viewport;
+//     float terrain_height_scale;
+//     float terrain_height_offset;
+//     //   0
+//     // 3 x 1
+//     //   2
+//     vec4 neighbour_scales;
+// };
+layout (set = 1, binding = 1) uniform sampler2D terrain_height_tex;
+
+
+// Outputs
+layout(location = 0) out vec3 out_normal;
+layout(location = 1) out vec2 out_uv;
+layout(location = 2) out vec3 out_view_vec;
+layout(location = 3) out vec3 out_world_pos;
+layout(location = 4) out float out_tesselation_level;
+
+
+
+vec4 interpolate4(in vec4 v0, in vec4 v1, in vec4 v2, in vec4 v3)
+{
+    vec4 a = mix(v0, v1, gl_TessCoord.x);
+    vec4 b = mix(v3, v2, gl_TessCoord.x);
+    return mix(a, b, gl_TessCoord.y);
+}
+vec3 interpolate3(in vec3 v0, in vec3 v1, in vec3 v2, in vec3 v3)
+{
+	vec3 a = mix(v0, v1, gl_TessCoord.x);
+	vec3 b = mix(v3, v2, gl_TessCoord.x);
+	return mix(a, b, gl_TessCoord.y);
+}
+
+vec2 interpolate2(in vec2 v0, in vec2 v1, in vec2 v2, in vec2 v3)
+{
+	vec2 a = mix(v0, v1, gl_TessCoord.x);
+	vec2 b = mix(v3, v2, gl_TessCoord.x);
+	return mix(a, b, gl_TessCoord.y);
+}
+
+
+void main()
+{
+    // Calculate the vertex position using the four original points and interpolate depneding on the tessellation coordinates.	
+    // tes.position = interpolate(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_in[2].gl_Position, gl_in[3].gl_Position);
+    vec4 position = interpolate4(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_in[2].gl_Position, gl_in[3].gl_Position);
+
+    // Terrain heightmap coords
+    out_uv = interpolate2(in_uv[0], in_uv[1], in_uv[2], in_uv[3]);
+
+    out_normal = interpolate3(in_normal[0], in_normal[1], in_normal[2], in_normal[3]);
+
+    // Sample the heightmap and offset y position of vertex
+    vec4 samp = texture(terrain_height_tex, out_uv);
+    // vec4 samp2 = texture(terrain_height_tex_2, terrain_tex_coord);
+    position.y = samp.r * terrain_height_scale + terrain_height_offset;
+
+    // Project the vertex to clip space and send it along
+    // gl_Position = proj * view * position;
+    gl_Position = position;
+
+    out_view_vec = -position.xyz;
+
+    out_world_pos = position.xyz;
+
+    // tes.tex_coord = terrain_tex_coord;
+    // tes.tesselation_level = tcs[0].tesselation_level;
+    out_tesselation_level = in_tesselation_level[0];
+}"
+               OpSourceExtension "GL_GOOGLE_cpp_style_line_directive"
+               OpSourceExtension "GL_GOOGLE_include_directive"
+               OpName %main "main"
+               OpName %gl_TessCoord "gl_TessCoord"
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex 3 "gl_CullDistance"
+               OpName %gl_in "gl_in"
+               OpName %out_uv "out_uv"
+               OpName %in_uv "in_uv"
+               OpName %out_normal "out_normal"
+               OpName %in_normal "in_normal"
+               OpName %terrain_height_tex "terrain_height_tex"
+               OpName %TerrainArgs "TerrainArgs"
+               OpMemberName %TerrainArgs 0 "model"
+               OpMemberName %TerrainArgs 1 "terrain_size"
+               OpMemberName %TerrainArgs 2 "terrain_height_scale"
+               OpMemberName %TerrainArgs 3 "terrain_height_offset"
+               OpMemberName %TerrainArgs 4 "wireframe"
+               OpName %_ ""
+               OpName %gl_PerVertex_0 "gl_PerVertex"
+               OpMemberName %gl_PerVertex_0 0 "gl_Position"
+               OpMemberName %gl_PerVertex_0 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex_0 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex_0 3 "gl_CullDistance"
+               OpName %__0 ""
+               OpName %out_view_vec "out_view_vec"
+               OpName %out_world_pos "out_world_pos"
+               OpName %out_tesselation_level "out_tesselation_level"
+               OpName %in_tesselation_level "in_tesselation_level"
+               OpDecorate %gl_TessCoord BuiltIn TessCoord
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex 3 BuiltIn CullDistance
+               OpDecorate %gl_PerVertex Block
+               OpDecorate %out_uv Location 1
+               OpDecorate %in_uv Location 4
+               OpDecorate %out_normal Location 0
+               OpDecorate %in_normal Location 0
+               OpDecorate %terrain_height_tex DescriptorSet 1
+               OpDecorate %terrain_height_tex Binding 1
+               OpMemberDecorate %TerrainArgs 0 ColMajor
+               OpMemberDecorate %TerrainArgs 0 Offset 0
+               OpMemberDecorate %TerrainArgs 0 MatrixStride 16
+               OpMemberDecorate %TerrainArgs 1 Offset 64
+               OpMemberDecorate %TerrainArgs 2 Offset 72
+               OpMemberDecorate %TerrainArgs 3 Offset 76
+               OpMemberDecorate %TerrainArgs 4 Offset 80
+               OpDecorate %TerrainArgs Block
+               OpDecorate %_ DescriptorSet 1
+               OpDecorate %_ Binding 0
+               OpMemberDecorate %gl_PerVertex_0 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex_0 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex_0 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex_0 3 BuiltIn CullDistance
+               OpDecorate %gl_PerVertex_0 Block
+               OpDecorate %out_view_vec Location 2
+               OpDecorate %out_world_pos Location 3
+               OpDecorate %out_tesselation_level Location 4
+               OpDecorate %in_tesselation_level Location 8
+       %void = OpTypeVoid
+          %4 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+    %v3float = OpTypeVector %float 3
+    %v2float = OpTypeVector %float 2
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+%gl_TessCoord = OpVariable %_ptr_Input_v3float Input
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+%_ptr_Input_float = OpTypePointer Input %float
+     %uint_1 = OpConstant %uint 1
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+    %uint_32 = OpConstant %uint 32
+%_arr_gl_PerVertex_uint_32 = OpTypeArray %gl_PerVertex %uint_32
+%_ptr_Input__arr_gl_PerVertex_uint_32 = OpTypePointer Input %_arr_gl_PerVertex_uint_32
+      %gl_in = OpVariable %_ptr_Input__arr_gl_PerVertex_uint_32 Input
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+      %int_3 = OpConstant %int 3
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+%_ptr_Output_v2float = OpTypePointer Output %v2float
+     %out_uv = OpVariable %_ptr_Output_v2float Output
+%_arr_v2float_uint_32 = OpTypeArray %v2float %uint_32
+%_ptr_Input__arr_v2float_uint_32 = OpTypePointer Input %_arr_v2float_uint_32
+      %in_uv = OpVariable %_ptr_Input__arr_v2float_uint_32 Input
+%_ptr_Input_v2float = OpTypePointer Input %v2float
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+ %out_normal = OpVariable %_ptr_Output_v3float Output
+%_arr_v3float_uint_32 = OpTypeArray %v3float %uint_32
+%_ptr_Input__arr_v3float_uint_32 = OpTypePointer Input %_arr_v3float_uint_32
+  %in_normal = OpVariable %_ptr_Input__arr_v3float_uint_32 Input
+        %171 = OpTypeImage %float 2D 0 0 0 1 Unknown
+        %172 = OpTypeSampledImage %171
+%_ptr_UniformConstant_172 = OpTypePointer UniformConstant %172
+%terrain_height_tex = OpVariable %_ptr_UniformConstant_172 UniformConstant
+    %float_0 = OpConstant %float 0
+%mat4v4float = OpTypeMatrix %v4float 4
+      %v2int = OpTypeVector %int 2
+%TerrainArgs = OpTypeStruct %mat4v4float %v2int %float %float %uint
+%_ptr_Uniform_TerrainArgs = OpTypePointer Uniform %TerrainArgs
+          %_ = OpVariable %_ptr_Uniform_TerrainArgs Uniform
+%_ptr_Uniform_float = OpTypePointer Uniform %float
+%gl_PerVertex_0 = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex_0 = OpTypePointer Output %gl_PerVertex_0
+        %__0 = OpVariable %_ptr_Output_gl_PerVertex_0 Output
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%out_view_vec = OpVariable %_ptr_Output_v3float Output
+%out_world_pos = OpVariable %_ptr_Output_v3float Output
+%_ptr_Output_float = OpTypePointer Output %float
+%out_tesselation_level = OpVariable %_ptr_Output_float Output
+%_arr_float_uint_32 = OpTypeArray %float %uint_32
+%_ptr_Input__arr_float_uint_32 = OpTypePointer Input %_arr_float_uint_32
+%in_tesselation_level = OpVariable %_ptr_Input__arr_float_uint_32 Input
+       %main = OpFunction %void None %4
+          %6 = OpLabel
+               OpLine %1 70 0
+        %121 = OpAccessChain %_ptr_Input_v4float %gl_in %int_0 %int_0
+        %122 = OpLoad %v4float %121
+        %124 = OpAccessChain %_ptr_Input_v4float %gl_in %int_1 %int_0
+        %125 = OpLoad %v4float %124
+        %127 = OpAccessChain %_ptr_Input_v4float %gl_in %int_2 %int_0
+        %128 = OpLoad %v4float %127
+        %130 = OpAccessChain %_ptr_Input_v4float %gl_in %int_3 %int_0
+        %131 = OpLoad %v4float %130
+        %223 = OpAccessChain %_ptr_Input_float %gl_TessCoord %uint_0
+        %224 = OpLoad %float %223
+        %225 = OpCompositeConstruct %v4float %224 %224 %224 %224
+        %226 = OpExtInst %v4float %2 FMix %122 %125 %225
+        %232 = OpExtInst %v4float %2 FMix %131 %128 %225
+        %235 = OpAccessChain %_ptr_Input_float %gl_TessCoord %uint_1
+        %236 = OpLoad %float %235
+        %237 = OpCompositeConstruct %v4float %236 %236 %236 %236
+        %238 = OpExtInst %v4float %2 FMix %226 %232 %237
+               OpLine %1 73 0
+        %140 = OpAccessChain %_ptr_Input_v2float %in_uv %int_0
+        %141 = OpLoad %v2float %140
+        %143 = OpAccessChain %_ptr_Input_v2float %in_uv %int_1
+        %144 = OpLoad %v2float %143
+        %146 = OpAccessChain %_ptr_Input_v2float %in_uv %int_2
+        %147 = OpLoad %v2float %146
+        %149 = OpAccessChain %_ptr_Input_v2float %in_uv %int_3
+        %150 = OpLoad %v2float %149
+        %246 = OpCompositeConstruct %v2float %224 %224
+        %247 = OpExtInst %v2float %2 FMix %141 %144 %246
+        %253 = OpExtInst %v2float %2 FMix %150 %147 %246
+        %258 = OpCompositeConstruct %v2float %236 %236
+        %259 = OpExtInst %v2float %2 FMix %247 %253 %258
+               OpStore %out_uv %259
+               OpLine %1 75 0
+        %158 = OpAccessChain %_ptr_Input_v3float %in_normal %int_0
+        %159 = OpLoad %v3float %158
+        %161 = OpAccessChain %_ptr_Input_v3float %in_normal %int_1
+        %162 = OpLoad %v3float %161
+        %164 = OpAccessChain %_ptr_Input_v3float %in_normal %int_2
+        %165 = OpLoad %v3float %164
+        %167 = OpAccessChain %_ptr_Input_v3float %in_normal %int_3
+        %168 = OpLoad %v3float %167
+        %267 = OpCompositeConstruct %v3float %224 %224 %224
+        %268 = OpExtInst %v3float %2 FMix %159 %162 %267
+        %274 = OpExtInst %v3float %2 FMix %168 %165 %267
+        %279 = OpCompositeConstruct %v3float %236 %236 %236
+        %280 = OpExtInst %v3float %2 FMix %268 %274 %279
+               OpStore %out_normal %280
+               OpLine %1 78 0
+        %175 = OpLoad %172 %terrain_height_tex
+        %176 = OpLoad %v2float %out_uv
+        %178 = OpImageSampleExplicitLod %v4float %175 %176 Lod %float_0
+        %181 = OpCompositeExtract %float %178 0
+        %188 = OpAccessChain %_ptr_Uniform_float %_ %int_2
+        %189 = OpLoad %float %188
+        %190 = OpFMul %float %181 %189
+        %191 = OpAccessChain %_ptr_Uniform_float %_ %int_3
+        %192 = OpLoad %float %191
+        %193 = OpFAdd %float %190 %192
+        %283 = OpCompositeInsert %v4float %193 %238 1
+        %200 = OpAccessChain %_ptr_Output_v4float %__0 %int_0
+               OpStore %200 %283
+        %203 = OpVectorShuffle %v3float %283 %283 0 1 2
+        %204 = OpFNegate %v3float %203
+               OpStore %out_view_vec %204
+               OpStore %out_world_pos %203
+               OpLine %1 92 0
+        %213 = OpAccessChain %_ptr_Input_float %in_tesselation_level %int_0
+        %214 = OpLoad %float %213
+               OpStore %out_tesselation_level %214
+               OpReturn
+               OpFunctionEnd

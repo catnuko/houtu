@@ -73,13 +73,21 @@ impl Default for TileState {
         Self::Start
     }
 }
+/// 瓦片
+///
+/// 生成一个瓦片所需的数据
 #[derive(Bundle, Clone, Debug)]
 pub struct TileBundle {
+    /// 标志位Tile
     pub mark: TileMark,
+    /// TileBundle的唯一值，由x,y,z组成
     pub key: TileKey,
     pub visible: Visibility,
+    /// 所属的TileBundle的id
     pub tile_layer_id: TileLayerId,
+    /// 生成TileBundle所需的网格体
     pub terrain_mesh: TerrainMeshWrap,
+    /// TileBundle的状态
     pub state: TileState,
 }
 pub fn tile_system(

@@ -1,0 +1,41 @@
+[package]
+name = "amethyst_terrain"
+version = "0.1.0"
+authors = ["Rudi Floren <rudi.floren@gmail.com>"]
+edition = "2018"
+description = """
+Terrain rendering using a Cardinal Neighbor Quadtree LOD approach inspired by 
+* https://github.com/drecuk/QuadtreeTerrain/blob/master/30.SYS-QuadtreeTerrain/TerrainQuadTree.cpp
+* https://bitbucket.org/victorbush/ufl.cap5705.terrain/src/93c5ab3824a5a66d87d1bb6dcc9ed9aee7a16357/src_non_uniform/shader/?at=master
+* https://developer.nvidia.com/gpugems/GPUGems2/gpugems2_chapter07.html 
+* and the FarCry5 GDC Slides.
+
+
+This approach uses tesselation and thus does not support metal or opengl < 4.1
+
+"""
+
+[dependencies]
+amethyst = { git = "https://github.com/amethyst/amethyst", rev = "ac3de03", version = "0.12.0" }
+amethyst_derive = { git = "https://github.com/amethyst/amethyst", rev = "ac3de03" }
+cnquadtree = { path = "../cnquadtree" }
+lazy_static = "1.0"
+failure = "0.1"
+log = "*"
+glsl-layout = "0.3"
+nalgebra = "0.17"
+ncollide2d = "0.18"
+serde = { version = "1.0", features = ["derive"] }
+image = "*"
+shred = {version = "0.7"}
+shred-derive = {version  = "0.5" }
+smallvec = "0.6.9"
+derivative = "1.0.2"
+load_file = "1.0.0"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"
+
+[features]
+vulkan = ["amethyst/vulkan"]
+metal = ["amethyst/metal"]

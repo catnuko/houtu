@@ -1,0 +1,446 @@
+; SPIR-V
+; Version: 1.0
+; Generator: Google Shaderc over Glslang; 7
+; Bound: 327
+; Schema: 0
+               OpCapability Geometry
+          %2 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Geometry %main "main" %in_tesselation_level %wire_color %gl_in %__0 %out_uv %in_uv %out_view_vec %in_view_vec %out_world_pos %in_world_pos %edge_dist %in_normal %out_normal
+               OpExecutionMode %main Triangles
+               OpExecutionMode %main Invocations 1
+               OpExecutionMode %main OutputTriangleStrip
+               OpExecutionMode %main OutputVertices 4
+          %1 = OpString "shader/geometry/terrain.geom"
+               OpSource GLSL 450 %1 "// OpModuleProcessed entry-point main
+// OpModuleProcessed client vulkan100
+// OpModuleProcessed target-env vulkan1.0
+// OpModuleProcessed entry-point main
+#line 1
+#version 450
+
+// Inputs
+layout(triangles) in;
+layout(location = 0) in vec3 in_normal[];
+layout(location = 1) in vec2 in_uv[];
+layout(location = 2) in vec3 in_view_vec[];
+layout(location = 3) in vec3 in_world_pos[];
+layout(location = 4) in float in_tesselation_level[];
+
+// Uniforms
+layout (std140, set = 1, binding = 0) uniform Args {
+    mat4 model;
+    vec2 terrain_size;
+    float terrain_height_scale;
+    float terrain_height_offset;
+    bool wireframe;
+};
+
+
+// Outputs
+layout(triangle_strip, max_vertices = 4) out;
+
+layout(location = 0) out vec3 out_normal;
+layout(location = 1) out vec2 out_uv;
+layout(location = 2) out vec3 out_view_vec;
+layout(location = 3) out vec3 out_world_pos;
+layout(location = 4) out vec4 wire_color;
+layout(location = 5) noperspective out vec3 edge_dist;
+
+vec4 calc_wireframe_color()
+{
+    if (in_tesselation_level[0] == 64.0)
+        return vec4(0.0, 0.0, 1.0, 1.0);
+    else if (in_tesselation_level[0] >= 32.0)
+        return vec4(0.0, 1.0, 1.0, 1.0);
+    else if (in_tesselation_level[0] >= 16.0)
+        return vec4(1.0, 1.0, 0.0, 1.0);
+    else if (in_tesselation_level[0] >= 8.0)
+        return vec4(1.0, 1.0, 1.0, 1.0);
+    else
+        return vec4(1.0, 0.0, 0.0, 1.0);
+}
+
+void main(void)
+{
+    wire_color = calc_wireframe_color();
+
+    // Calculate edge distances for wireframe
+    float ha, hb, hc;
+    if (wireframe)
+    {
+        vec2 viewport = vec2(1024, 768);
+        vec2 p0 = vec2(viewport * (gl_in[0].gl_Position.xy / gl_in[0].gl_Position.w));
+        vec2 p1 = vec2(viewport * (gl_in[1].gl_Position.xy / gl_in[1].gl_Position.w));
+        vec2 p2 = vec2(viewport * (gl_in[2].gl_Position.xy / gl_in[2].gl_Position.w));
+
+        float a = length(p1 - p2);
+        float b = length(p2 - p0);
+        float c = length(p1 - p0);
+        float alpha = acos( (b*b + c*c - a*a) / (2.0*b*c) );
+        float beta = acos( (a*a + c*c - b*b) / (2.0*a*c) );
+        ha = abs( c * sin( beta ) );
+        hb = abs( c * sin( alpha ) );
+        hc = abs( b * sin( alpha ) );
+    }
+    else
+    {
+        ha = hb = hc = 0.0;
+    }
+
+    // Output verts
+    for(int i = 0; i < gl_in.length(); ++i)
+    {
+        gl_Position = gl_in[i].gl_Position;
+        out_uv = in_uv[i];
+        out_view_vec = in_view_vec[i];
+        out_world_pos = in_world_pos[i];
+        // wire_color = wire_color;
+
+        if (i == 0)
+            edge_dist = vec3(ha, 0, 0);
+        else if (i == 1)
+            edge_dist = vec3(0, hb, 0);
+        else
+            edge_dist = vec3(0, 0, hc);
+
+        EmitVertex();
+    }
+
+    // This closes the the triangle
+    gl_Position = gl_in[0].gl_Position;
+    edge_dist = vec3(ha, 0, 0);
+    out_uv = in_uv[0];
+    out_view_vec = in_view_vec[0];
+    out_world_pos = in_world_pos[0];
+    // gs.wire_color = wire_color;
+    EmitVertex();
+    
+    EndPrimitive();
+}"
+               OpSourceExtension "GL_GOOGLE_cpp_style_line_directive"
+               OpSourceExtension "GL_GOOGLE_include_directive"
+               OpName %main "main"
+               OpName %in_tesselation_level "in_tesselation_level"
+               OpName %wire_color "wire_color"
+               OpName %Args "Args"
+               OpMemberName %Args 0 "model"
+               OpMemberName %Args 1 "terrain_size"
+               OpMemberName %Args 2 "terrain_height_scale"
+               OpMemberName %Args 3 "terrain_height_offset"
+               OpMemberName %Args 4 "wireframe"
+               OpName %_ ""
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex 3 "gl_CullDistance"
+               OpName %gl_in "gl_in"
+               OpName %gl_PerVertex_0 "gl_PerVertex"
+               OpMemberName %gl_PerVertex_0 0 "gl_Position"
+               OpMemberName %gl_PerVertex_0 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex_0 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex_0 3 "gl_CullDistance"
+               OpName %__0 ""
+               OpName %out_uv "out_uv"
+               OpName %in_uv "in_uv"
+               OpName %out_view_vec "out_view_vec"
+               OpName %in_view_vec "in_view_vec"
+               OpName %out_world_pos "out_world_pos"
+               OpName %in_world_pos "in_world_pos"
+               OpName %edge_dist "edge_dist"
+               OpName %in_normal "in_normal"
+               OpName %out_normal "out_normal"
+               OpDecorate %in_tesselation_level Location 4
+               OpDecorate %wire_color Location 4
+               OpMemberDecorate %Args 0 ColMajor
+               OpMemberDecorate %Args 0 Offset 0
+               OpMemberDecorate %Args 0 MatrixStride 16
+               OpMemberDecorate %Args 1 Offset 64
+               OpMemberDecorate %Args 2 Offset 72
+               OpMemberDecorate %Args 3 Offset 76
+               OpMemberDecorate %Args 4 Offset 80
+               OpDecorate %Args Block
+               OpDecorate %_ DescriptorSet 1
+               OpDecorate %_ Binding 0
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex 3 BuiltIn CullDistance
+               OpDecorate %gl_PerVertex Block
+               OpMemberDecorate %gl_PerVertex_0 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex_0 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex_0 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex_0 3 BuiltIn CullDistance
+               OpDecorate %gl_PerVertex_0 Block
+               OpDecorate %out_uv Location 1
+               OpDecorate %in_uv Location 1
+               OpDecorate %out_view_vec Location 2
+               OpDecorate %in_view_vec Location 2
+               OpDecorate %out_world_pos Location 3
+               OpDecorate %in_world_pos Location 3
+               OpDecorate %edge_dist NoPerspective
+               OpDecorate %edge_dist Location 5
+               OpDecorate %in_normal Location 0
+               OpDecorate %out_normal Location 0
+       %void = OpTypeVoid
+          %4 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+       %uint = OpTypeInt 32 0
+     %uint_3 = OpConstant %uint 3
+%_arr_float_uint_3 = OpTypeArray %float %uint_3
+%_ptr_Input__arr_float_uint_3 = OpTypePointer Input %_arr_float_uint_3
+%in_tesselation_level = OpVariable %_ptr_Input__arr_float_uint_3 Input
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_Input_float = OpTypePointer Input %float
+   %float_64 = OpConstant %float 64
+       %bool = OpTypeBool
+    %float_0 = OpConstant %float 0
+    %float_1 = OpConstant %float 1
+         %29 = OpConstantComposite %v4float %float_0 %float_0 %float_1 %float_1
+   %float_32 = OpConstant %float 32
+         %38 = OpConstantComposite %v4float %float_0 %float_1 %float_1 %float_1
+   %float_16 = OpConstant %float 16
+         %47 = OpConstantComposite %v4float %float_1 %float_1 %float_0 %float_1
+    %float_8 = OpConstant %float 8
+         %56 = OpConstantComposite %v4float %float_1 %float_1 %float_1 %float_1
+         %59 = OpConstantComposite %v4float %float_1 %float_0 %float_0 %float_1
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+ %wire_color = OpVariable %_ptr_Output_v4float Output
+%mat4v4float = OpTypeMatrix %v4float 4
+    %v2float = OpTypeVector %float 2
+       %Args = OpTypeStruct %mat4v4float %v2float %float %float %uint
+%_ptr_Uniform_Args = OpTypePointer Uniform %Args
+          %_ = OpVariable %_ptr_Uniform_Args Uniform
+      %int_4 = OpConstant %int 4
+%_ptr_Uniform_uint = OpTypePointer Uniform %uint
+     %uint_0 = OpConstant %uint 0
+ %float_1024 = OpConstant %float 1024
+  %float_768 = OpConstant %float 768
+         %82 = OpConstantComposite %v2float %float_1024 %float_768
+     %uint_1 = OpConstant %uint 1
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_arr_gl_PerVertex_uint_3 = OpTypeArray %gl_PerVertex %uint_3
+%_ptr_Input__arr_gl_PerVertex_uint_3 = OpTypePointer Input %_arr_gl_PerVertex_uint_3
+      %gl_in = OpVariable %_ptr_Input__arr_gl_PerVertex_uint_3 Input
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+    %float_2 = OpConstant %float 2
+      %int_3 = OpConstant %int 3
+%gl_PerVertex_0 = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex_0 = OpTypePointer Output %gl_PerVertex_0
+        %__0 = OpVariable %_ptr_Output_gl_PerVertex_0 Output
+%_ptr_Output_v2float = OpTypePointer Output %v2float
+     %out_uv = OpVariable %_ptr_Output_v2float Output
+%_arr_v2float_uint_3 = OpTypeArray %v2float %uint_3
+%_ptr_Input__arr_v2float_uint_3 = OpTypePointer Input %_arr_v2float_uint_3
+      %in_uv = OpVariable %_ptr_Input__arr_v2float_uint_3 Input
+%_ptr_Input_v2float = OpTypePointer Input %v2float
+    %v3float = OpTypeVector %float 3
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+%out_view_vec = OpVariable %_ptr_Output_v3float Output
+%_arr_v3float_uint_3 = OpTypeArray %v3float %uint_3
+%_ptr_Input__arr_v3float_uint_3 = OpTypePointer Input %_arr_v3float_uint_3
+%in_view_vec = OpVariable %_ptr_Input__arr_v3float_uint_3 Input
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+%out_world_pos = OpVariable %_ptr_Output_v3float Output
+%in_world_pos = OpVariable %_ptr_Input__arr_v3float_uint_3 Input
+  %edge_dist = OpVariable %_ptr_Output_v3float Output
+  %in_normal = OpVariable %_ptr_Input__arr_v3float_uint_3 Input
+ %out_normal = OpVariable %_ptr_Output_v3float Output
+       %main = OpFunction %void None %4
+          %6 = OpLabel
+               OpBranch %290
+        %290 = OpLabel
+               OpLoopMerge %291 %292 None
+               OpBranch %293
+        %293 = OpLabel
+               OpLine %1 33 0
+        %294 = OpAccessChain %_ptr_Input_float %in_tesselation_level %int_0
+        %295 = OpLoad %float %294
+        %296 = OpFOrdEqual %bool %295 %float_64
+               OpSelectionMerge %297 None
+               OpBranchConditional %296 %298 %299
+        %299 = OpLabel
+        %302 = OpFOrdGreaterThanEqual %bool %295 %float_32
+               OpSelectionMerge %303 None
+               OpBranchConditional %302 %304 %305
+        %305 = OpLabel
+        %308 = OpFOrdGreaterThanEqual %bool %295 %float_16
+               OpSelectionMerge %309 None
+               OpBranchConditional %308 %310 %311
+        %311 = OpLabel
+        %314 = OpFOrdGreaterThanEqual %bool %295 %float_8
+               OpSelectionMerge %315 None
+               OpBranchConditional %314 %316 %317
+        %317 = OpLabel
+               OpLine %1 42 0
+               OpBranch %291
+        %316 = OpLabel
+               OpLine %1 40 0
+               OpBranch %291
+        %315 = OpLabel
+               OpUnreachable
+        %310 = OpLabel
+               OpLine %1 38 0
+               OpBranch %291
+        %309 = OpLabel
+               OpUnreachable
+        %304 = OpLabel
+               OpLine %1 36 0
+               OpBranch %291
+        %303 = OpLabel
+               OpUnreachable
+        %298 = OpLabel
+               OpLine %1 34 0
+               OpBranch %291
+        %297 = OpLabel
+               OpUnreachable
+        %292 = OpLabel
+               OpBranch %290
+        %291 = OpLabel
+        %319 = OpPhi %v4float %59 %317 %56 %316 %47 %310 %38 %304 %29 %298
+               OpStore %wire_color %319
+               OpLine %1 51 0
+         %72 = OpAccessChain %_ptr_Uniform_uint %_ %int_4
+         %73 = OpLoad %uint %72
+         %75 = OpINotEqual %bool %73 %uint_0
+               OpSelectionMerge %77 None
+               OpBranchConditional %75 %76 %202
+        %202 = OpLabel
+               OpBranch %77
+         %76 = OpLabel
+         %92 = OpAccessChain %_ptr_Input_v4float %gl_in %int_0 %int_0
+         %93 = OpLoad %v4float %92
+         %94 = OpVectorShuffle %v2float %93 %93 0 1
+         %95 = OpAccessChain %_ptr_Input_float %gl_in %int_0 %int_0 %uint_3
+         %96 = OpLoad %float %95
+         %97 = OpCompositeConstruct %v2float %96 %96
+         %98 = OpFDiv %v2float %94 %97
+         %99 = OpFMul %v2float %82 %98
+        %106 = OpAccessChain %_ptr_Input_v4float %gl_in %int_1 %int_0
+        %107 = OpLoad %v4float %106
+        %108 = OpVectorShuffle %v2float %107 %107 0 1
+        %109 = OpAccessChain %_ptr_Input_float %gl_in %int_1 %int_0 %uint_3
+        %110 = OpLoad %float %109
+        %111 = OpCompositeConstruct %v2float %110 %110
+        %112 = OpFDiv %v2float %108 %111
+        %113 = OpFMul %v2float %82 %112
+        %120 = OpAccessChain %_ptr_Input_v4float %gl_in %int_2 %int_0
+        %121 = OpLoad %v4float %120
+        %122 = OpVectorShuffle %v2float %121 %121 0 1
+        %123 = OpAccessChain %_ptr_Input_float %gl_in %int_2 %int_0 %uint_3
+        %124 = OpLoad %float %123
+        %125 = OpCompositeConstruct %v2float %124 %124
+        %126 = OpFDiv %v2float %122 %125
+        %127 = OpFMul %v2float %82 %126
+        %135 = OpFSub %v2float %113 %127
+        %136 = OpExtInst %float %2 Length %135
+        %140 = OpFSub %v2float %127 %99
+        %141 = OpExtInst %float %2 Length %140
+        %145 = OpFSub %v2float %113 %99
+        %146 = OpExtInst %float %2 Length %145
+        %150 = OpFMul %float %141 %141
+        %153 = OpFMul %float %146 %146
+        %154 = OpFAdd %float %150 %153
+        %157 = OpFMul %float %136 %136
+        %158 = OpFSub %float %154 %157
+        %161 = OpFMul %float %float_2 %141
+        %163 = OpFMul %float %161 %146
+        %164 = OpFDiv %float %158 %163
+        %165 = OpExtInst %float %2 Acos %164
+        %173 = OpFAdd %float %157 %153
+        %177 = OpFSub %float %173 %150
+        %179 = OpFMul %float %float_2 %136
+        %181 = OpFMul %float %179 %146
+        %182 = OpFDiv %float %177 %181
+        %183 = OpExtInst %float %2 Acos %182
+        %187 = OpExtInst %float %2 Sin %183
+        %188 = OpFMul %float %146 %187
+        %189 = OpExtInst %float %2 FAbs %188
+        %193 = OpExtInst %float %2 Sin %165
+        %194 = OpFMul %float %146 %193
+        %195 = OpExtInst %float %2 FAbs %194
+        %200 = OpFMul %float %141 %193
+        %201 = OpExtInst %float %2 FAbs %200
+               OpBranch %77
+         %77 = OpLabel
+        %326 = OpPhi %float %float_0 %202 %195 %76
+        %324 = OpPhi %float %float_0 %202 %201 %76
+        %322 = OpPhi %float %float_0 %202 %189 %76
+               OpBranch %205
+        %205 = OpLabel
+        %320 = OpPhi %int %int_0 %77 %262 %247
+        %212 = OpSLessThan %bool %320 %int_3
+               OpLoopMerge %207 %247 None
+               OpBranchConditional %212 %206 %207
+        %206 = OpLabel
+        %217 = OpAccessChain %_ptr_Input_v4float %gl_in %320 %int_0
+        %218 = OpLoad %v4float %217
+        %219 = OpAccessChain %_ptr_Output_v4float %__0 %int_0
+               OpStore %219 %218
+        %227 = OpAccessChain %_ptr_Input_v2float %in_uv %320
+        %228 = OpLoad %v2float %227
+               OpStore %out_uv %228
+        %237 = OpAccessChain %_ptr_Input_v3float %in_view_vec %320
+        %238 = OpLoad %v3float %237
+               OpStore %out_view_vec %238
+        %242 = OpAccessChain %_ptr_Input_v3float %in_world_pos %320
+        %243 = OpLoad %v3float %242
+               OpStore %out_world_pos %243
+        %245 = OpIEqual %bool %320 %int_0
+               OpSelectionMerge %247 None
+               OpBranchConditional %245 %246 %251
+        %251 = OpLabel
+        %253 = OpIEqual %bool %320 %int_1
+               OpSelectionMerge %255 None
+               OpBranchConditional %253 %254 %258
+        %258 = OpLabel
+        %260 = OpCompositeConstruct %v3float %float_0 %float_0 %324
+               OpStore %edge_dist %260
+               OpBranch %255
+        %254 = OpLabel
+        %257 = OpCompositeConstruct %v3float %float_0 %326 %float_0
+               OpStore %edge_dist %257
+               OpBranch %255
+        %255 = OpLabel
+               OpBranch %247
+        %246 = OpLabel
+        %250 = OpCompositeConstruct %v3float %322 %float_0 %float_0
+               OpStore %edge_dist %250
+               OpBranch %247
+        %247 = OpLabel
+               OpLine %1 88 0
+               OpEmitVertex
+        %262 = OpIAdd %int %320 %int_1
+               OpBranch %205
+        %207 = OpLabel
+               OpLine %1 92 0
+        %263 = OpAccessChain %_ptr_Input_v4float %gl_in %int_0 %int_0
+        %264 = OpLoad %v4float %263
+        %265 = OpAccessChain %_ptr_Output_v4float %__0 %int_0
+               OpStore %265 %264
+        %267 = OpCompositeConstruct %v3float %322 %float_0 %float_0
+               OpStore %edge_dist %267
+               OpLine %1 94 0
+        %268 = OpAccessChain %_ptr_Input_v2float %in_uv %int_0
+        %269 = OpLoad %v2float %268
+               OpStore %out_uv %269
+               OpLine %1 95 0
+        %270 = OpAccessChain %_ptr_Input_v3float %in_view_vec %int_0
+        %271 = OpLoad %v3float %270
+               OpStore %out_view_vec %271
+               OpLine %1 96 0
+        %272 = OpAccessChain %_ptr_Input_v3float %in_world_pos %int_0
+        %273 = OpLoad %v3float %272
+               OpStore %out_world_pos %273
+               OpLine %1 98 0
+               OpEmitVertex
+               OpLine %1 100 0
+               OpEndPrimitive
+               OpReturn
+               OpFunctionEnd

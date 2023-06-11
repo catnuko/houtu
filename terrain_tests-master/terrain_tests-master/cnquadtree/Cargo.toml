@@ -1,0 +1,11 @@
+[package]
+name = "cnquadtree"
+version = "0.1.0"
+authors = ["Rudi Floren <rudi.floren@gmail.com>"]
+edition = "2018"
+description = "Arena based Cardinal Neighbor Quadtree based on `Cardinal Neighbor Quadtree: a New Quadtree-based Structure for Constant-Time Neighbor Finding` by Safwan W. Qasem and Ameur A. Touir DOI: 10.5120/ijca2015907501"
+
+[dependencies]
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"

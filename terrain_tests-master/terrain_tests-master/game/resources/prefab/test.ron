@@ -1,0 +1,104 @@
+#![enable(implicit_some)]
+Prefab (
+    entities: [
+        (
+            data: (
+                light: (ambient_color: ((0.0, 0.0, 0.0, 0.0))),
+            ),
+        ),
+        // (
+        //     data: (
+        //         mesh: Asset(File ("model/teapot.obj", ("OBJ", ()))),
+        //         material: (
+        //             normal: File("texture/red_brick_normal.jpg", ("IMAGE", (repr: Unorm))),
+        //             albedo: File("texture/red_brick_diffuse.jpg", ("IMAGE", (repr: Srgb))),
+        //             metallic_roughness: File("texture/red_brick_roughness.jpg", ("IMAGE", (repr: Unorm))),
+        //         ),
+        //         transform: (
+        //             translation: (0.0, 50.0, 512.0),
+        //         ),
+        //     ),
+        // ),
+        (
+            data: (
+                gltf: File("model/helmet.gltf", ()),
+                transform: (
+                    translation: (100.0, 5.0, 512.0),
+                    rotation: (0.0, 1.0, 0.0, 0.0),
+                    scale: (5.0, 5.0, 5.0)
+                ),
+            ),
+        ),
+         (
+            data: (
+                gltf: File("model/helmet.gltf", ()),
+                transform: (
+                    translation: (512.0, 40.0, 512.0),
+                    rotation: (0.0, 1.0, 0.0, 0.0),
+                    scale: (5.0, 5.0, 5.0)
+                ),
+            ),
+        ),
+        // (
+        //     data: (
+        //         transform: (
+        //             translation: (512.0, 15.0, 512.0),
+        //             rotation: (0.0, 0., 1., 1.0),
+        //         ),
+        //         camera: Perspective((
+        //             aspect: 1.3,
+        //             fovy: 1.0471975512,
+        //             znear: 0.1,
+        //             zfar: 2000.0,
+        //         )),
+        //         // fly control tag
+        //         control_tag: (),
+        //     ),
+        // ),
+        (
+            data: (
+                transform: Transform (
+                     translation: (0.0, 512.0, 0.0),
+                ),
+                light: (
+                    light: Directional((
+                        direction: [512.0, -128.0, 512.0],
+                        intensity: 1.0,
+                        color: Srgb(1, 0.9, 0.575),
+                    )),
+                ),
+            ),
+        ),
+        (
+            data: (
+                transform: Transform (
+                     translation: (100.0, 15.0, 520.0),
+                ),
+                gltf: File("model/light_bulp.glb", ()),
+                light: (
+                    light: Point((
+                        intensity: 10.0,
+                        color: Srgb(1, 0.9, 0.575),
+                    )),
+                ),
+            ),
+        ),
+        (
+            data: (
+                terrain: (
+                    size: 1024,
+                    max_level: 6,
+                    height_scale: 2000.0,
+                    heightmap: File("texture/test5_1024x1024.hdr", ("IMAGE", (format: (HDR), repr: Float))),
+                    normal: File("texture/test5_1024x1024_normal.png", ("IMAGE", (repr: Unorm))),
+                    albedo: File("texture/test5_1024x1024_albedo.png", ("IMAGE", (repr: Srgb))),
+                    // ambient_occlusion: File("texture/test5_1024x1024_occlusion.png", ("IMAGE", (repr: Unorm))),
+                ),
+                transform: (
+                    translation: (0.0, 0.0, 0.0),
+                ),
+            ),
+        ),
+
+    ],
+)

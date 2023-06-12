@@ -5,6 +5,8 @@ use self::{
     layer::{layer_system, TileLayerBundle, TileLayerId},
     tile::tile_system,
 };
+
+use super::cnquadtree::TerrainQuadtree;
 mod layer;
 mod storage;
 mod terrian_material;
@@ -14,6 +16,7 @@ impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
         app.insert_resource(IndicesAndEdgesCache::new());
+        app.insert_resource(TerrainQuadtree);
         app.add_system(layer_system);
         app.add_startup_system(setup);
         app.add_system(tile_system);

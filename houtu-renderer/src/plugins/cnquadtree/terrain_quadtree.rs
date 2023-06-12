@@ -1,221 +1,17 @@
-use std::fmt;
-use std::ops::Index;
-use std::ops::IndexMut;
+use houtu_scene::{GeographicTilingScheme, TilingScheme};
 
-// Implements a cardinal neighbour quadtree
-#[derive(Clone, Debug)]
+use super::{
+    direction::Direction, node_id::NodeId, terrain_quadtree_internal::TerrainQuadtreeInternal,
+    terrain_quadtree_leaf::TerrainQuadtreeLeaf, terrain_quadtree_node::TerrainQuadtreeNode,
+    Quadrant,
+};
+
 pub struct TerrainQuadtree {
     max_depth: u8,
-    bounds: AABB,
     root: TerrainQuadtreeNode,
-    internals: Vec<TerrainQuadtreeInternal>,
-    leaves: Vec<TerrainQuadtreeLeaf>,
-}
-
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
-pub enum TerrainQuadtreeNode {
-    /// None variant.
-    None,
-    /// Identifier of an internal node.
-    Internal(usize),
-    /// Identifier of a leaf node.
-    Leaf(usize),
-}
-
-#[derive(Clone, PartialEq)]
-struct TerrainQuadtreeInternal {
-    parent: TerrainQuadtreeNode,
-    bounds: AABB,
-    level: u8,
-    location: Quadrant,
-    children: NodeChildren,
-    neighbours: NodeNeighbours,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct TerrainQuadtreeLeaf {
-    parent: TerrainQuadtreeNode,
-    bounds: AABB,
-    level: u8,
-    location: Quadrant,
-    neighbours: NodeNeighbours,
-}
-
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub struct AABB {
-    min: [f32; 2],
-    max: [f32; 2],
-}
-
-impl AABB {
-    pub fn new(min: [f32; 2], max: [f32; 2]) -> Self {
-        Self { min: min, max: max }
-    }
-    fn center(&self) -> [f32; 2] {
-        let half = self.half_extents();
-        [self.min[0] + half[0], self.min[1] + half[1]]
-    }
-    fn half_extents(&self) -> [f32; 2] {
-        [
-            (self.max[0] - self.min[0]) * 0.5,
-            (self.max[1] - self.min[1]) * 0.5,
-        ]
-    }
-    fn contains_point(&self, point: [f32; 2]) -> bool {
-        if point[0] < self.min[0]
-            || point[1] < self.min[1]
-            || point[0] > self.max[0]
-            || point[1] > self.max[1]
-        {
-            return false;
-        }
-        true
-    }
-}
-
-impl From<[f32; 4]> for AABB {
-    fn from(bounds: [f32; 4]) -> Self {
-        Self {
-            min: [bounds[0], bounds[1]],
-            max: [bounds[2], bounds[3]],
-        }
-    }
-}
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Quadrant {
-    Northwest,
-    Northeast,
-    Southwest,
-    Southeast,
-    Root,
-}
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Direction {
-    North,
-    East,
-    South,
-    West,
-}
-impl Direction {
-    pub(crate) fn traversal(&self) -> Direction {
-        match self {
-            Direction::West => Direction::South,
-            Direction::North => Direction::East,
-            Direction::East => Direction::North,
-            Direction::South => Direction::West,
-        }
-    }
-    pub(crate) fn opposite(&self) -> Direction {
-        match self {
-            Direction::West => Direction::East,
-            Direction::North => Direction::South,
-            Direction::East => Direction::West,
-            Direction::South => Direction::North,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct NodeNeighbours {
-    north: TerrainQuadtreeNode,
-    east: TerrainQuadtreeNode,
-    south: TerrainQuadtreeNode,
-    west: TerrainQuadtreeNode,
-}
-
-impl Default for NodeNeighbours {
-    fn default() -> Self {
-        Self {
-            north: TerrainQuadtreeNode::None,
-            east: TerrainQuadtreeNode::None,
-            south: TerrainQuadtreeNode::None,
-            west: TerrainQuadtreeNode::None,
-        }
-    }
-}
-
-impl Index<Direction> for NodeNeighbours {
-    type Output = TerrainQuadtreeNode;
-
-    fn index(&self, dir: Direction) -> &TerrainQuadtreeNode {
-        match dir {
-            Direction::North => &self.north,
-            Direction::East => &self.east,
-            Direction::South => &self.south,
-            Direction::West => &self.west,
-        }
-    }
-}
-
-impl IndexMut<Direction> for NodeNeighbours {
-    fn index_mut(&mut self, dir: Direction) -> &mut TerrainQuadtreeNode {
-        match dir {
-            Direction::North => &mut self.north,
-            Direction::East => &mut self.east,
-            Direction::South => &mut self.south,
-            Direction::West => &mut self.west,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct NodeChildren {
-    northwest: TerrainQuadtreeNode,
-    northeast: TerrainQuadtreeNode,
-    southwest: TerrainQuadtreeNode,
-    southeast: TerrainQuadtreeNode,
-}
-
-impl Default for NodeChildren {
-    fn default() -> Self {
-        Self {
-            northwest: TerrainQuadtreeNode::None,
-            northeast: TerrainQuadtreeNode::None,
-            southwest: TerrainQuadtreeNode::None,
-            southeast: TerrainQuadtreeNode::None,
-        }
-    }
-}
-
-impl Index<Quadrant> for NodeChildren {
-    type Output = TerrainQuadtreeNode;
-
-    fn index(&self, quadrant: Quadrant) -> &TerrainQuadtreeNode {
-        match quadrant {
-            Quadrant::Northwest => &self.northwest,
-            Quadrant::Northeast => &self.northeast,
-            Quadrant::Southwest => &self.southwest,
-            Quadrant::Southeast => &self.southeast,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl IndexMut<Quadrant> for NodeChildren {
-    fn index_mut(&mut self, quadrant: Quadrant) -> &mut TerrainQuadtreeNode {
-        match quadrant {
-            Quadrant::Northwest => &mut self.northwest,
-            Quadrant::Northeast => &mut self.northeast,
-            Quadrant::Southwest => &mut self.southwest,
-            Quadrant::Southeast => &mut self.southeast,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl IntoIterator for NodeChildren {
-    type Item = TerrainQuadtreeNode;
-    type IntoIter = ::std::vec::IntoIter<TerrainQuadtreeNode>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        vec![
-            self.northwest,
-            self.northeast,
-            self.southwest,
-            self.southeast,
-        ]
-        .into_iter()
-    }
+    pub(super) internals: Vec<TerrainQuadtreeInternal>,
+    pub(super) leaves: Vec<TerrainQuadtreeLeaf>,
+    tiling_scheme: GeographicTilingScheme,
 }
 
 impl TerrainQuadtree {
@@ -648,71 +444,53 @@ impl TerrainQuadtree {
             _ => unreachable!(),
         }
     }
-
     pub(crate) fn new_node(
         &mut self,
-        depth: u8,
-        bounds: AABB,
+        node_id: NodeId,
         location: Quadrant,
         parent: TerrainQuadtreeNode,
-        camera: [f32; 2],
     ) -> TerrainQuadtreeNode {
         if self.split_check(bounds, depth, camera) {
             self.internals.push(TerrainQuadtreeInternal {
                 parent: parent,
-                bounds: bounds,
-                level: depth,
-                location: location,
+                id: node_id,
+                rectangle: self.tiling_scheme.tile_x_y_to_rectange(
+                    node_id.x,
+                    node_id.y,
+                    node_id.level,
+                ),
                 children: Default::default(),
                 neighbours: Default::default(),
+                location: location,
             });
             TerrainQuadtreeNode::Internal(self.internals.len() - 1)
         } else {
             self.leaves.push(TerrainQuadtreeLeaf {
                 parent: parent,
-                bounds: bounds,
-                level: depth,
-                location: location,
+                id: node_id,
+                rectangle: self.tiling_scheme.tile_x_y_to_rectange(
+                    node_id.x,
+                    node_id.y,
+                    node_id.level,
+                ),
                 neighbours: Default::default(),
+                location: location,
             });
             TerrainQuadtreeNode::Leaf(self.leaves.len() - 1)
         }
     }
-
-    pub(crate) fn subdivide(&mut self, node_id: TerrainQuadtreeNode, camera: [f32; 2]) {
+    pub(crate) fn subdivide(&mut self, node_id: TerrainQuadtreeNode) {
         if let TerrainQuadtreeNode::Internal(index) = node_id {
             let node = &self.internals[index];
-            let bounds = node.bounds;
-            let depth = node.level;
             let neighbours = node.neighbours;
-            let half_extents = bounds.half_extents();
-            let nw_bounds = AABB::new(
-                bounds.min,
-                [
-                    bounds.max[0] - half_extents[0],
-                    bounds.max[1] - half_extents[1],
-                ],
-            );
-            let ne_bounds = AABB::new(
-                [bounds.min[0] + half_extents[0], bounds.min[1]],
-                [bounds.max[0], bounds.max[1] - half_extents[1]],
-            );
-            let sw_bounds = AABB::new(
-                [bounds.min[0], bounds.min[1] + half_extents[1]],
-                [bounds.max[0] - half_extents[0], bounds.max[1]],
-            );
-            let se_bounds = AABB::new(
-                [
-                    bounds.min[0] + half_extents[0],
-                    bounds.min[1] + half_extents[1],
-                ],
-                bounds.max,
-            );
-
-            let nw = self.new_node(depth + 1, nw_bounds, Quadrant::Northwest, node_id, camera);
-            let ne = self.new_node(depth + 1, ne_bounds, Quadrant::Northeast, node_id, camera);
-            let sw = self.new_node(depth + 1, sw_bounds, Quadrant::Southwest, node_id, camera);
-            let se = self.new_node(depth + 1, se_bounds, Quadrant::Southeast, node_id, camera);
+            let southwest = node.id.southwest();
+            let southeast = node.id.southeast();
+            let northwest = node.id.northwest();
+            let northeast = node.id.northeast();
+            let nw = self.new_node(southwest, Quadrant::Southwest, node_id);
+            let ne = self.new_node(southeast, Quadrant::Southeast, node_id);
+            let sw = self.new_node(northwest, Quadrant::Northwest, node_id);
+            let se = self.new_node(northeast, Quadrant::Northeast, node_id);
 
             self.set_neighbour(nw, Direction::West, neighbours.west);
             self.set_neighbour(nw, Direction::North, neighbours.north);
@@ -747,11 +525,6 @@ impl TerrainQuadtree {
             self.update_southwest(node_id);
 
             self.update_neighbours(node_id);
-
-            self.subdivide(nw, camera);
-            self.subdivide(ne, camera);
-            self.subdivide(sw, camera);
-            self.subdivide(se, camera);
         }
     }
 
@@ -773,104 +546,3 @@ impl TerrainQuadtree {
         true
     }
 }
-
-impl TerrainQuadtreeInternal {
-    pub fn contains_point(&self, point: [f32; 2]) -> bool {
-        self.bounds.contains_point(point)
-    }
-}
-impl TerrainQuadtreeLeaf {
-    pub fn contains_point(&self, point: [f32; 2]) -> bool {
-        self.bounds.contains_point(point)
-    }
-
-    pub fn origin(self) -> [f32; 2] {
-        self.bounds.center()
-    }
-
-    pub fn half_extents(self) -> [f32; 2] {
-        self.bounds.half_extents()
-    }
-
-    pub fn level(self) -> u8 {
-        self.level
-    }
-    pub fn get_neighbours(&self) -> NodeNeighbours {
-        self.neighbours
-    }
-
-    // TODO: Improve frustum culling
-    pub fn check_visibility(self, a: [f32; 2], b: [f32; 2]) -> bool {
-        return true;
-        let C = self.origin();
-        (b[0] - a[0]) * (C[1] - a[1]) - (C[0] - a[0]) * (b[1] - a[1]) >= 0.0
-    }
-}
-
-impl fmt::Debug for TerrainQuadtreeInternal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "({:?}, ({:?}, {:?}), GREY, {:?}, {:?}, ({:?}), ({:?}))",
-            self.level,
-            self.bounds.min,
-            self.bounds.max,
-            self.location,
-            self.parent,
-            self.children,
-            self.neighbours,
-        )
-    }
-}
-impl fmt::Debug for TerrainQuadtreeLeaf {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "({:?}, ({:?}, {:?}), WHITE, {:?}, {:?}, (#, #, #, #), ({:?}))",
-            self.level,
-            self.bounds.min,
-            self.bounds.max,
-            self.location,
-            self.parent,
-            self.neighbours
-        )
-    }
-}
-
-impl fmt::Debug for NodeNeighbours {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{:?}, {:?}, {:?}, {:?}",
-            self.north, self.east, self.south, self.west
-        )
-    }
-}
-impl fmt::Debug for NodeChildren {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{:?}, {:?}, {:?}, {:?}",
-            self.northwest, self.northeast, self.southwest, self.southeast
-        )
-    }
-}
-
-// impl fmt::Display for TerrainQuadtreeInternal {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         if let Some(parent) = self.parent{
-//             write!(f, "\nInternal: \nParent: {:?} \nAABB: {},{} ->{},{} \nLevel: {} \nChildren: {:?}, {:?}, {:?}, {:?}\n{:?}\n\n", parent, self.bounds.min[0], self.bounds.min[1], self.bounds.max[0], self.bounds.max[1], self.level, self.children[Quadrant::Northwest], self.children[Quadrant::Northeast], self.children[Quadrant::Southwest], self.children[Quadrant::Southeast], self.neighbours)
-//         } else {
-//             write!(f, "\nRoot Level Internal: \nAABB: {},{} ->{},{} \nLevel: {} \nChildren: {:?}, {:?}, {:?}, {:?}\n\n",  self.bounds.min[0], self.bounds.min[1], self.bounds.max[0], self.bounds.max[1], self.level, self.children[Quadrant::Northwest], self.children[Quadrant::Northeast], self.children[Quadrant::Southwest], self.children[Quadrant::Southeast])
-//         }
-//     }
-// }
-// impl fmt::Display for TerrainQuadtreeLeaf {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         if let Some(parent) = self.parent{
-//             write!(f, "\nLeaf: \nParent: {:?} \nAABB: {},{} -> {},{} \nLevel: {}\n{:?}\n{:?}\n\n", parent, self.bounds.min[0], self.bounds.min[1], self.bounds.max[0], self.bounds.max[1], self.level, self.location, self.neighbours)
-//         } else {
-//             write!(f, "\nRoot Level Leaf: \nAABB: {},{} -> {},{} \nLevel: {}\n\n",  self.bounds.min[0], self.bounds.min[1], self.bounds.max[0], self.bounds.max[1], self.level)
-//         }
-//     }
-// }

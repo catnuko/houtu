@@ -2,15 +2,19 @@ use bevy::prelude::*;
 use houtu_scene::IndicesAndEdgesCache;
 
 use self::{
-    layer::{layer_system, TileLayerBundle, TileLayerId},
-    tile::tile_system,
+    tile_layer_bundle::TileLayerBundle, tile_layer_id::TileLayerId, tile_layer_system::layer_system,
 };
-
-use super::cnquadtree::TerrainQuadtree;
-mod layer;
-mod storage;
 mod terrian_material;
-mod tile;
+mod tile_bundle;
+mod tile_id;
+mod tile_key;
+mod tile_layer_bundle;
+mod tile_layer_id;
+mod tile_layer_state;
+mod tile_layer_system;
+mod tile_state;
+mod tile_storage;
+mod tile_system;
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
@@ -19,7 +23,7 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(TerrainQuadtree);
         app.add_system(layer_system);
         app.add_startup_system(setup);
-        app.add_system(tile_system);
+        app.add_system(tile_system::tile_system);
     }
 }
 fn setup(mut commands: Commands) {

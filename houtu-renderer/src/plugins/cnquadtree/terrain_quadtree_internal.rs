@@ -1,5 +1,6 @@
 use core::fmt;
 
+use bevy::prelude::Entity;
 use houtu_scene::{Cartographic, Rectangle};
 
 use super::{
@@ -7,12 +8,11 @@ use super::{
     terrain_quadtree_node::TerrainQuadtreeNode, Quadrant,
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct TerrainQuadtreeInternal {
     pub(super) parent: TerrainQuadtreeNode,
     pub(super) location: Quadrant,
     pub(super) children: NodeChildren,
-    pub(super) neighbours: NodeNeighbours,
     pub(super) id: NodeId,
     pub(super) rectangle: Rectangle,
 }

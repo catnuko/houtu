@@ -1,6 +1,8 @@
+use std::ops::Index;
+
 use bevy::{prelude::*, utils::HashMap};
 
-use super::tile::TileKey;
+use super::tile_key::TileKey;
 
 /// Used to store tile entities for fast look up.
 /// Tile entities are stored in a grid. The grid is always filled with None.
@@ -32,15 +34,23 @@ impl TileStorage {
         let id = tile_key.get_id();
         self.id_to_index.insert(id, index);
     }
-    pub fn iter(&self) -> impl Iterator<Item = &Option<Entity>> {
-        self.tiles.iter()
-    }
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Option<Entity>> {
-        self.tiles.iter_mut()
-    }
     pub fn remove(&mut self, tile_key: &TileKey) {
         if let Some(index) = self.id_to_index.get(&tile_key.get_id()) {
             self.tiles[*index].take();
         }
+    }
+}
+impl IntoIterator for TileStorage {
+    type Item = Option<Entity>;
+    type IntoIter = ::std::vec::IntoIter<Option<Entity>>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.tiles.into_iter()
+    }
+}
+
+impl Index<TileKey> for TileStorage {
+    type Output = Option<Entity>;
+    fn index(&self, index: TileKey) -> &Self::Output {
+        return &self.get(&index);
     }
 }

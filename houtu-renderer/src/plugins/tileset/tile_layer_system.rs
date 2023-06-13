@@ -4,64 +4,14 @@ use houtu_scene::{
 };
 
 use super::{
-    storage::TileStorage,
-    tile::{TileBundle, TileKey},
+    tile_bundle::{TileBundle, TileMark},
+    tile_key::TileKey,
+    tile_layer_bundle::TileLayerMark,
+    tile_layer_id::TileLayerId,
+    tile_layer_state::TileLayerState,
+    tile_state::TileState,
+    tile_storage::TileStorage,
 };
-
-#[derive(Component, Reflect, Clone, Copy, Debug, Hash)]
-#[reflect(Component)]
-pub struct TileLayerId(pub Entity);
-
-impl Default for TileLayerId {
-    fn default() -> Self {
-        Self(Entity::from_raw(0))
-    }
-}
-#[derive(Component, Reflect, Clone, Debug, Hash, PartialEq, Eq)]
-#[reflect(Component)]
-pub struct TileLayerTexture(Handle<Image>);
-impl Default for TileLayerTexture {
-    fn default() -> Self {
-        TileLayerTexture(Default::default())
-    }
-}
-#[derive(Component, Debug, Default, Clone)]
-pub struct TileLayerMark;
-#[derive(Component, Debug, Clone)]
-pub enum TileLayerState {
-    Start,
-    Loading,
-}
-impl Default for TileLayerState {
-    fn default() -> Self {
-        Self::Start
-    }
-}
-/// The default tilemap bundle. All of the components within are required.
-#[derive(Bundle, Debug, Clone)]
-pub struct TileLayerBundle {
-    pub mark: TileLayerMark,
-    // pub texture: TileLayerTexture,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub tile_storage: TileStorage,
-    pub tiling_scheme: GeographicTilingScheme,
-    pub state: TileLayerState,
-    pub id: TileLayerId,
-}
-impl Default for TileLayerBundle {
-    fn default() -> Self {
-        Self {
-            mark: TileLayerMark,
-            tile_storage: TileStorage::empty(),
-            visibility: Visibility::Visible,
-            computed_visibility: ComputedVisibility::default(),
-            tiling_scheme: GeographicTilingScheme::default(),
-            state: TileLayerState::Start,
-            id: TileLayerId(Entity::PLACEHOLDER),
-        }
-    }
-}
 /// 推进LayerBundle的状态
 ///
 /// 任务：
@@ -109,9 +59,11 @@ pub fn layer_system(
                                 key: tile_key.clone(),
                                 visible: Visibility::Visible,
                                 tile_layer_id: tile_layer_id.clone(),
-                                terrain_mesh: super::tile::TerrainMeshWrap(Some(terrain_mesh)),
-                                mark: super::tile::TileMark,
-                                state: super::tile::TileState::Start,
+                                terrain_mesh: super::tile_bundle::TerrainMeshWrap(Some(
+                                    terrain_mesh,
+                                )),
+                                mark: TileMark,
+                                state: TileState::Start,
                             })
                             .id();
                         tile_storage.set(&tile_key, entity);

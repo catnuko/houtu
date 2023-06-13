@@ -1,8 +1,8 @@
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct NodeId {
-    pub(super) x: u32,
-    pub(super) y: u32,
-    pub(super) level: u32,
+    pub x: u32,
+    pub y: u32,
+    pub level: u32,
 }
 impl NodeId {
     pub fn southwest(&self) -> NodeId {

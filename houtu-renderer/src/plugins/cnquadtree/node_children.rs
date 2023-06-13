@@ -4,7 +4,7 @@ use std::fmt;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct NodeChildren {
     pub(super) northwest: TerrainQuadtreeNode,
     pub(super) northeast: TerrainQuadtreeNode,

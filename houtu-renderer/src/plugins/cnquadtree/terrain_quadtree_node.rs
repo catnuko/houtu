@@ -4,6 +4,4 @@ pub enum TerrainQuadtreeNode {
     None,
     /// Identifier of an internal node.
     Internal(usize),
-    /// Identifier of a leaf node.
-    Leaf(usize),
 }

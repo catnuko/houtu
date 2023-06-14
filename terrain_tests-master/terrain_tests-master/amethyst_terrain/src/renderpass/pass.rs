@@ -4,23 +4,21 @@
 use amethyst::{
     assets::{AssetStorage, Handle},
     core::{
+        ecs::{shred::ResourceId, Entity, Join, Read, ReadExpect, ReadStorage, SystemData, World},
         math as na,
         math::base::coordinates::XYZW,
         math::Vector3,
         math::Vector4,
-        ecs::{Entity, Join, Read, ReadExpect, ReadStorage, World, SystemData, shred::ResourceId},
         Transform,
     },
     error::Error,
     renderer::{
+        batch::{GroupIterator, OneLevelBatch, TwoLevelBatch},
         camera::{ActiveCamera, Camera},
-        mtl::{Material, MaterialDefaults},
-        pipeline::{PipelineDescBuilder, PipelinesBuilder},
-        batch::{OneLevelBatch, TwoLevelBatch, GroupIterator},
         light::Light,
-        types::{Mesh, Texture, Backend},
-        visibility::Visibility,
-        resources::{AmbientColor},
+        mtl::{Material, MaterialDefaults},
+        palette,
+        pipeline::{PipelineDescBuilder, PipelinesBuilder},
         rendy::{
             command::{QueueId, RenderPassEncoder},
             factory::Factory,
@@ -29,12 +27,14 @@ use amethyst::{
                 GraphContext, NodeBuffer, NodeImage,
             },
             hal::{self, device::Device, Primitive},
-            mesh::{AsVertex, MeshBuilder, VertexFormat, Position, Normal, TexCoord},
+            mesh::{AsVertex, MeshBuilder, Normal, Position, TexCoord, VertexFormat},
             shader::Shader,
         },
-        submodules::{DynamicVertexBuffer, EnvironmentSub, gather::CameraGatherer},
-        palette,
-        util
+        resources::AmbientColor,
+        submodules::{gather::CameraGatherer, DynamicVertexBuffer, EnvironmentSub},
+        types::{Backend, Mesh, Texture},
+        util,
+        visibility::Visibility,
     },
     window::ScreenDimensions,
 };
@@ -42,15 +42,15 @@ use amethyst::{
 use derivative::Derivative;
 use std::marker::PhantomData;
 
-use cnquadtree::{TerrainQuadtree};
 use crate::{
-    component::{Terrain, TexHeightmap, TexAlbedo, TexNormal},
+    component::{Terrain, TexAlbedo, TexHeightmap, TexNormal},
     renderpass::{
         pod,
-        submodules::{TerrainSub, TerrainId}
+        submodules::{TerrainId, TerrainSub},
     },
-    TerrainConfig, TerrainViewMode
+    TerrainConfig, TerrainViewMode,
 };
+use cnquadtree::TileTree;
 
 macro_rules! profile_scope_impl {
     ($string:expr) => {
@@ -67,7 +67,7 @@ macro_rules! profile_scope_impl {
 /// Draw mesh without lighting
 #[derive(Clone, Derivative)]
 #[derivative(Debug(bound = ""), Default(bound = ""))]
-pub struct DrawTerrainDesc<B: Backend>{ 
+pub struct DrawTerrainDesc<B: Backend> {
     marker: PhantomData<B>,
 }
 
@@ -91,35 +91,26 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawTerrainDesc<B> {
         _buffers: Vec<NodeBuffer>,
         _images: Vec<NodeImage>,
     ) -> Result<Box<dyn RenderGroup<B, World>>, failure::Error> {
-
         let env = EnvironmentSub::new(
-            factory, 
+            factory,
             [
-                hal::pso::ShaderStageFlags::GRAPHICS - hal::pso::ShaderStageFlags::FRAGMENT, 
-                hal::pso::ShaderStageFlags::FRAGMENT
-            ]
+                hal::pso::ShaderStageFlags::GRAPHICS - hal::pso::ShaderStageFlags::FRAGMENT,
+                hal::pso::ShaderStageFlags::FRAGMENT,
+            ],
         )?;
         let terrains = TerrainSub::new(factory)?;
 
-        let mut vertex_format = vec![
-            Position::vertex(),
-            Normal::vertex(),
-            TexCoord::vertex(),
-        ];
+        let mut vertex_format = vec![Position::vertex(), Normal::vertex(), TexCoord::vertex()];
         let (mut pipelines, pipeline_layout) = build_terrain_pipeline(
             factory,
             subpass,
             framebuffer_width,
             framebuffer_height,
             &vertex_format,
-            vec![
-                env.raw_layout(),
-                terrains.raw_layout(),
-            ],
+            vec![env.raw_layout(), terrains.raw_layout()],
         )?;
 
         vertex_format.sort();
-
 
         // Todo: Find Backport
         // Generate the different mesh variations here to avoid tesselation?
@@ -127,9 +118,10 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawTerrainDesc<B> {
             Position([-1.0, 0.0, -1.0].into()),
             Position([1.0, 0.0, -1.0].into()),
             Position([1.0, 0.0, 1.0].into()),
-            Position([-1.0, 0.0, 1.0].into())];
+            Position([-1.0, 0.0, 1.0].into()),
+        ];
         let norms = vec![
-            Normal([0.0, 1.0, 0.0].into()), 
+            Normal([0.0, 1.0, 0.0].into()),
             Normal([0.0, 1.0, 0.0].into()),
             Normal([0.0, 1.0, 0.0].into()),
             Normal([0.0, 1.0, 0.0].into()),
@@ -140,8 +132,13 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawTerrainDesc<B> {
             TexCoord([1.0, 0.0].into()),
             TexCoord([0.0, 0.0].into()),
         ];
-           
-        let basic_mesh = MeshBuilder::new().with_vertices(pos).with_vertices(norms).with_vertices(texs).with_prim_type(Primitive::PatchList(4)).build(queue, factory)?;
+
+        let basic_mesh = MeshBuilder::new()
+            .with_vertices(pos)
+            .with_vertices(norms)
+            .with_vertices(texs)
+            .with_prim_type(Primitive::PatchList(4))
+            .build(queue, factory)?;
 
         Ok(Box::new(DrawTerrain::<B> {
             pipeline: pipelines.remove(0),
@@ -156,11 +153,7 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawTerrainDesc<B> {
     }
 }
 
-pub type TerrainTextureSet = (
-    TexHeightmap,
-    TexNormal,
-    TexAlbedo,
-);
+pub type TerrainTextureSet = (TexHeightmap, TexNormal, TexAlbedo);
 
 /// Draw a terrain
 #[derive(Derivative)]
@@ -173,9 +166,8 @@ pub struct DrawTerrain<B: Backend> {
     terrains: TerrainSub<B, TerrainTextureSet>,
     terrain_patches: OneLevelBatch<TerrainId, pod::InstancedPatchArgs>,
     patches: DynamicVertexBuffer<B, pod::InstancedPatchArgs>,
-    basic_mesh: amethyst::renderer::rendy::mesh::Mesh<B>,   
+    basic_mesh: amethyst::renderer::rendy::mesh::Mesh<B>,
 }
-
 
 #[derive(SystemData)]
 struct TerrainPassData<'a> {
@@ -184,7 +176,6 @@ struct TerrainPassData<'a> {
     terrain_config: ReadExpect<'a, TerrainConfig>,
     terrain_storage: Read<'a, AssetStorage<Terrain>>,
 }
-
 
 impl<B: Backend> RenderGroup<B, World> for DrawTerrain<B> {
     fn prepare(
@@ -196,7 +187,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawTerrain<B> {
         resources: &World,
     ) -> PrepareResult {
         log::trace!("prepare draw");
-        let TerrainPassData{
+        let TerrainPassData {
             transforms,
             terrains,
             terrain_config: _,
@@ -214,30 +205,34 @@ impl<B: Backend> RenderGroup<B, World> for DrawTerrain<B> {
 
         profile_scope_impl!("gather_terrains");
 
-
         let CameraGatherer {
-                camera_position,
-                projview: _,
-            } = CameraGatherer::gather(resources);
-        let camer_pos_ref : [f32; 3] = *camera_position.as_ref();
+            camera_position,
+            projview: _,
+        } = CameraGatherer::gather(resources);
+        let camer_pos_ref: [f32; 3] = *camera_position.as_ref();
         let camera_pos_2d = [camer_pos_ref[0], camer_pos_ref[2]];
 
         for (terrain_handle, _tform) in (&terrains, &transforms).join() {
             if let Some((terrain_id, _)) = terrains_ref.insert(factory, resources, terrain_handle) {
-                let terrain = terrain_storage.get(terrain_handle).expect("Invalid Terrain handle");
+                let terrain = terrain_storage
+                    .get(terrain_handle)
+                    .expect("Invalid Terrain handle");
                 // Todo: take the terrain transform `tform` into account.
                 // Todo: remove terrain specific offset and use the transform for this.
-                let quadtree = TerrainQuadtree::new(camera_pos_2d, [0.0, 0.0, (terrain.size) as f32, (terrain.size) as f32].into(), terrain.max_level);
+                let quadtree = TileTree::new(
+                    camera_pos_2d,
+                    [0.0, 0.0, (terrain.size) as f32, (terrain.size) as f32].into(),
+                    terrain.max_level,
+                );
                 let leaves = quadtree.leaves();
                 let mut patches = Vec::with_capacity(leaves.len());
                 for patch in leaves {
                     patches.push(pod::InstancedPatchArgs::from_object_data(patch, &quadtree));
                 }
                 terrain_patches_ref.insert(terrain_id, patches.drain(..));
-            }   
+            }
         }
-        
-        
+
         self.terrain_patches.prune();
 
         self.patches.write(
@@ -249,7 +244,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawTerrain<B> {
         // Todo: Reenable this
         //     match terrain_config.view_mode {
         //         TerrainViewMode::Wireframe => {
-        //             effect.update_global("toggle_wireframe", 1.0);                
+        //             effect.update_global("toggle_wireframe", 1.0);
         //         }
         //         TerrainViewMode::Color => {
         //             effect.update_global("toggle_wireframe", 0.0);
@@ -275,15 +270,24 @@ impl<B: Backend> RenderGroup<B, World> for DrawTerrain<B> {
 
         self.env.bind(index, &self.pipeline_layout, 0, &mut encoder);
 
-        self.basic_mesh.bind(0, &self.vertex_format, &mut encoder).unwrap();
-        if self.patches.bind(index, self.vertex_format.len() as u32, 0, &mut encoder) {
+        self.basic_mesh
+            .bind(0, &self.vertex_format, &mut encoder)
+            .unwrap();
+        if self
+            .patches
+            .bind(index, self.vertex_format.len() as u32, 0, &mut encoder)
+        {
             let mut instances_drawn = 0;
             // Iterate over multiple terrains
             for (&terrain_id, batch_data) in self.terrain_patches.iter() {
                 if self.terrains.loaded(terrain_id) {
-                    self.terrains.bind(&self.pipeline_layout, 1, terrain_id, &mut encoder);
+                    self.terrains
+                        .bind(&self.pipeline_layout, 1, terrain_id, &mut encoder);
                     unsafe {
-                        encoder.draw(0..self.basic_mesh.len(), instances_drawn..instances_drawn + batch_data.len() as u32);
+                        encoder.draw(
+                            0..self.basic_mesh.len(),
+                            instances_drawn..instances_drawn + batch_data.len() as u32,
+                        );
                     }
                     instances_drawn += batch_data.len() as u32;
                 }
@@ -294,9 +298,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawTerrain<B> {
     fn dispose(self: Box<Self>, factory: &mut Factory<B>, _aux: &World) {
         profile_scope_impl!("dispose");
         unsafe {
-            factory
-                .device()
-                .destroy_graphics_pipeline(self.pipeline);
+            factory.device().destroy_graphics_pipeline(self.pipeline);
             factory
                 .device()
                 .destroy_pipeline_layout(self.pipeline_layout);
@@ -334,18 +336,18 @@ fn build_terrain_pipeline<B: Backend>(
     let shader_fragment = unsafe { super::TERRAIN_FRAGMENT.module(factory).unwrap() };
 
     let pipe_desc = PipelineDescBuilder::new()
-        .with_input_assembler(hal::pso::InputAssemblerDesc::new(hal::Primitive::PatchList(4)))
+        .with_input_assembler(hal::pso::InputAssemblerDesc::new(
+            hal::Primitive::PatchList(4),
+        ))
         .with_vertex_desc(&vertex_desc)
-        .with_shaders(
-            util::simple_shader_set_ext(
-                &shader_vertex,
-                Some(&shader_fragment),
-                Some(&shader_tsc),
-                Some(&shader_tse),
-                // Some(&shader_geom)
-                None,
-            )
-        )
+        .with_shaders(util::simple_shader_set_ext(
+            &shader_vertex,
+            Some(&shader_fragment),
+            Some(&shader_tsc),
+            Some(&shader_tse),
+            // Some(&shader_geom)
+            None,
+        ))
         .with_layout(&pipeline_layout)
         .with_subpass(subpass)
         .with_framebuffer_size(framebuffer_width, framebuffer_height)

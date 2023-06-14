@@ -4,24 +4,24 @@ use bevy::prelude::Entity;
 use houtu_scene::{Cartographic, Rectangle};
 
 use super::{
-    node_children::NodeChildren, node_id::NodeId, node_neighbours::NodeNeighbours,
-    terrain_quadtree_node::TerrainQuadtreeNode, Quadrant,
+    node_children::NodeChildren, node_neighbours::NodeNeighbours, tile_node::TileNode, Quadrant,
 };
+use crate::plugins::tileset::TileKey;
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct TerrainQuadtreeInternal {
-    pub(super) parent: TerrainQuadtreeNode,
+pub struct TileNodeInternal {
+    pub(super) parent: TileNode,
     pub(super) location: Quadrant,
     pub(super) children: NodeChildren,
-    pub(super) id: NodeId,
+    pub(super) key: TileKey,
     pub(super) rectangle: Rectangle,
 }
-impl TerrainQuadtreeInternal {
+impl TileNodeInternal {
     pub fn contains_point(&self, point: &Cartographic) -> bool {
         self.rectangle.contains(point)
     }
 }
-// impl fmt::Debug for TerrainQuadtreeInternal {
+// impl fmt::Debug for TileNodeInternal {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //         write!(
 //             f,

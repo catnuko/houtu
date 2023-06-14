@@ -4,13 +4,11 @@ use std::ops::IndexMut;
 
 mod direction;
 mod node_children;
-mod node_id;
 mod node_neighbours;
-mod terrain_quadtree;
-mod terrain_quadtree_internal;
-mod terrain_quadtree_node;
-pub use node_id::NodeId;
-pub use terrain_quadtree::TerrainQuadtree;
+mod tile_node;
+mod tile_node_internal;
+mod tile_tree;
+pub use tile_tree::TileTree;
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum Quadrant {
     Northwest,

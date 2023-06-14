@@ -7,16 +7,16 @@ use thread_profiler::profile_scope;
 
 // Implements a cardinal neighbour quadtree
 #[derive(Clone, Debug)]
-pub struct TerrainQuadtree {
+pub struct TileTree {
     max_depth: u8,
     bounds: AABB,
-    root: TerrainQuadtreeNode,
-    internals: Vec<TerrainQuadtreeInternal>,
-    leaves: Vec<TerrainQuadtreeLeaf>,
+    root: TileNode,
+    internals: Vec<TileNodeInternal>,
+    leaves: Vec<TileTreeLeaf>,
 }
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
-pub enum TerrainQuadtreeNode {
+pub enum TileNode {
     /// None variant.
     None,
     /// Identifier of an internal node.
@@ -26,8 +26,8 @@ pub enum TerrainQuadtreeNode {
 }
 
 #[derive(Clone, PartialEq)]
-struct TerrainQuadtreeInternal {
-    parent: TerrainQuadtreeNode,
+struct TileNodeInternal {
+    parent: TileNode,
     bounds: AABB,
     level: u8,
     location: Quadrant,
@@ -36,8 +36,8 @@ struct TerrainQuadtreeInternal {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub struct TerrainQuadtreeLeaf {
-    parent: TerrainQuadtreeNode,
+pub struct TileTreeLeaf {
+    parent: TileNode,
     bounds: AABB,
     level: u8,
     location: Quadrant,
@@ -78,7 +78,10 @@ impl AABB {
 
 impl From<[f32; 4]> for AABB {
     fn from(bounds: [f32; 4]) -> Self {
-        Self {min: [bounds[0], bounds[1]], max: [bounds[2], bounds[3]]}
+        Self {
+            min: [bounds[0], bounds[1]],
+            max: [bounds[2], bounds[3]],
+        }
     }
 }
 #[derive(Clone, Debug, PartialEq, Copy)]
@@ -117,27 +120,27 @@ impl Direction {
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct NodeNeighbours {
-    north: TerrainQuadtreeNode,
-    east: TerrainQuadtreeNode,
-    south: TerrainQuadtreeNode,
-    west: TerrainQuadtreeNode,
+    north: TileNode,
+    east: TileNode,
+    south: TileNode,
+    west: TileNode,
 }
 
 impl Default for NodeNeighbours {
     fn default() -> Self {
         Self {
-            north: TerrainQuadtreeNode::None,
-            east: TerrainQuadtreeNode::None,
-            south: TerrainQuadtreeNode::None,
-            west: TerrainQuadtreeNode::None,
+            north: TileNode::None,
+            east: TileNode::None,
+            south: TileNode::None,
+            west: TileNode::None,
         }
     }
 }
 
 impl Index<Direction> for NodeNeighbours {
-    type Output = TerrainQuadtreeNode;
+    type Output = TileNode;
 
-    fn index(&self, dir: Direction) -> &TerrainQuadtreeNode {
+    fn index(&self, dir: Direction) -> &TileNode {
         match dir {
             Direction::North => &self.north,
             Direction::East => &self.east,
@@ -148,7 +151,7 @@ impl Index<Direction> for NodeNeighbours {
 }
 
 impl IndexMut<Direction> for NodeNeighbours {
-    fn index_mut(&mut self, dir: Direction) -> &mut TerrainQuadtreeNode {
+    fn index_mut(&mut self, dir: Direction) -> &mut TileNode {
         match dir {
             Direction::North => &mut self.north,
             Direction::East => &mut self.east,
@@ -160,27 +163,27 @@ impl IndexMut<Direction> for NodeNeighbours {
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct NodeChildren {
-    northwest: TerrainQuadtreeNode,
-    northeast: TerrainQuadtreeNode,
-    southwest: TerrainQuadtreeNode,
-    southeast: TerrainQuadtreeNode,
+    northwest: TileNode,
+    northeast: TileNode,
+    southwest: TileNode,
+    southeast: TileNode,
 }
 
 impl Default for NodeChildren {
     fn default() -> Self {
         Self {
-            northwest: TerrainQuadtreeNode::None,
-            northeast: TerrainQuadtreeNode::None,
-            southwest: TerrainQuadtreeNode::None,
-            southeast: TerrainQuadtreeNode::None,
+            northwest: TileNode::None,
+            northeast: TileNode::None,
+            southwest: TileNode::None,
+            southeast: TileNode::None,
         }
     }
 }
 
 impl Index<Quadrant> for NodeChildren {
-    type Output = TerrainQuadtreeNode;
+    type Output = TileNode;
 
-    fn index(&self, quadrant: Quadrant) -> &TerrainQuadtreeNode {
+    fn index(&self, quadrant: Quadrant) -> &TileNode {
         match quadrant {
             Quadrant::Northwest => &self.northwest,
             Quadrant::Northeast => &self.northeast,
@@ -192,7 +195,7 @@ impl Index<Quadrant> for NodeChildren {
 }
 
 impl IndexMut<Quadrant> for NodeChildren {
-    fn index_mut(&mut self, quadrant: Quadrant) -> &mut TerrainQuadtreeNode {
+    fn index_mut(&mut self, quadrant: Quadrant) -> &mut TileNode {
         match quadrant {
             Quadrant::Northwest => &mut self.northwest,
             Quadrant::Northeast => &mut self.northeast,
@@ -204,8 +207,8 @@ impl IndexMut<Quadrant> for NodeChildren {
 }
 
 impl IntoIterator for NodeChildren {
-    type Item = TerrainQuadtreeNode;
-    type IntoIter = ::std::vec::IntoIter<TerrainQuadtreeNode>;
+    type Item = TileNode;
+    type IntoIter = ::std::vec::IntoIter<TileNode>;
 
     fn into_iter(self) -> Self::IntoIter {
         vec![
@@ -218,7 +221,7 @@ impl IntoIterator for NodeChildren {
     }
 }
 
-impl TerrainQuadtree {
+impl TileTree {
     pub fn new(camera: [f32; 2], bounds: AABB, max_depth: u8) -> Self {
         #[cfg(feature = "profiler")]
         profile_scope!("quadtree_new");
@@ -226,9 +229,9 @@ impl TerrainQuadtree {
         let mut tree = Self {
             max_depth: max_depth,
             bounds: bounds,
-            root: TerrainQuadtreeNode::None,
-            internals: Vec::<TerrainQuadtreeInternal>::new(),
-            leaves: Vec::<TerrainQuadtreeLeaf>::new(),
+            root: TileNode::None,
+            internals: Vec::<TileNodeInternal>::new(),
+            leaves: Vec::<TileTreeLeaf>::new(),
         };
 
         tree.rebuild(camera);
@@ -240,37 +243,31 @@ impl TerrainQuadtree {
     }
     // Rebuilds the quadtree based on camera position.
     pub fn rebuild(&mut self, camera: [f32; 2]) {
-        if self.root == TerrainQuadtreeNode::None {
-            self.root = self.new_node(
-                0,
-                self.bounds,
-                Quadrant::Root,
-                TerrainQuadtreeNode::None,
-                camera,
-            );
+        if self.root == TileNode::None {
+            self.root = self.new_node(0, self.bounds, Quadrant::Root, TileNode::None, camera);
             self.subdivide(self.root, camera);
         }
 
         // Todo: if <camera is too far away from center of leaf> {
         //     self.internals.clear();
         //     self.leaves.clear();
-        //     self.root = TerrainQuadtreeNode::None;
+        //     self.root = TileNode::None;
         //     self.root = self.build(0, camera, Quadrant::Root, Default::default());
         // }
     }
 
     #[inline]
-    pub fn leaves(&self) -> &[TerrainQuadtreeLeaf] {
+    pub fn leaves(&self) -> &[TileTreeLeaf] {
         &self.leaves
     }
 
     #[inline]
-    pub fn leaf(&self, index: usize) -> &TerrainQuadtreeLeaf {
+    pub fn leaf(&self, index: usize) -> &TileTreeLeaf {
         &self.leaves[index]
     }
 
-    pub(crate) fn set_parent(&mut self, node: TerrainQuadtreeNode, parent: TerrainQuadtreeNode) {
-        use TerrainQuadtreeNode::*;
+    pub(crate) fn set_parent(&mut self, node: TileNode, parent: TileNode) {
+        use TileNode::*;
         match node {
             Internal(index) => {
                 self.internals[index].parent = parent;
@@ -283,71 +280,60 @@ impl TerrainQuadtree {
     }
 
     // Returns Parent of node or node if node is root
-    pub(crate) fn get_parent(&self, node: TerrainQuadtreeNode) -> TerrainQuadtreeNode {
+    pub(crate) fn get_parent(&self, node: TileNode) -> TileNode {
         match node {
-            TerrainQuadtreeNode::Internal(index) => self.internals[index].parent,
-            TerrainQuadtreeNode::Leaf(index) => self.leaves[index].parent,
-            TerrainQuadtreeNode::None => node,
+            TileNode::Internal(index) => self.internals[index].parent,
+            TileNode::Leaf(index) => self.leaves[index].parent,
+            TileNode::None => node,
         }
     }
     // Returns kth-parent of node or root node if one of the ancestors is the root
-    pub(crate) fn get_kth_parent(&self, node: TerrainQuadtreeNode, k: u8) -> TerrainQuadtreeNode {
+    pub(crate) fn get_kth_parent(&self, node: TileNode, k: u8) -> TileNode {
         let mut parent;
 
         match node {
-            TerrainQuadtreeNode::Internal(index) => parent = self.internals[index].parent,
-            TerrainQuadtreeNode::Leaf(index) => parent = self.leaves[index].parent,
+            TileNode::Internal(index) => parent = self.internals[index].parent,
+            TileNode::Leaf(index) => parent = self.leaves[index].parent,
             _ => unreachable!(),
         }
 
         for i in 1..k {
             match parent {
-                TerrainQuadtreeNode::Internal(index) => parent = self.internals[index].parent,
-                TerrainQuadtreeNode::None => return parent,
+                TileNode::Internal(index) => parent = self.internals[index].parent,
+                TileNode::None => return parent,
                 _ => unreachable!(),
             }
         }
         parent
     }
 
-    pub(crate) fn get_neighbour(
-        &self,
-        node: TerrainQuadtreeNode,
-        dir: Direction,
-    ) -> TerrainQuadtreeNode {
+    pub(crate) fn get_neighbour(&self, node: TileNode, dir: Direction) -> TileNode {
         match node {
-            TerrainQuadtreeNode::Internal(index) => {
+            TileNode::Internal(index) => {
                 let node = &self.internals[index];
                 node.neighbours[dir]
             }
-            TerrainQuadtreeNode::Leaf(index) => {
+            TileNode::Leaf(index) => {
                 let node = &self.leaves[index];
                 node.neighbours[dir]
             }
             _ => unreachable!(),
         }
     }
-    fn set_neighbour(
-        &mut self,
-        node: TerrainQuadtreeNode,
-        dir: Direction,
-        neighbour: TerrainQuadtreeNode,
-    ) {
+    fn set_neighbour(&mut self, node: TileNode, dir: Direction, neighbour: TileNode) {
         match node {
-            TerrainQuadtreeNode::Internal(index) => {
-                self.internals[index].neighbours[dir] = neighbour
-            }
-            TerrainQuadtreeNode::Leaf(index) => self.leaves[index].neighbours[dir] = neighbour,
+            TileNode::Internal(index) => self.internals[index].neighbours[dir] = neighbour,
+            TileNode::Leaf(index) => self.leaves[index].neighbours[dir] = neighbour,
             _ => unreachable!(),
         }
     }
-    pub(crate) fn get_neighbours(&self, node: TerrainQuadtreeNode) -> NodeNeighbours {
+    pub(crate) fn get_neighbours(&self, node: TileNode) -> NodeNeighbours {
         match node {
-            TerrainQuadtreeNode::Internal(index) => {
+            TileNode::Internal(index) => {
                 let node = &self.internals[index];
                 node.neighbours
             }
-            TerrainQuadtreeNode::Leaf(index) => {
+            TileNode::Leaf(index) => {
                 let node = &self.leaves[index];
                 node.neighbours
             }
@@ -355,26 +341,26 @@ impl TerrainQuadtree {
         }
     }
 
-    pub fn get_level(&self, node: TerrainQuadtreeNode) -> u8 {
+    pub fn get_level(&self, node: TileNode) -> u8 {
         match node {
-            TerrainQuadtreeNode::Internal(index) => {
+            TileNode::Internal(index) => {
                 let node = &self.internals[index];
                 node.level
             }
-            TerrainQuadtreeNode::Leaf(index) => {
+            TileNode::Leaf(index) => {
                 let node = &self.leaves[index];
                 node.level
             }
             _ => unreachable!(),
         }
     }
-    pub(crate) fn get_bounds(&self, node: TerrainQuadtreeNode) -> AABB {
+    pub(crate) fn get_bounds(&self, node: TileNode) -> AABB {
         match node {
-            TerrainQuadtreeNode::Internal(index) => {
+            TileNode::Internal(index) => {
                 let node = &self.internals[index];
                 node.bounds
             }
-            TerrainQuadtreeNode::Leaf(index) => {
+            TileNode::Leaf(index) => {
                 let node = &self.leaves[index];
                 node.bounds
             }
@@ -382,17 +368,12 @@ impl TerrainQuadtree {
         }
     }
 
-    pub fn get_neighbour_leaves(&self, node: TerrainQuadtreeNode) -> [TerrainQuadtreeLeaf; 4] {
+    pub fn get_neighbour_leaves(&self, node: TileNode) -> [TileTreeLeaf; 4] {
         unimplemented!()
     }
 
     // Returns kth-parent of node or root node if one of the ancestors is the root
-    pub fn get_kth_neighbour(
-        &self,
-        node: TerrainQuadtreeNode,
-        dir: Direction,
-        k: u8,
-    ) -> TerrainQuadtreeNode {
+    pub fn get_kth_neighbour(&self, node: TileNode, dir: Direction, k: u8) -> TileNode {
         let mut neighbour;
         if k == 0 {
             return node;
@@ -401,23 +382,19 @@ impl TerrainQuadtree {
         dbg!(dir);
         for _i in 1..k {
             match neighbour {
-                TerrainQuadtreeNode::Internal(index) => {
-                    neighbour = self.internals[index].neighbours[dir]
-                }
-                TerrainQuadtreeNode::Leaf(index) => neighbour = self.leaves[index].neighbours[dir],
-                TerrainQuadtreeNode::None => return neighbour,
+                TileNode::Internal(index) => neighbour = self.internals[index].neighbours[dir],
+                TileNode::Leaf(index) => neighbour = self.leaves[index].neighbours[dir],
+                TileNode::None => return neighbour,
             }
         }
         neighbour
     }
 
     // Update the NE and SW children of parent.
-    pub(crate) fn update_northeast(&mut self, node_id: TerrainQuadtreeNode) {
-        if let TerrainQuadtreeNode::Internal(index) = node_id {
+    pub(crate) fn update_northeast(&mut self, node_id: TileNode) {
+        if let TileNode::Internal(index) = node_id {
             let node = &self.internals[index];
-            if node.parent == TerrainQuadtreeNode::None
-                || node.neighbours.north == TerrainQuadtreeNode::None
-            {
+            if node.parent == TileNode::None || node.neighbours.north == TileNode::None {
                 // We are at the north border
                 return;
             }
@@ -425,7 +402,7 @@ impl TerrainQuadtree {
             let north = node.neighbours.north;
             let northeast = node.children.northeast;
             let bounds = self.get_bounds(northeast);
-            if north != TerrainQuadtreeNode::None {
+            if north != TileNode::None {
                 let north_level = self.get_level(north);
 
                 if north_level > node.level {
@@ -450,12 +427,10 @@ impl TerrainQuadtree {
         }
     }
 
-    pub(crate) fn update_southwest(&mut self, node_id: TerrainQuadtreeNode) {
-        if let TerrainQuadtreeNode::Internal(index) = node_id {
+    pub(crate) fn update_southwest(&mut self, node_id: TileNode) {
+        if let TileNode::Internal(index) = node_id {
             let node = &self.internals[index];
-            if node.parent == TerrainQuadtreeNode::None
-                || node.neighbours.west == TerrainQuadtreeNode::None
-            {
+            if node.parent == TileNode::None || node.neighbours.west == TileNode::None {
                 // We are at the west border
                 return;
             }
@@ -463,7 +438,7 @@ impl TerrainQuadtree {
             let west = node.neighbours.west;
             let southwest = node.children.southwest;
             let bounds = self.get_bounds(southwest);
-            if west != TerrainQuadtreeNode::None {
+            if west != TileNode::None {
                 let west_level = self.get_level(west);
 
                 if west_level > node.level {
@@ -488,17 +463,12 @@ impl TerrainQuadtree {
         }
     }
 
-    pub(crate) fn update_neighbours_west(
-        &mut self,
-        node_id: TerrainQuadtreeNode,
-        nw: TerrainQuadtreeNode,
-        sw: TerrainQuadtreeNode,
-    ) {
+    pub(crate) fn update_neighbours_west(&mut self, node_id: TileNode, nw: TileNode, sw: TileNode) {
         let dir = Direction::West;
         let mut western_id;
 
         western_id = self.get_neighbour(node_id, dir);
-        if western_id == TerrainQuadtreeNode::None {
+        if western_id == TileNode::None {
             return;
         }
         let opposite = self.get_neighbour(western_id, dir.opposite());
@@ -521,7 +491,7 @@ impl TerrainQuadtree {
 
         loop {
             western_id = self.get_neighbour(western_id, dir.traversal());
-            if western_id != TerrainQuadtreeNode::None
+            if western_id != TileNode::None
                 && self.get_neighbour(western_id, dir.opposite()) == node_id
             {
                 let opposite = self.get_neighbour(western_id, dir.opposite());
@@ -546,15 +516,15 @@ impl TerrainQuadtree {
 
     pub(crate) fn update_neighbours_north(
         &mut self,
-        parent_id: TerrainQuadtreeNode,
-        ne: TerrainQuadtreeNode,
-        nw: TerrainQuadtreeNode,
+        parent_id: TileNode,
+        ne: TileNode,
+        nw: TileNode,
     ) {
         let dir = Direction::North;
         let mut northern_id;
 
         northern_id = self.get_neighbour(parent_id, dir);
-        if northern_id == TerrainQuadtreeNode::None {
+        if northern_id == TileNode::None {
             return;
         }
         let opposite = self.get_neighbour(northern_id, dir.opposite());
@@ -577,7 +547,7 @@ impl TerrainQuadtree {
 
         loop {
             northern_id = self.get_neighbour(northern_id, dir.traversal());
-            if northern_id != TerrainQuadtreeNode::None {
+            if northern_id != TileNode::None {
                 let opposite = self.get_neighbour(northern_id, dir.opposite());
                 if opposite == parent_id {
                     if opposite == parent_id {
@@ -602,9 +572,9 @@ impl TerrainQuadtree {
         }
     }
 
-    pub(crate) fn update_neighbours(&mut self, node_id: TerrainQuadtreeNode) {
+    pub(crate) fn update_neighbours(&mut self, node_id: TileNode) {
         match node_id {
-            TerrainQuadtreeNode::Internal(index) => {
+            TileNode::Internal(index) => {
                 let nw;
                 let ne;
                 let sw;
@@ -625,22 +595,19 @@ impl TerrainQuadtree {
                     south = node.neighbours.south;
                 }
 
-                if north != TerrainQuadtreeNode::None {
+                if north != TileNode::None {
                     self.update_neighbours_north(node_id, ne, nw);
                 }
 
-                if west != TerrainQuadtreeNode::None {
+                if west != TileNode::None {
                     self.update_neighbours_west(node_id, nw, sw);
                 }
 
-                if east != TerrainQuadtreeNode::None
-                    && self.get_neighbour(east, Direction::West) == node_id
-                {
+                if east != TileNode::None && self.get_neighbour(east, Direction::West) == node_id {
                     self.set_neighbour(east, Direction::West, ne);
                 }
 
-                if south != TerrainQuadtreeNode::None
-                    && self.get_neighbour(south, Direction::North) == node_id
+                if south != TileNode::None && self.get_neighbour(south, Direction::North) == node_id
                 {
                     self.set_neighbour(south, Direction::North, sw);
                 }
@@ -654,11 +621,11 @@ impl TerrainQuadtree {
         depth: u8,
         bounds: AABB,
         location: Quadrant,
-        parent: TerrainQuadtreeNode,
+        parent: TileNode,
         camera: [f32; 2],
-    ) -> TerrainQuadtreeNode {
+    ) -> TileNode {
         if self.split_check(bounds, depth, camera) {
-            self.internals.push(TerrainQuadtreeInternal {
+            self.internals.push(TileNodeInternal {
                 parent: parent,
                 bounds: bounds,
                 level: depth,
@@ -666,21 +633,21 @@ impl TerrainQuadtree {
                 children: Default::default(),
                 neighbours: Default::default(),
             });
-            TerrainQuadtreeNode::Internal(self.internals.len() - 1)
+            TileNode::Internal(self.internals.len() - 1)
         } else {
-            self.leaves.push(TerrainQuadtreeLeaf {
+            self.leaves.push(TileTreeLeaf {
                 parent: parent,
                 bounds: bounds,
                 level: depth,
                 location: location,
                 neighbours: Default::default(),
             });
-            TerrainQuadtreeNode::Leaf(self.leaves.len() - 1)
+            TileNode::Leaf(self.leaves.len() - 1)
         }
     }
 
-    pub(crate) fn subdivide(&mut self, node_id: TerrainQuadtreeNode, camera: [f32; 2]) {
-        if let TerrainQuadtreeNode::Internal(index) = node_id {
+    pub(crate) fn subdivide(&mut self, node_id: TileNode, camera: [f32; 2]) {
+        if let TileNode::Internal(index) = node_id {
             let node = &self.internals[index];
             let bounds = node.bounds;
             let depth = node.level;
@@ -774,12 +741,12 @@ impl TerrainQuadtree {
     }
 }
 
-impl TerrainQuadtreeInternal {
+impl TileNodeInternal {
     pub fn contains_point(&self, point: [f32; 2]) -> bool {
         self.bounds.contains_point(point)
     }
 }
-impl TerrainQuadtreeLeaf {
+impl TileTreeLeaf {
     pub fn contains_point(&self, point: [f32; 2]) -> bool {
         self.bounds.contains_point(point)
     }
@@ -796,18 +763,18 @@ impl TerrainQuadtreeLeaf {
         self.level
     }
     pub fn get_neighbours(&self) -> NodeNeighbours {
-        self.neighbours 
+        self.neighbours
     }
 
     // TODO: Improve frustum culling
     pub fn check_visibility(self, a: [f32; 2], b: [f32; 2]) -> bool {
         return true;
         let C = self.origin();
-        (b[0] - a[0])*(C[1] - a[1]) - (C[0] - a[0])*(b[1] - a[1]) >= 0.0
+        (b[0] - a[0]) * (C[1] - a[1]) - (C[0] - a[0]) * (b[1] - a[1]) >= 0.0
     }
 }
 
-impl fmt::Debug for TerrainQuadtreeInternal {
+impl fmt::Debug for TileNodeInternal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -822,7 +789,7 @@ impl fmt::Debug for TerrainQuadtreeInternal {
         )
     }
 }
-impl fmt::Debug for TerrainQuadtreeLeaf {
+impl fmt::Debug for TileTreeLeaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -856,7 +823,7 @@ impl fmt::Debug for NodeChildren {
     }
 }
 
-// impl fmt::Display for TerrainQuadtreeInternal {
+// impl fmt::Display for TileNodeInternal {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //         if let Some(parent) = self.parent{
 //             write!(f, "\nInternal: \nParent: {:?} \nAABB: {},{} ->{},{} \nLevel: {} \nChildren: {:?}, {:?}, {:?}, {:?}\n{:?}\n\n", parent, self.bounds.min[0], self.bounds.min[1], self.bounds.max[0], self.bounds.max[1], self.level, self.children[Quadrant::Northwest], self.children[Quadrant::Northeast], self.children[Quadrant::Southwest], self.children[Quadrant::Southeast], self.neighbours)
@@ -865,7 +832,7 @@ impl fmt::Debug for NodeChildren {
 //         }
 //     }
 // }
-// impl fmt::Display for TerrainQuadtreeLeaf {
+// impl fmt::Display for TileTreeLeaf {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //         if let Some(parent) = self.parent{
 //             write!(f, "\nLeaf: \nParent: {:?} \nAABB: {},{} -> {},{} \nLevel: {}\n{:?}\n{:?}\n\n", parent, self.bounds.min[0], self.bounds.min[1], self.bounds.max[0], self.bounds.max[1], self.level, self.location, self.neighbours)
@@ -879,11 +846,11 @@ impl fmt::Debug for NodeChildren {
 mod tests {
     use super::*;
     use pretty_assertions::{assert_eq, assert_ne};
-    use TerrainQuadtreeNode as Node;
+    use TileNode as Node;
 
     macro_rules! Leaf {
         ($parent:expr, $min:expr, $max:expr, $location:expr, $north:expr, $east:expr, $south:expr, $west:expr, $level:expr) => {
-            TerrainQuadtreeLeaf {
+            TileTreeLeaf {
                 parent: $parent,
                 bounds: AABB::new($min, $max),
                 location: $location,
@@ -900,8 +867,8 @@ mod tests {
 
     #[test]
     fn quadtree_creation_with_depth_0() {
-        let tree = TerrainQuadtree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 0);
-        assert_eq!(tree.root, TerrainQuadtreeNode::Leaf(0));
+        let tree = TileTree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 0);
+        assert_eq!(tree.root, TileNode::Leaf(0));
         assert_eq!(
             tree.leaves,
             vec![Leaf!(
@@ -920,13 +887,13 @@ mod tests {
 
     #[test]
     fn quadtree_creation_with_depth_1() {
-        let tree = TerrainQuadtree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 1);
+        let tree = TileTree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 1);
 
-        assert_eq!(tree.root, TerrainQuadtreeNode::Internal(0));
+        assert_eq!(tree.root, TileNode::Internal(0));
         assert_eq!(tree.leaves.len(), 4);
         assert_eq!(
             tree.internals,
-            vec![TerrainQuadtreeInternal {
+            vec![TileNodeInternal {
                 parent: Node::None,
                 bounds: AABB::new([-100., -100.], [100., 100.]),
                 level: 0,
@@ -998,15 +965,15 @@ mod tests {
 
     #[test]
     fn quadtree_creation_with_depth_2() {
-        let tree = TerrainQuadtree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 2);
+        let tree = TileTree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 2);
 
-        assert_eq!(tree.root, TerrainQuadtreeNode::Internal(0));
+        assert_eq!(tree.root, TileNode::Internal(0));
         assert_eq!(tree.leaves.len(), 16);
         // Todo: The Neighbours of the internals are not correct. They refer partly to leaves and internals.
         // This seems to not have no effect on leaf neighbour calculation.
 
         // assert_eq!(tree.internals, vec![
-        //     TerrainQuadtreeInternal{
+        //     TileNodeInternal{
         //         parent: Node::None,
         //         bounds: AABB::new([-100., -100.], [100., 100.]),
         //         level: 0,
@@ -1014,7 +981,7 @@ mod tests {
         //         location: Quadrant::Root,
         //         neighbours: NodeNeighbours{north: Node::None, east: Node::None, south: Node::None, west: Node::None},
         //     },
-        //     TerrainQuadtreeInternal{
+        //     TileNodeInternal{
         //         parent: Node::Internal(0),
         //         bounds: AABB::new([-100., -100.], [0., 0.]),
         //         level: 1,
@@ -1022,7 +989,7 @@ mod tests {
         //         location: Quadrant::Northwest,
         //         neighbours: NodeNeighbours{north: Node::None, east: Node::Leaf(6), south: Node::Leaf(9), west: Node::None},
         //     },
-        //     TerrainQuadtreeInternal{
+        //     TileNodeInternal{
         //         parent: Node::Internal(0),
         //         bounds: AABB::new([0., -100.], [100., 0.]),
         //         level: 1,
@@ -1030,7 +997,7 @@ mod tests {
         //         location: Quadrant::Northeast,
         //         neighbours: NodeNeighbours{north: Node::None, east: Node::None, south: Node::Leaf(13), west: Node::Leaf(1)},
         //     },
-        //     TerrainQuadtreeInternal{
+        //     TileNodeInternal{
         //         parent: Node::Internal(0),
         //         bounds: AABB::new([-100., 0.], [0., 100.]),
         //         level: 1,
@@ -1038,7 +1005,7 @@ mod tests {
         //         location: Quadrant::Southwest,
         //         neighbours: NodeNeighbours{north: Node::Leaf(2), east: Node::Leaf(14), south: Node::None, west: Node::None},
         //     },
-        //     TerrainQuadtreeInternal{
+        //     TileNodeInternal{
         //         parent: Node::Internal(0),
         //         bounds: AABB::new([0., 0.], [100., 100.]),
         //         level: 1,
@@ -1235,9 +1202,9 @@ mod tests {
 
     #[test]
     fn quadtree_creation_with_depth_3_asym() {
-        let tree = TerrainQuadtree::new([-50., -50.], AABB::new([-100., -100.], [100., 100.]), 3);
+        let tree = TileTree::new([-50., -50.], AABB::new([-100., -100.], [100., 100.]), 3);
 
-        assert_eq!(tree.root, TerrainQuadtreeNode::Internal(0));
+        assert_eq!(tree.root, TileNode::Internal(0));
         assert_eq!(tree.leaves.len(), 25);
         let leaf_ref = vec![
             Leaf!(
@@ -1436,32 +1403,31 @@ mod tests {
 
     #[test]
     fn get_kth_neighbour_with_distance_0() {
-        let tree = TerrainQuadtree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 1);
-        let left = tree.get_kth_neighbour(TerrainQuadtreeNode::Leaf(0), Direction::East, 0);
+        let tree = TileTree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 1);
+        let left = tree.get_kth_neighbour(TileNode::Leaf(0), Direction::East, 0);
 
-        assert_eq!(left, TerrainQuadtreeNode::Leaf(0))
+        assert_eq!(left, TileNode::Leaf(0))
     }
     #[test]
     fn get_kth_neighbour_with_distance_1() {
-        let tree = TerrainQuadtree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 1);
-        let left = tree.get_kth_neighbour(TerrainQuadtreeNode::Leaf(0), Direction::East, 1);
+        let tree = TileTree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 1);
+        let left = tree.get_kth_neighbour(TileNode::Leaf(0), Direction::East, 1);
 
-        assert_eq!(left, TerrainQuadtreeNode::Leaf(1))
+        assert_eq!(left, TileNode::Leaf(1))
     }
     #[test]
     fn get_kth_neighbour_with_distance_2() {
-        let tree = TerrainQuadtree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 2);
-        let left = tree.get_kth_neighbour(TerrainQuadtreeNode::Leaf(1), Direction::East, 2);
+        let tree = TileTree::new([0., 0.], AABB::new([-100., -100.], [100., 100.]), 2);
+        let left = tree.get_kth_neighbour(TileNode::Leaf(1), Direction::East, 2);
 
-        assert_eq!(left, TerrainQuadtreeNode::Leaf(5))
+        assert_eq!(left, TileNode::Leaf(5))
     }
 
     #[test]
     fn get_kth_neighbour_with_distance_3_asym() {
-        let tree = TerrainQuadtree::new([-50., -50.], AABB::new([-100., -100.], [100., 100.]), 3);
-        let left = tree.get_kth_neighbour(TerrainQuadtreeNode::Leaf(10), Direction::East, 3);
+        let tree = TileTree::new([-50., -50.], AABB::new([-100., -100.], [100., 100.]), 3);
+        let left = tree.get_kth_neighbour(TileNode::Leaf(10), Direction::East, 3);
 
-        assert_eq!(left, TerrainQuadtreeNode::Leaf(19))
+        assert_eq!(left, TileNode::Leaf(19))
     }
-
 }

@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
-pub enum TerrainQuadtreeNode {
+pub enum TileNode {
     /// None variant.
     None,
     /// Identifier of an internal node.

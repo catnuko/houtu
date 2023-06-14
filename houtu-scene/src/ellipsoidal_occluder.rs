@@ -4,12 +4,17 @@ use crate::{
     ellipsoid::{self, Ellipsoid},
     math::Cartesian3,
 };
-
+#[derive(Clone, Debug)]
 pub struct EllipsoidalOccluder {
     pub ellipsoid: Ellipsoid,
     pub cameraPosition: DVec3,
     pub cameraPositionInScaledSpace: DVec3,
     pub distanceToLimbInScaledSpaceSquared: f64,
+}
+impl Default for EllipsoidalOccluder {
+    fn default() -> Self {
+        Self::new(&Ellipsoid::WGS84)
+    }
 }
 impl EllipsoidalOccluder {
     pub fn new(ellipsoid: &Ellipsoid) -> Self {

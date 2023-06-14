@@ -3,7 +3,7 @@ use houtu_scene::{
     GeographicTilingScheme, HeightmapTerrainData, IndicesAndEdgesCache, TilingScheme,
 };
 
-use crate::plugins::cnquadtree::TerrainQuadtree;
+use crate::plugins::cnquadtree::TileTree;
 
 use super::{
     tile_bundle::{TerrainMeshWrap, TileBundle},
@@ -32,7 +32,7 @@ pub struct TileLayerBundle {
     pub visibility: Visibility,
     pub computed_visibility: ComputedVisibility,
     tile_storage: TileStorage,
-    quadtree: TerrainQuadtree,
+    quadtree: TileTree,
     pub tiling_scheme: GeographicTilingScheme,
     pub state: TileLayerState,
     pub id: TileLayerId,
@@ -47,7 +47,7 @@ impl Default for TileLayerBundle {
             tiling_scheme: GeographicTilingScheme::default(),
             state: TileLayerState::Start,
             id: TileLayerId(Entity::PLACEHOLDER),
-            quadtree: TerrainQuadtree::default(),
+            quadtree: TileTree::default(),
         }
     }
 }

@@ -64,6 +64,7 @@ pub fn layer_system(
                                 )),
                                 mark: TileMark,
                                 state: TileState::Start,
+                                load_priority:super::tile_bundle::LoadPriority::None
                             })
                             .id();
                         tile_storage.set(&tile_key, entity);

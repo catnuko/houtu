@@ -40,7 +40,7 @@ This approach uses tesselation and geometry shaders and thus does currently not 
 
 ## Inspiration
 This approach was inspired by 
-* https://github.com/drecuk/QuadtreeTerrain/blob/master/30.SYS-QuadtreeTerrain/TerrainQuadTree.cpp
+* https://github.com/drecuk/QuadtreeTerrain/blob/master/30.SYS-QuadtreeTerrain/TileTree.cpp
 * https://bitbucket.org/victorbush/ufl.cap5705.terrain/src/93c5ab3824a5a66d87d1bb6dcc9ed9aee7a16357/src_non_uniform/shader/?at=master
 * https://developer.nvidia.com/gpugems/GPUGems2/gpugems2_chapter07.html 
 * and the FarCry5 GDC Slides.

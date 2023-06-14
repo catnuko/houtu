@@ -1,15 +1,13 @@
 use bevy::{math::UVec3, prelude::*};
 
-use crate::plugins::cnquadtree::NodeId;
-
 #[derive(
     Component, Reflect, FromReflect, Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd,
 )]
 #[reflect(Component)]
 pub struct TileKey {
-    x: u32,
-    y: u32,
-    level: u32,
+    pub x: u32,
+    pub y: u32,
+    pub level: u32,
 }
 impl TileKey {
     pub fn new(x: u32, y: u32, level: u32) -> Self {
@@ -18,6 +16,34 @@ impl TileKey {
 
     pub fn get_id(&self) -> String {
         format!("{}_{}_{}", self.x, self.y, self.level)
+    }
+    pub fn southwest(&self) -> TileKey {
+        TileKey {
+            x: self.x * 2,
+            y: self.y * 2 + 1,
+            level: self.level + 1,
+        }
+    }
+    pub fn southeast(&self) -> TileKey {
+        TileKey {
+            x: self.x * 2 + 1,
+            y: self.y * 2 + 1,
+            level: self.level + 1,
+        }
+    }
+    pub fn northwest(&self) -> TileKey {
+        TileKey {
+            x: self.x * 2,
+            y: self.y * 2,
+            level: self.level + 1,
+        }
+    }
+    pub fn northeast(&self) -> TileKey {
+        TileKey {
+            x: self.x * 2 + 1,
+            y: self.y * 2,
+            level: self.level + 1,
+        }
     }
 }
 
@@ -39,16 +65,6 @@ impl From<UVec3> for TileKey {
             x: v.x,
             y: v.y,
             level: v.z,
-        }
-    }
-}
-
-impl From<NodeId> for TileKey {
-    fn from(value: NodeId) -> Self {
-        Self {
-            x: value.x,
-            y: value.y,
-            level: value.level,
         }
     }
 }

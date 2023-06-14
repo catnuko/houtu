@@ -1,17 +1,16 @@
+use crate::component::Terrain;
 use amethyst::{
     core::{
-        math::{convert, Matrix4}, Transform
+        math::{convert, Matrix4},
+        Transform,
     },
-    renderer::{
-        rendy::{
-            mesh::{AsAttribute, AsVertex, VertexFormat},
-            hal::format::Format
-        }
-    }
+    renderer::rendy::{
+        hal::format::Format,
+        mesh::{AsAttribute, AsVertex, VertexFormat},
+    },
 };
+use cnquadtree::{Direction, TileNode, TileTree, TileTreeLeaf};
 use glsl_layout::{self, *};
-use crate::component::Terrain;
-use cnquadtree::{TerrainQuadtree, TerrainQuadtreeLeaf, Direction, TerrainQuadtreeNode};
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(C, align(16))]
@@ -43,7 +42,6 @@ impl AsAttribute for NeighbourScales {
     const FORMAT: Format = Format::Rgba32Sint;
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(C, align(16))]
 pub(crate) struct InstancedPatchArgs {
@@ -54,40 +52,51 @@ pub(crate) struct InstancedPatchArgs {
 
 impl InstancedPatchArgs {
     #[inline]
-    pub fn from_object_data(patch: &TerrainQuadtreeLeaf, quadtree: &TerrainQuadtree) -> Self {
-        let mut neighbour_scales : [i32; 4] = [64, 64, 64, 64];
+    pub fn from_object_data(patch: &TileTreeLeaf, quadtree: &TileTree) -> Self {
+        let mut neighbour_scales: [i32; 4] = [64, 64, 64, 64];
         let neighbours = patch.get_neighbours();
-        
-        if neighbours[Direction::North] != TerrainQuadtreeNode::None && quadtree.get_level(neighbours[Direction::North]) < patch.level() {
+
+        if neighbours[Direction::North] != TileNode::None
+            && quadtree.get_level(neighbours[Direction::North]) < patch.level()
+        {
             let diff = patch.level() - quadtree.get_level(neighbours[Direction::North]);
             neighbour_scales[0] = neighbour_scales[0] >> diff;
-        } 
-        if neighbours[Direction::East] != TerrainQuadtreeNode::None && quadtree.get_level(neighbours[Direction::East]) < patch.level() {
+        }
+        if neighbours[Direction::East] != TileNode::None
+            && quadtree.get_level(neighbours[Direction::East]) < patch.level()
+        {
             let diff = patch.level() - quadtree.get_level(neighbours[Direction::East]);
             neighbour_scales[1] = neighbour_scales[1] >> diff;
         }
-        if neighbours[Direction::South] != TerrainQuadtreeNode::None && quadtree.get_level(neighbours[Direction::South]) < patch.level() {
+        if neighbours[Direction::South] != TileNode::None
+            && quadtree.get_level(neighbours[Direction::South]) < patch.level()
+        {
             let diff = patch.level() - quadtree.get_level(neighbours[Direction::South]);
             neighbour_scales[2] = neighbour_scales[2] >> diff;
         }
-        if neighbours[Direction::West] != TerrainQuadtreeNode::None && quadtree.get_level(neighbours[Direction::West]) < patch.level() {
+        if neighbours[Direction::West] != TileNode::None
+            && quadtree.get_level(neighbours[Direction::West]) < patch.level()
+        {
             let diff = patch.level() - quadtree.get_level(neighbours[Direction::West]);
             neighbour_scales[3] = neighbour_scales[3] >> diff;
         }
         InstancedPatchArgs {
             patch_scale: patch.half_extents()[0],
             patch_origin: [patch.origin()[0], 0., patch.origin()[1]].into(),
-            neighbour_scales: neighbour_scales.into()
+            neighbour_scales: neighbour_scales.into(),
         }
     }
 }
 
 impl AsVertex for InstancedPatchArgs {
     fn vertex() -> VertexFormat {
-        VertexFormat::new((PatchScale::vertex(), PatchOrigin::vertex(), NeighbourScales::vertex()))
+        VertexFormat::new((
+            PatchScale::vertex(),
+            PatchOrigin::vertex(),
+            NeighbourScales::vertex(),
+        ))
     }
 }
-
 
 // For all shader stages (binding = 0)
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, AsStd140)]

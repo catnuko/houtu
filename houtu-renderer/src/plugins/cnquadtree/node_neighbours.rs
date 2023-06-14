@@ -1,31 +1,31 @@
 use super::direction::Direction;
-use super::terrain_quadtree_node::TerrainQuadtreeNode;
+use super::tile_node::TileNode;
 use std::fmt;
 use std::ops::Index;
 use std::ops::IndexMut;
 #[derive(Clone, Copy, PartialEq)]
 pub struct NodeNeighbours {
-    pub(super) north: TerrainQuadtreeNode,
-    pub(super) east: TerrainQuadtreeNode,
-    pub(super) south: TerrainQuadtreeNode,
-    pub(super) west: TerrainQuadtreeNode,
+    pub(super) north: TileNode,
+    pub(super) east: TileNode,
+    pub(super) south: TileNode,
+    pub(super) west: TileNode,
 }
 
 impl Default for NodeNeighbours {
     fn default() -> Self {
         Self {
-            north: TerrainQuadtreeNode::None,
-            east: TerrainQuadtreeNode::None,
-            south: TerrainQuadtreeNode::None,
-            west: TerrainQuadtreeNode::None,
+            north: TileNode::None,
+            east: TileNode::None,
+            south: TileNode::None,
+            west: TileNode::None,
         }
     }
 }
 
 impl Index<Direction> for NodeNeighbours {
-    type Output = TerrainQuadtreeNode;
+    type Output = TileNode;
 
-    fn index(&self, dir: Direction) -> &TerrainQuadtreeNode {
+    fn index(&self, dir: Direction) -> &TileNode {
         match dir {
             Direction::North => &self.north,
             Direction::East => &self.east,
@@ -36,7 +36,7 @@ impl Index<Direction> for NodeNeighbours {
 }
 
 impl IndexMut<Direction> for NodeNeighbours {
-    fn index_mut(&mut self, dir: Direction) -> &mut TerrainQuadtreeNode {
+    fn index_mut(&mut self, dir: Direction) -> &mut TileNode {
         match dir {
             Direction::North => &mut self.north,
             Direction::East => &mut self.east,

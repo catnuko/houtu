@@ -1,39 +1,39 @@
 <div align="center">
 
-  <h1><code>houtu</code></h1>
+  <h1><code>后土</code></h1>
 
-  <strong>webgpu based high performance 3D region rendering engine inspired by <a href="https://github.com/frewsxcv/rgis">rgis</a>.</strong>
+  <strong>基于webgpu的高性能的三维地图引擎</strong>
 
   <h3>
-    <a href="#">Doc</a>
+    <a href="#">暂无文档</a>
     <span> | </span>
-    <a href="#">Demo</a>
+    <a href="https://imdodo.com/s/211509">dodo交流群</a>
   </h3>
 </div>
 
-## 🖼️screenshot
+# **注意：本项目还在试验阶段，请斟酌使用。**
+
+## 截图
 
 第二层瓦片网格
 ![瓦片网格](./www/assets/jietu5.png)
-## 🚀feature
-1. bevy
-2. webgpu
-3. rust
-4. desktop and web browser app
-5. plugin
 
-## 🐪roadmap
+## 🚀特性
+1. bevy作为渲染引擎，具备ECS的高性能，高度的可扩展性。
+2. wgpu作为图形API，具备跨平台，现代化图形API
+3. rust作为开发语言，具备安全性，工具链完备性，可直接编译至WASM，充分发挥web端的性能。
+4. cesium作为参考应用，具备实用性，GIS图形的精确性。
+
+## 路线
 1. - [x] 3d globe
-2. - [x] camera
-3. - [ ] basic geometry，poline，polygon，point，box，sphere等
-4. - [x] raster tile
-5. - [ ] vector tile
-6. - [ ] 3d tile
-7. - [ ] terrain
-## 📖document
-[中文文档](./README_zh.md)
+2. - [x] 相机控制
+3. - [ ] 基本几何图形，多边形，折线，点，圆，球，椭球等形状
+4. - [ ] 栅格瓦片图层
+5. - [ ] 矢量瓦片图层
+6. - [ ] 倾斜摄影模型
+7. - [ ] 地形
+## 📖文档
+document
 
-## 💻development
-Welcome to contribute code
-
-## 🐒test
+## 💻贡献
+[开发文档](./DEVELOPMENT.md)

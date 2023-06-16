@@ -2,12 +2,12 @@
 
   <h1><code>后土</code></h1>
 
-  <strong>基于webgpu的高性能的三维地图引擎</strong>
+  <strong>基于webgpu的高性能的真实地球渲染引擎</strong>
 
   <h3>
     <a href="#">暂无文档</a>
     <span> | </span>
-    <a href="https://imdodo.com/s/211509">dodo交流群</a>
+    <a href="https://imdodo.com/s/211509">dodo交流群-后土地球</a>
   </h3>
 </div>
 
@@ -25,6 +25,7 @@
 4. cesium作为参考应用，具备实用性，GIS图形的精确性。
 
 ## 路线
+详情查看仓库的[Projects](https://github.com/users/catnuko/projects/1)
 1. - [x] 3d globe
 2. - [x] 相机控制
 3. - [ ] 基本几何图形，多边形，折线，点，圆，球，椭球等形状
@@ -33,7 +34,12 @@
 6. - [ ] 倾斜摄影模型
 7. - [ ] 地形
 ## 📖文档
-document
+暂无文档。未来会逐步完善。包括使用，开发，学习等文档。
 
 ## 💻贡献
-[开发文档](./DEVELOPMENT.md)
+佛系参与，强烈欢迎。👏👏👏
+
+## 🌍阶段目标
+
+1. 创建一个在线网站，实时浏览气候因子在全球各地的分布情况，让每个人都能从宏观视角关注气候变化，切身感受自身的微小行为对地球环境造成的伤害。“善不积不足以成名，恶不积不足以灭身”，去恶积善，尽快行动起来吧。
+![星球风向](./www/assets/globe-env.png)

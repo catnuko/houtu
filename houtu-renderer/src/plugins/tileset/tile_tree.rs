@@ -1,26 +1,26 @@
+use std::sync::Arc;
+
 use bevy::prelude::Component;
 use houtu_scene::{GeographicTilingScheme, TilingScheme};
 
 use crate::plugins::tileset::TileKey;
 
 use super::{
-    direction::Direction, tile_node::TileNode, tile_node_internal::TileNodeInternal, Quadrant,
+    quadtree_tile::{Direction, Quadrant, QuadtreeTile, TileNode},
+    tile_datasource::TilingSchemeWrap,
 };
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug)]
 pub struct TileTree {
     root: TileNode,
-    pub(super) internals: Vec<TileNodeInternal>,
-}
-impl Default for TileTree {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub(super) internals: Vec<QuadtreeTile>,
+    tiling_scheme: Arc<GeographicTilingScheme>,
 }
 impl TileTree {
-    pub fn new() -> Self {
+    pub fn new(tiling_scheme: Arc<GeographicTilingScheme>) -> Self {
         let mut tree = Self {
             root: TileNode::None,
-            internals: Vec::<TileNodeInternal>::new(),
+            internals: Vec::<QuadtreeTile>::new(),
+            tiling_scheme,
         };
         tree.internals.shrink_to_fit();
         tree
@@ -73,15 +73,11 @@ impl TileTree {
         location: Quadrant,
         parent: TileNode,
     ) -> TileNode {
-        self.internals.push(TileNodeInternal {
-            parent: parent,
-            key,
-            rectangle: self
-                .tiling_scheme
-                .tile_x_y_to_rectange(key.x, key.y, key.level),
-            children: Default::default(),
-            location: location,
-        });
+        let r = self
+            .tiling_scheme
+            .tile_x_y_to_rectange(key.x, key.y, key.level);
+        self.internals
+            .push(QuadtreeTile::new(key, r, location, parent));
         TileNode::Internal(self.internals.len() - 1)
     }
     pub(crate) fn subdivide(&mut self, node_id: TileNode) {

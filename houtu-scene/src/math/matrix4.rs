@@ -156,6 +156,7 @@ pub trait Matrix4 {
     fn inverse_transformation(&self) -> DMat4;
     fn multiply_by_point(&self, cartesian: &DVec3) -> DVec3;
     fn set_translation(&mut self, cartesian: &DVec3);
+    fn get_translation(&self) -> DVec3;
     fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4;
     fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4;
     fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3;
@@ -165,6 +166,13 @@ impl Matrix4 for DMat4 {
         self.x_axis.w = cartesian.x;
         self.y_axis.w = cartesian.y;
         self.z_axis.w = cartesian.z;
+    }
+    fn get_translation(&self) -> DVec3 {
+        DVec3 {
+            x: self.x_axis.w,
+            y: self.y_axis.w,
+            z: self.z_axis.w,
+        }
     }
     fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3 {
         let mut matrix: [f64; 16] = [

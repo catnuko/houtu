@@ -19,13 +19,11 @@ mod camera_old;
 mod debug_system;
 mod egui;
 mod pan_orbit;
-use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
-
 use self::{
-    camera_new::{CameraControlPlugin, GlobeCamera},
-    debug_system::debug_system,
-    pan_orbit::pan_orbit_camera,
+    camera_new::CameraControlPlugin, debug_system::debug_system, pan_orbit::pan_orbit_camera,
 };
+pub use camera_new::GlobeCamera;
+use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
 use houtu_scene::{Projection, *};
 
 pub struct CameraPlugin;

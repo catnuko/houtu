@@ -6,14 +6,16 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::sync::Arc;
 
+use super::globe_surface_tile::GlobeSurfaceTile;
 use super::tile_replacement_queue::TileReplacementState;
+use super::tile_selection_result::TileSelectionResult;
 use super::{tile_datasource::TilingSchemeWrap, TileKey};
 #[derive(Component, Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum TileNode {
     /// None variant.
     None,
     /// Identifier of an internal node.
-    Internal(usize),
+    Internal(Entity),
 }
 #[derive(Component, Debug, PartialEq)]
 pub enum Quadrant {
@@ -123,6 +125,8 @@ pub struct QuadtreeTileOtherState {
     pub _loadPriority: f64,
     pub renderable: bool,
     pub upsampledFromParent: bool,
+    pub _lastSelectionResult: TileSelectionResult,
+    pub _lastSelectionResultFrame: Option<u32>,
 }
 impl Default for QuadtreeTileOtherState {
     fn default() -> Self {
@@ -131,9 +135,13 @@ impl Default for QuadtreeTileOtherState {
             _loadPriority: 0.0,
             renderable: false,
             upsampledFromParent: false,
+            _lastSelectionResultFrame: None,
+            _lastSelectionResult: TileSelectionResult::NONE,
         }
     }
 }
+#[derive(Debug, Component)]
+pub struct QuadtreeTileData(pub Option<GlobeSurfaceTile>);
 #[derive(Bundle, Debug)]
 pub struct QuadtreeTile {
     pub mark: QuadtreeTileMark,
@@ -144,6 +152,7 @@ pub struct QuadtreeTile {
     pub children: NodeChildren,
     pub state: QuadtreeTileLoadState,
     pub other_state: QuadtreeTileOtherState,
+    pub data: QuadtreeTileData,
 }
 impl QuadtreeTile {
     pub fn new(key: TileKey, rectangle: Rectangle, location: Quadrant, parent: TileNode) -> Self {
@@ -156,6 +165,7 @@ impl QuadtreeTile {
             children: Default::default(),
             state: QuadtreeTileLoadState::Start,
             other_state: QuadtreeTileOtherState::default(),
+            data: QuadtreeTileData(None),
         };
         return me;
     }
@@ -163,7 +173,8 @@ impl QuadtreeTile {
 
 #[derive(Component)]
 pub struct TileToRender;
-
+#[derive(Component)]
+pub struct TileToUpdateHeight;
 #[derive(Component)]
 pub struct TileLoadHigh;
 

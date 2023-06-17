@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 mod ellipsoid_shape;
 pub use ellipsoid_shape::*;
-use houtu_scene::Ellipsoid;
+use houtu_scene::{Ellipsoid, EllipsoidalOccluder};
 #[derive(Component)]
 pub struct Shape;
 pub struct GlobePlugin;
@@ -16,6 +16,7 @@ impl Default for GlobePlugin {
 impl bevy::app::Plugin for GlobePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Ellipsoid::WGS84);
+        app.insert_resource(EllipsoidalOccluder::default());
         app.add_startup_system(setup);
     }
 }

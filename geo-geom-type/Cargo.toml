@@ -1,8 +1,0 @@
-[package]
-name = "geo-geom-type"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-bitflags = "2"
-geo = "0.24"

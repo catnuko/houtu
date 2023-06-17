@@ -17,6 +17,7 @@ mod tile_layer_state;
 mod tile_layer_system;
 mod tile_quad_tree;
 mod tile_replacement_queue;
+mod tile_selection_result;
 mod tile_state;
 mod tile_storage;
 mod tile_system;

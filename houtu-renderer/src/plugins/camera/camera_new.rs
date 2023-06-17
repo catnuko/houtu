@@ -72,6 +72,9 @@ impl Default for GlobeCameraFrustum {
     }
 }
 impl GlobeCameraFrustum {
+    pub fn sseDenominator(&self) -> f64 {
+        self._sseDenominator
+    }
     fn update_self(&mut self) {
         self._sseDenominator = (2.0 * (0.5 * self.fov)).tan();
         self.fovy = {

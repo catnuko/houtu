@@ -3,8 +3,6 @@ use houtu_scene::{
     GeographicTilingScheme, HeightmapTerrainData, IndicesAndEdgesCache, TilingScheme,
 };
 
-use crate::plugins::cnquadtree::TileTree;
-
 use super::{
     tile_bundle::{TerrainMeshWrap, TileBundle},
     tile_key::TileKey,

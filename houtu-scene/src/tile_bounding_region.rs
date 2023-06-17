@@ -51,42 +51,37 @@ impl TileBoundingRegion {
     }
     pub fn distanceToCamera<P: Projection>(
         &self,
-        cameraCartesianPosition: &DVec3,
-        cameraCartographicPosition: &Cartographic,
+        positionWC: &DVec3,
+        positionCartographic: &Cartographic,
         projection: &P,
     ) -> f64 {
-        let regionResult = self.distanceToCameraRegion(
-            cameraCartesianPosition,
-            cameraCartographicPosition,
-            projection,
-        );
+        let regionResult =
+            self.distanceToCameraRegion(positionWC, positionCartographic, projection);
         if let Some(v) = &self.orientedBoundingBox {
-            let obbResult = v.distanceSquaredTo(&cameraCartesianPosition).sqrt();
+            let obbResult = v.distanceSquaredTo(&positionWC).sqrt();
             return regionResult.max(obbResult);
         }
         return regionResult;
     }
     pub fn distanceToCameraRegion<P: Projection>(
         &self,
-        cameraCartesianPosition: &DVec3,
-        cameraCartographicPosition: &Cartographic,
+        positionWC: &DVec3,
+        positionCartographic: &Cartographic,
         projection: &P,
     ) -> f64 {
         let mut result = 0.0;
-        if (!self.rectangle.contains(cameraCartographicPosition)) {
+        if (!self.rectangle.contains(positionCartographic)) {
             let southwestCornerCartesian = self.southwestCornerCartesian;
             let northeastCornerCartesian = self.northeastCornerCartesian;
             let westNormal = self.westNormal;
             let southNormal = self.southNormal;
             let eastNormal = self.eastNormal;
             let northNormal = self.northNormal;
-            let vectorFromSouthwestCorner =
-                cameraCartesianPosition.subtract(southwestCornerCartesian);
+            let vectorFromSouthwestCorner = positionWC.subtract(southwestCornerCartesian);
             let distanceToWestPlane = vectorFromSouthwestCorner.dot(westNormal);
             let distanceToSouthPlane = vectorFromSouthwestCorner.dot(southNormal);
 
-            let vectorFromNortheastCorner =
-                cameraCartesianPosition.subtract(northeastCornerCartesian);
+            let vectorFromNortheastCorner = positionWC.subtract(northeastCornerCartesian);
             let distanceToEastPlane = vectorFromNortheastCorner.dot(eastNormal);
             let distanceToNorthPlane = vectorFromNortheastCorner.dot(northNormal);
 
@@ -107,7 +102,7 @@ impl TileBoundingRegion {
         let minimumHeight;
         let maximumHeight;
 
-        cameraHeight = cameraCartographicPosition.height;
+        cameraHeight = positionCartographic.height;
         minimumHeight = self.minimumHeight;
         maximumHeight = self.maximumHeight;
 
@@ -120,6 +115,12 @@ impl TileBoundingRegion {
         }
 
         return result.sqrt();
+    }
+    pub fn get_bounding_volume(&self) -> Option<OrientedBoundingBox> {
+        self.orientedBoundingBox
+    }
+    pub fn get_bounding_sphere(&self) -> Option<BoundingSphere> {
+        self.boundingSphere
     }
     pub fn computeBoundingVolumes(&mut self, ellipsoid: &Ellipsoid) {
         let obb = OrientedBoundingBox::fromRectangle(

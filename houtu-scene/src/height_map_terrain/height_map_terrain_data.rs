@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::create_vertice;
-
+#[derive(Debug)]
 pub struct HeightmapTerrainData {
     pub _buffer: Vec<f64>,
     pub _width: u32,

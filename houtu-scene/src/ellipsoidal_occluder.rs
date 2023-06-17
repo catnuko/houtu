@@ -1,10 +1,10 @@
-use bevy::math::DVec3;
+use bevy::{math::DVec3, prelude::Resource};
 
 use crate::{
     ellipsoid::{self, Ellipsoid},
     math::Cartesian3,
 };
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct EllipsoidalOccluder {
     pub ellipsoid: Ellipsoid,
     pub cameraPosition: DVec3,

@@ -1,26 +1,5 @@
 [workspace]
 members = [
-    "geo-features",
-    "geo-geom-type",
-    "geo-proj-js",
-    "geo-projected",
-    "rgis-camera",
-    "rgis-cli",
-    "rgis-events",
-    "rgis-file-loader",
-    "rgis-geo-ops",
-    "rgis-keyboard",
-    "rgis-layer-id",
-    "rgis-layers",
-    "rgis-library",
-    "rgis-mouse",
-    "rgis-network",
-    "rgis-renderer",
-    "rgis-settings",
-    "rgis-ui",
-    "rgis-units",
-    "rgis",
-    "time-logger",
     "houtu",
     "houtu-renderer",
     "houtu-scene",
@@ -32,7 +11,7 @@ resolver = "2"
 [profile.release]
 debug = true
 
-[patch.crates-io]
-geo = { git = "https://github.com/georust/geo", branch = "frewsxcv/triangulate" }
-proj = { git = "https://github.com/georust/proj", branch = "cfarwell-send" }
-proj-sys = { git = "https://github.com/georust/proj", branch = "cfarwell-send" }
+# [patch.crates-io]
+# geo = { git = "https://github.com/georust/geo", branch = "frewsxcv/triangulate" }
+# proj = { git = "https://github.com/georust/proj", branch = "cfarwell-send" }
+# proj-sys = { git = "https://github.com/georust/proj", branch = "cfarwell-send" }

@@ -33,7 +33,7 @@ houtu-renderer = { path = "../houtu-renderer" }
 # bevy_jobs = { git = "https://github.com/frewsxcv/bevy_jobs" }
 # rgis-transform = { path = "../rgis-transform" }
 # rgis-ui = { path = "../rgis-ui" }
-time-logger = { path = "../time-logger" }
+# time-logger = { path = "../time-logger" }
 # rgis-events = { path = "../rgis-events" }
 
 # [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -48,9 +48,13 @@ impl IntoIterator for TileStorage {
     }
 }
 
-impl Index<TileKey> for TileStorage {
-    type Output = Option<Entity>;
-    fn index(&self, index: TileKey) -> &Self::Output {
-        return &self.get(&index);
-    }
-}
+// impl Index<TileKey> for TileStorage {
+//     type Output = Option<Entity>;
+//     fn index(&self, index: TileKey) -> &Self::Output {
+//         if let Some(v) = self.get(&index) {
+//             return Some(v.clone());
+//         } else {
+//             return None;
+//         }
+//     }
+// }

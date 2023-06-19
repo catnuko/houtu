@@ -3,6 +3,8 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use houtu_scene::{GeographicTilingScheme, TilingScheme};
 
+use super::label::{self, Label};
+
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
@@ -24,7 +26,7 @@ impl<T: TilingScheme> Clone for TilingSchemeWrap<T> {
 #[derive(Component)]
 pub struct QuadTreeTileDatasourceMark;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct Ready(pub bool);
 
 #[derive(Bundle)]
@@ -32,10 +34,12 @@ pub struct TileDatasource<T: TilingScheme + Sync + Send + 'static> {
     pub mark: TileDatasourceMark,
     pub tiling_scheme: TilingSchemeWrap<T>,
     pub ready: Ready,
+    pub label: Label,
 }
 fn setup(mut commands: Commands) {
     commands.spawn((
         TileDatasource {
+            label: label::Label("_地形"),
             mark: TileDatasourceMark,
             tiling_scheme: TilingSchemeWrap(Arc::new(GeographicTilingScheme::default())),
             ready: Ready(false),

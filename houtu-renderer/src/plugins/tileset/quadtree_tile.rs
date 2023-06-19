@@ -23,7 +23,7 @@ pub enum Quadrant {
     Northeast,
     Southwest,
     Southeast,
-    Root,
+    Root(usize),
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Component)]
@@ -112,12 +112,12 @@ impl Direction {
 }
 #[derive(Component, Debug)]
 pub struct QuadtreeTileMark;
-#[derive(Component, Debug)]
+#[derive(Component, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum QuadtreeTileLoadState {
-    Start = 0,
-    Loading = 1,
-    Done = 2,
-    Failed = 3,
+    START = 0,
+    LOADING = 1,
+    DONE = 2,
+    FAILED = 3,
 }
 #[derive(Component, Debug)]
 pub struct QuadtreeTileOtherState {
@@ -142,12 +142,15 @@ impl Default for QuadtreeTileOtherState {
 }
 #[derive(Debug, Component)]
 pub struct QuadtreeTileData(pub Option<GlobeSurfaceTile>);
+#[derive(Debug, Component)]
+pub struct QuadtreeTileParent(pub TileNode);
 #[derive(Bundle, Debug)]
 pub struct QuadtreeTile {
     pub mark: QuadtreeTileMark,
     pub key: TileKey,
     pub rectangle: Rectangle,
-    pub parent: TileNode,
+    pub parent: QuadtreeTileParent,
+    // pub node: TileNode,
     pub location: Quadrant,
     pub children: NodeChildren,
     pub state: QuadtreeTileLoadState,
@@ -155,17 +158,24 @@ pub struct QuadtreeTile {
     pub data: QuadtreeTileData,
 }
 impl QuadtreeTile {
-    pub fn new(key: TileKey, rectangle: Rectangle, location: Quadrant, parent: TileNode) -> Self {
+    pub fn new(
+        key: TileKey,
+        rectangle: Rectangle,
+        location: Quadrant,
+        parent: QuadtreeTileParent,
+        // node_id: TileNode,
+    ) -> Self {
         let me = Self {
             mark: QuadtreeTileMark,
             key: key,
             rectangle: rectangle,
-            parent,
             location,
             children: Default::default(),
-            state: QuadtreeTileLoadState::Start,
+            state: QuadtreeTileLoadState::START,
             other_state: QuadtreeTileOtherState::default(),
             data: QuadtreeTileData(None),
+            parent,
+            // node: node_id,
         };
         return me;
     }

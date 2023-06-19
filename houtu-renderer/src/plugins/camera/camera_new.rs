@@ -10,10 +10,10 @@ use bevy_easings::Lerp;
 use bevy_egui::EguiSet;
 use egui::EguiWantsFocus;
 use houtu_scene::{
-    acos_clamped, equals_epsilon, to_mat4_32, zero_to_two_pi, Cartesian3, Cartographic, Ellipsoid,
-    EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4,
-    Projection, Quaternion, Rectangle, Transforms, EPSILON10, EPSILON2, EPSILON3, EPSILON4,
-    RADIANS_PER_DEGREE,
+    acos_clamped, equals_epsilon, to_mat4_32, zero_to_two_pi, Cartesian3, Cartographic,
+    CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll,
+    IntersectionTests, Matrix3, Matrix4, PerspectiveOffCenterFrustum, Projection, Quaternion,
+    Rectangle, Transforms, EPSILON10, EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
 };
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::f64::NEG_INFINITY;
@@ -53,6 +53,7 @@ pub struct GlobeCameraFrustum {
     yOffset: f64,
     aspectRatio: f64,
     _sseDenominator: f64,
+    _offCenterFrustum: PerspectiveOffCenterFrustum,
 }
 // 0.660105980317941
 impl Default for GlobeCameraFrustum {
@@ -66,6 +67,7 @@ impl Default for GlobeCameraFrustum {
             aspectRatio: 1.,
             _sseDenominator: 0.,
             fovy: 0.,
+            _offCenterFrustum: PerspectiveOffCenterFrustum::new(),
         };
         me.update_self();
         return me;
@@ -75,6 +77,7 @@ impl GlobeCameraFrustum {
     pub fn sseDenominator(&self) -> f64 {
         self._sseDenominator
     }
+
     fn update_self(&mut self) {
         self._sseDenominator = (2.0 * (0.5 * self.fov)).tan();
         self.fovy = {
@@ -244,6 +247,7 @@ impl GlobeCamera {
         north: 1.5707963267948966,
     };
     pub const DEFAULT_VIEW_FACTOR: f64 = 0.5;
+
     fn update_self(&mut self) {
         self.updateViewMatrix();
         // self.position = self
@@ -320,6 +324,16 @@ impl GlobeCamera {
         self._setTransform(&oldTransform);
 
         return pitch;
+    }
+    pub fn get_culling_volume(&mut self) -> &CullingVolume {
+        let p = self.get_position_wc();
+        let d = self.get_position_wc();
+        let u = self.get_position_wc();
+
+        return &self
+            .frustum
+            ._offCenterFrustum
+            .computeCullingVolume(&p, &d, &u);
     }
     pub fn get_roll(&mut self) -> f64 {
         let ellipsoid = Ellipsoid::WGS84;

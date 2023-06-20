@@ -116,11 +116,11 @@ impl TileBoundingRegion {
 
         return result.sqrt();
     }
-    pub fn get_bounding_volume(&self) -> Option<OrientedBoundingBox> {
-        self.orientedBoundingBox
+    pub fn get_bounding_volume(&self) -> Option<&OrientedBoundingBox> {
+        self.orientedBoundingBox.as_ref()
     }
-    pub fn get_bounding_sphere(&self) -> Option<BoundingSphere> {
-        self.boundingSphere
+    pub fn get_bounding_sphere(&self) -> Option<&BoundingSphere> {
+        self.boundingSphere.as_ref()
     }
     pub fn computeBoundingVolumes(&mut self, ellipsoid: &Ellipsoid) {
         let obb = OrientedBoundingBox::fromRectangle(

@@ -30,7 +30,7 @@ impl PartialEq for TileReplacementState {
     }
 }
 fn set_state_of_entity(
-    query: &Query<(&TileReplacementState)>,
+    query: &mut Query<(&TileReplacementState)>,
     entity: Entity,
     state_entity: Option<Entity>,
     is_next: bool,
@@ -79,7 +79,11 @@ impl TileReplacementQueue {
             self._lastBeforeStartOfFrame = None;
         }
     }
-    fn remove(&mut self, query: &Query<(&TileReplacementState)>, item: &mut TileReplacementState) {
+    fn remove(
+        &mut self,
+        query: &mut Query<(&TileReplacementState)>,
+        item: &mut TileReplacementState,
+    ) {
         {
             if self._lastBeforeStartOfFrame.is_some()
                 && self._lastBeforeStartOfFrame.unwrap() == item.entity
@@ -128,7 +132,7 @@ impl TileReplacementQueue {
     }
     pub fn markTileRendered(
         &mut self,
-        query: &Query<(&TileReplacementState)>,
+        query: &mut Query<(&TileReplacementState)>,
         item: &mut TileReplacementState,
     ) {
         {

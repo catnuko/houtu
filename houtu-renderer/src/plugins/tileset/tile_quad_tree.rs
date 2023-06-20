@@ -118,7 +118,7 @@ fn render(
         With<QuadTreeTileDatasourceMark>,
     >,
     mut tile_quad_node_query: Query<GlobeSurfaceTileQuery>,
-    replacement_query: Query<(&TileReplacementState)>,
+    mut replacement_query: Query<(&TileReplacementState)>,
     mut globe_camera_query: Query<(&mut GlobeCamera)>,
     ellipsoidalOccluder: Res<EllipsoidalOccluder>,
     mut root_traversal_details: ResMut<RootTraversalDetails>,
@@ -226,24 +226,25 @@ fn render(
     tile_quad_tree._cameraPositionCartographic = Some(p.clone());
     tile_quad_tree._cameraReferenceFrameOriginCartographic =
         Ellipsoid::WGS84.cartesianToCartographic(&cameraFrameOrigin);
-    tt.iter().enumerate().for_each(|(i, x)| {
-        let (entity, _, _, _, other_state, mut replacement_state, _, _, _, _, _, mut location) = x;
+    tt.iter().enumerate().for_each(|(_i, x)| {
+        let (entity, _, _, _, other_state, mut replacement_state, _, _, _, _, _, mut location, _) =
+            x;
         let mut entity_mut = commands.entity(*entity);
         tile_quad_tree
             .replacement_queue
-            .markTileRendered(&replacement_query, &mut replacement_state);
+            .markTileRendered(&mut replacement_query, &mut replacement_state);
         if !other_state.renderable {
             entity_mut.insert(TileLoadHigh);
         } else {
-            let cl = globe_camera.get_culling_volume();
+            let cl = { globe_camera.get_culling_volume().clone() };
             visitIfVisible(
                 &mut commands,
                 tile_quad_tree,
                 &ellipsoidalOccluder.ellipsoid,
                 &ellipsoidalOccluder,
                 &mut tile_quad_node_query,
-                &replacement_query,
-                cl,
+                &mut replacement_query,
+                &cl,
                 &frame_count,
                 &mut globe_camera,
                 window,
@@ -277,7 +278,7 @@ fn visitTile(
     ellipsoid: &Ellipsoid,
     ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
-    replacement_query: &Query<(&TileReplacementState)>,
+    replacement_query: &mut Query<(&TileReplacementState)>,
     culling_volume: &CullingVolume,
     frame_count: &Res<FrameCount>,
     globe_camera: &mut GlobeCamera,
@@ -310,6 +311,7 @@ fn visitTile(
         mut node_children,
         state,
         location,
+        _,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let traversalDetails = get_traversal_details(
         all_traversal_quad_details,
@@ -320,7 +322,7 @@ fn visitTile(
     let mut entity_mut = commands.entity(entity);
     tile_quad_tree
         .replacement_queue
-        .markTileRendered(&replacement_query, &mut replacement_state);
+        .markTileRendered(replacement_query, &mut replacement_state);
     let meetsSse = screenSpaceError(
         key,
         &mut other_state,
@@ -464,19 +466,23 @@ fn visitTile(
             entity_mut.insert(TileLoadHigh);
 
             // Make sure we don't unload the children and forget they're upsampled.
-            let mut markTileRendered_child =
-                |tile_quad_tree: &mut ResMut<TileQuadTree>, node_id: &TileNode| {
-                    if let TileNode::Internal(v) = node_id {
-                        let mut globe_surface_tile = quadtree_tile_query.get_mut(*v).unwrap();
-                        tile_quad_tree
-                            .replacement_queue
-                            .markTileRendered(&replacement_query, &mut globe_surface_tile.5);
-                    }
-                };
-            markTileRendered_child(tile_quad_tree, &southwestChild);
-            markTileRendered_child(tile_quad_tree, &southeastChild);
-            markTileRendered_child(tile_quad_tree, &northwestChild);
-            markTileRendered_child(tile_quad_tree, &northeastChild);
+            {
+                let mut markTileRendered_child =
+                    |tile_quad_tree: &mut ResMut<TileQuadTree>,
+                     node_id: &TileNode,
+                     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>| {
+                        if let TileNode::Internal(v) = node_id {
+                            let mut globe_surface_tile = quadtree_tile_query.get_mut(*v).unwrap();
+                            tile_quad_tree
+                                .replacement_queue
+                                .markTileRendered(replacement_query, &mut globe_surface_tile.5);
+                        }
+                    };
+                markTileRendered_child(tile_quad_tree, &southwestChild, quadtree_tile_query);
+                markTileRendered_child(tile_quad_tree, &southeastChild, quadtree_tile_query);
+                markTileRendered_child(tile_quad_tree, &northwestChild, quadtree_tile_query);
+                markTileRendered_child(tile_quad_tree, &northeastChild, quadtree_tile_query);
+            }
 
             traversalDetails.allAreRenderable = other_state.renderable;
             traversalDetails.anyWereRenderedLastFrame =
@@ -554,17 +560,15 @@ fn visitTile(
                     if i >= firstRenderedDescendantIndex {
                         let mut workTile = e.clone();
                         while (workTile != entity) {
-                            commands.add(|world: &mut World| {
-                                let mut other_state =
-                                    world.get_mut::<QuadtreeTileOtherState>(workTile).unwrap();
-                                other_state._lastSelectionResult = TileSelectionResult::from_u8(
-                                    TileSelectionResult::kick(&other_state._lastSelectionResult),
-                                );
-                                let parent = world.get::<QuadtreeTileParent>(workTile).unwrap();
-                                if let QuadtreeTileParent(TileNode::Internal(v)) = parent {
-                                    workTile = *v;
-                                }
-                            })
+                            let mut work_tile = quadtree_tile_query.get_mut(workTile).unwrap();
+                            let other_state = &mut work_tile.4;
+                            other_state._lastSelectionResult = TileSelectionResult::from_u8(
+                                TileSelectionResult::kick(&other_state._lastSelectionResult),
+                            );
+                            let parent = &work_tile.12;
+                            if let QuadtreeTileParent(TileNode::Internal(v)) = parent {
+                                workTile = v.clone();
+                            }
                         }
                     }
                 });
@@ -641,7 +645,7 @@ fn visitIfVisible(
     ellipsoid: &Ellipsoid,
     ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
-    replacement_query: &Query<(&TileReplacementState)>,
+    replacement_query: &mut Query<(&TileReplacementState)>,
     culling_volume: &CullingVolume,
     frame_count: &Res<FrameCount>,
     globe_camera: &mut GlobeCamera,
@@ -702,11 +706,12 @@ fn visitIfVisible(
         node_children,
         state,
         location,
+        _,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let mut entity_mut = commands.entity(entity);
     tile_quad_tree
         .replacement_queue
-        .markTileRendered(&replacement_query, &mut replacement_state);
+        .markTileRendered(replacement_query, &mut replacement_state);
     let traversalDetails = get_traversal_details(
         all_traversal_quad_details,
         root_traversal_details,
@@ -780,6 +785,7 @@ pub type GlobeSurfaceTileQuery<'a> = (
     &'a mut NodeChildren,
     &'a QuadtreeTileLoadState,
     &'a Quadrant,
+    &'a QuadtreeTileParent,
 );
 #[derive(Clone, Copy)]
 struct TraversalDetails {
@@ -998,7 +1004,7 @@ fn visitVisibleChildrenNearToFar(
     ellipsoid: &Ellipsoid,
     ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
-    replacement_query: &Query<(&TileReplacementState)>,
+    replacement_query: &mut Query<(&TileReplacementState)>,
     culling_volume: &CullingVolume,
     frame_count: &Res<FrameCount>,
     globe_camera: &mut GlobeCamera,
@@ -1047,7 +1053,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1065,7 +1071,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1083,7 +1089,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1101,7 +1107,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1121,7 +1127,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1139,7 +1145,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1157,7 +1163,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1175,7 +1181,7 @@ fn visitVisibleChildrenNearToFar(
                 ellipsoid,
                 ellipsoidalOccluder,
                 quadtree_tile_query,
-                &replacement_query,
+                replacement_query,
                 culling_volume,
                 frame_count,
                 globe_camera,
@@ -1196,7 +1202,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1214,7 +1220,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1232,7 +1238,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1250,7 +1256,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1270,7 +1276,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1288,7 +1294,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1306,7 +1312,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1324,7 +1330,7 @@ fn visitVisibleChildrenNearToFar(
             ellipsoid,
             ellipsoidalOccluder,
             quadtree_tile_query,
-            &replacement_query,
+            replacement_query,
             culling_volume,
             frame_count,
             globe_camera,
@@ -1337,7 +1343,7 @@ fn visitVisibleChildrenNearToFar(
             southwest_entity,
         );
     }
-    let (_, _, _, _, _, _, _, key, _, _, _, location) =
+    let (_, _, _, _, _, _, _, key, _, _, _, location, _) =
         quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let traversalDetails = get_traversal_details(
         all_traversal_quad_details,

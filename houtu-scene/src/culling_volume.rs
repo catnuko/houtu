@@ -2,7 +2,7 @@ use bevy::math::DVec4;
 
 use crate::{BoundingSphere, BoundingVolume, Intersect, Plane};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CullingVolume {
     pub planes: [DVec4; 6],
 }

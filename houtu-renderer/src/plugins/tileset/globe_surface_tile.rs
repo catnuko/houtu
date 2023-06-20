@@ -76,7 +76,7 @@ pub fn computeTileVisibility(
         quadtree_tile_entity,
         camera,
     );
-    let (_, globe_surface_tile, _, _, _, _, _, _, _, _, _, _) =
+    let (_, globe_surface_tile, _, _, _, _, _, _, _, _, _, _, _) =
         quadtree_tile_query.get(quadtree_tile_entity).unwrap();
 
     let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_ref().unwrap();
@@ -85,16 +85,16 @@ pub fn computeTileVisibility(
         // We have no idea where this tile is, so let's just call it partially visible.
         return TileVisibility::PARTIAL;
     }
-    let mut boundingVolume: Option<Box<&dyn BoundingVolume>> = None;
     let obb = tileBoundingRegion.get_bounding_volume();
-    if let Some(v) = obb {
-        boundingVolume = Some(Box::new(&v));
+    let mut boundingVolume: Option<Box<&dyn BoundingVolume>> = if let Some(v) = obb {
+        Some(Box::new(v))
     } else {
-        let sp = tileBoundingRegion.get_bounding_sphere();
-        if let Some(t) = sp {
-            boundingVolume = Some(Box::new(&t));
+        if let Some(t) = tileBoundingRegion.get_bounding_sphere() {
+            Some(Box::new(t))
+        } else {
+            None
         }
-    }
+    };
     let boundingVolume = boundingVolume.unwrap();
     let mut visibility = TileVisibility::NONE;
     let intersection = culling_volume.computeVisibility(&boundingVolume);
@@ -141,8 +141,8 @@ fn computeDistanceToTile(
         quadtree_tile_query,
         quadtree_tile_entity,
     );
-    let (entity, globe_surface_tile, _, _, other_state, _, _, _, _, _, _, _) =
-        quadtree_tile_query.get(quadtree_tile_entity).unwrap();
+    let (entity, mut globe_surface_tile, _, _, mut other_state, _, _, _, _, _, _, _, _) =
+        quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let boundingVolumeSourceTile = globe_surface_tile.boundingVolumeSourceTile;
     if (boundingVolumeSourceTile.is_none()) {
         // Can't find any min/max heights anywhere? Ok, let's just say the
@@ -151,16 +151,16 @@ fn computeDistanceToTile(
         other_state._distance = 9999999999.0;
     }
 
-    let tileBoundingRegion = globe_surface_tile
-        .tileBoundingRegion
-        .as_mut()
-        .expect("globe_surface_tile.tileBoundingRegion不存在");
-    let min = tileBoundingRegion.minimumHeight;
-    let max = tileBoundingRegion.maximumHeight;
-
     if (globe_surface_tile.boundingVolumeSourceTile.is_some()
         && globe_surface_tile.boundingVolumeSourceTile.unwrap() != entity)
     {
+        let tileBoundingRegion = globe_surface_tile
+            .tileBoundingRegion
+            .as_mut()
+            .expect("globe_surface_tile.tileBoundingRegion不存在");
+        let min = tileBoundingRegion.minimumHeight;
+        let max = tileBoundingRegion.maximumHeight;
+
         let p = camera.get_position_cartographic();
         let distanceToMin = (p.height - min).abs();
         let distanceToMax = (p.height - max).abs();
@@ -172,7 +172,12 @@ fn computeDistanceToTile(
             tileBoundingRegion.maximumHeight = max;
         }
     }
-
+    let tileBoundingRegion = globe_surface_tile
+        .tileBoundingRegion
+        .as_mut()
+        .expect("globe_surface_tile.tileBoundingRegion不存在");
+    let min = tileBoundingRegion.minimumHeight;
+    let max = tileBoundingRegion.maximumHeight;
     let result = tileBoundingRegion.distanceToCamera(
         &camera.get_position_wc(),
         &camera.get_position_cartographic(),
@@ -183,6 +188,37 @@ fn computeDistanceToTile(
     tileBoundingRegion.maximumHeight = max;
     other_state._distance = result;
 }
+
+pub fn test(
+    commands: &mut Commands,
+    ellipsoid: &Ellipsoid,
+    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
+    quadtree_tile_entity: Entity,
+) {
+    let (globe_surface_tile) = {
+        let (
+            entity,
+            mut globe_surface_tile,
+            rectangle,
+            parent,
+            other_state,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+        (globe_surface_tile)
+    };
+    if true {
+        let (_, ancestor_globe_surface_tile, _, parent_node, _, _, _, _, _, _, _, _, _) =
+            quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+    }
+}
 pub fn updateTileBoundingRegion(
     commands: &mut Commands,
     ellipsoid: &Ellipsoid,
@@ -190,8 +226,27 @@ pub fn updateTileBoundingRegion(
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
 ) {
-    let (entity, mut globe_surface_tile, rectangle, parent, other_state, _, _, _, _, _, _, _) =
-        quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+    let (entity, mut globe_surface_tile, rectangle, parent, other_state) = {
+        let (
+            entity,
+            mut globe_surface_tile,
+            rectangle,
+            parent,
+            other_state,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+        (entity, globe_surface_tile, rectangle, parent, other_state)
+    };
+
+    // let (entity, mut globe_surface_tile, rectangle, parent, other_state, _, _, _, _, _, _, _, _) =
+    //     quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     if globe_surface_tile.tileBoundingRegion.is_none() {
         globe_surface_tile.tileBoundingRegion = Some(TileBoundingRegion::new(
             rectangle,
@@ -201,35 +256,41 @@ pub fn updateTileBoundingRegion(
             Some(false),
         ));
     }
-    let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_mut().unwrap();
-    let oldMinimumHeight = tileBoundingRegion.minimumHeight;
-    let oldMaximumHeight = tileBoundingRegion.maximumHeight;
+
     let mut hasBoundingVolumesFromMesh = false;
 
     // Get min and max heights from the mesh.
     // If the mesh is not available, get them from the terrain data.
     // If the terrain data is not available either, get them from an ancestor.
     // If none of the ancestors are available, then there are no min and max heights for this tile at this time.
-    let mesh = &globe_surface_tile.mesh;
     let mut source_tile = Some(entity);
-    if (mesh.is_some()) {
-        let mesh = mesh.unwrap();
-        tileBoundingRegion.minimumHeight = mesh.minimumHeight;
-        tileBoundingRegion.maximumHeight = mesh.maximumHeight;
+    if (globe_surface_tile.mesh.is_some()) {
+        let (minimumHeight, maximumHeight) = {
+            let mesh = globe_surface_tile.mesh.as_ref().unwrap();
+            (mesh.minimumHeight, mesh.maximumHeight)
+        };
+        let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_mut().unwrap();
+        tileBoundingRegion.minimumHeight = minimumHeight;
+        tileBoundingRegion.maximumHeight = maximumHeight;
         hasBoundingVolumesFromMesh = true;
     } else {
         // No accurate min/max heights available, so we're stuck with min/max heights from an ancestor tile.
         let mut ancestorTileNode = parent.clone();
+        let mut minimumHeight = 0.0;
+        let mut maximumHeight = 0.0;
+
         while let TileNode::Internal(ancestorTile) = ancestorTileNode {
             let mut is_pass = false;
-            let (_, ancestor_globe_surface_tile, _, parent_node, _, _, _, _, _, _, _, _) =
-                quadtree_tile_query.get(ancestorTile).unwrap();
+            let (ancestor_globe_surface_tile, parent_node) = {
+                let (_, ancestor_globe_surface_tile, _, parent_node, _, _, _, _, _, _, _, _, _) =
+                    quadtree_tile_query.get(ancestorTile).unwrap();
+                (ancestor_globe_surface_tile, parent_node)
+            };
 
-            let ancestorMesh = ancestor_globe_surface_tile.mesh;
-            if (ancestorMesh.is_some()) {
-                let t = ancestorMesh.unwrap();
-                tileBoundingRegion.minimumHeight = t.minimumHeight;
-                tileBoundingRegion.maximumHeight = t.maximumHeight;
+            if (ancestor_globe_surface_tile.mesh.is_some()) {
+                let t = ancestor_globe_surface_tile.mesh.as_ref().unwrap();
+                minimumHeight = t.minimumHeight;
+                maximumHeight = t.maximumHeight;
                 is_pass = true;
                 ancestorTileNode = parent_node.clone();
                 source_tile = None;
@@ -238,34 +299,63 @@ pub fn updateTileBoundingRegion(
                 break;
             }
         }
+        let (mut globe_surface_tile,) = {
+            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _, _, _) =
+                quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+            (globe_surface_tile,)
+        };
+        let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_mut().unwrap();
+        tileBoundingRegion.minimumHeight = minimumHeight;
+        tileBoundingRegion.maximumHeight = maximumHeight;
     }
 
-    // Update bounding regions from the min and max heights
+    // // Update bounding regions from the min and max heights
     if source_tile.is_some() {
+        let (mut globe_surface_tile, rectangle) = {
+            let (_, mut globe_surface_tile, rectangle, _, _, _, _, _, _, _, _, _, _) =
+                quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+            (globe_surface_tile, rectangle)
+        };
         if (hasBoundingVolumesFromMesh) {
-            let mesh = mesh.unwrap();
+            let (orientedBoundingBox, boundingSphere3D, occludeePointInScaledSpace) = {
+                let mesh = globe_surface_tile.mesh.as_ref().unwrap();
+                (
+                    mesh.orientedBoundingBox.clone(),
+                    mesh.boundingSphere3D.clone(),
+                    mesh.occludeePointInScaledSpace.clone(),
+                )
+            };
+            let center = orientedBoundingBox.center.clone();
             if (!globe_surface_tile.boundingVolumeIsFromMesh) {
-                tileBoundingRegion.orientedBoundingBox = Some(mesh.orientedBoundingBox.clone());
-                tileBoundingRegion.boundingSphere = Some(mesh.boundingSphere3D.clone());
-                globe_surface_tile.occludeePointInScaledSpace =
-                    mesh.occludeePointInScaledSpace.clone();
+                let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_mut().unwrap();
+                tileBoundingRegion.orientedBoundingBox = Some(orientedBoundingBox);
+                tileBoundingRegion.boundingSphere = Some(boundingSphere3D);
+                let minimumHeight = tileBoundingRegion.minimumHeight.clone();
+                let maximumHeight = tileBoundingRegion.maximumHeight.clone();
+                globe_surface_tile.occludeePointInScaledSpace = occludeePointInScaledSpace;
 
                 // If the occludee point is not defined, fallback to calculating it from the OBB
-                if (globe_surface_tile.occludeePointInScaledSpace.is_none()) {
+                if globe_surface_tile.occludeePointInScaledSpace.is_none() {
                     globe_surface_tile.occludeePointInScaledSpace = computeOccludeePoint(
                         &ellipsoid,
                         &ellipsoidalOccluder,
-                        &tileBoundingRegion
-                            .orientedBoundingBox
-                            .expect("希望orientedBoundingBox存在")
-                            .center,
+                        &center,
                         rectangle,
-                        tileBoundingRegion.minimumHeight.clone(),
-                        tileBoundingRegion.maximumHeight.clone(),
+                        minimumHeight,
+                        maximumHeight,
                     );
                 }
             }
         } else {
+            let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_mut().unwrap();
+            let oldMinimumHeight = tileBoundingRegion.minimumHeight;
+            let oldMaximumHeight = tileBoundingRegion.maximumHeight;
+            let center = tileBoundingRegion
+                .orientedBoundingBox
+                .unwrap()
+                .center
+                .clone();
+
             let needsBounds = tileBoundingRegion.orientedBoundingBox.is_none()
                 || tileBoundingRegion.boundingSphere.is_none();
             let heightChanged = tileBoundingRegion.minimumHeight != oldMinimumHeight
@@ -276,10 +366,7 @@ pub fn updateTileBoundingRegion(
                 globe_surface_tile.occludeePointInScaledSpace = computeOccludeePoint(
                     &ellipsoid,
                     &ellipsoidalOccluder,
-                    &tileBoundingRegion
-                        .orientedBoundingBox
-                        .expect("希望orientedBoundingBox存在")
-                        .center,
+                    &center,
                     rectangle,
                     tileBoundingRegion.minimumHeight,
                     tileBoundingRegion.maximumHeight,
@@ -287,9 +374,15 @@ pub fn updateTileBoundingRegion(
             }
         }
         let t = source_tile.clone();
+
         globe_surface_tile.boundingVolumeSourceTile = t;
         globe_surface_tile.boundingVolumeIsFromMesh = hasBoundingVolumesFromMesh;
     } else {
+        let (mut globe_surface_tile,) = {
+            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _, _, _) =
+                quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+            (globe_surface_tile,)
+        };
         globe_surface_tile.boundingVolumeSourceTile = None;
         globe_surface_tile.boundingVolumeIsFromMesh = false;
     }

@@ -31,9 +31,10 @@ impl bevy::prelude::Plugin for Plugin {
         app.add_plugin(label::Plugin);
         app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
         app.insert_resource(IndicesAndEdgesCache::new());
+        app.add_plugin(tile_quad_tree::Plugin);
         // app.add_system(layer_system);
         // app.add_startup_system(setup);
-        app.add_system(tile_system::tile_system);
+        // app.add_system(tile_system::tile_system);
     }
 }
 // fn setup(mut commands: Commands) {

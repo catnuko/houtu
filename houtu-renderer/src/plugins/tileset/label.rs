@@ -6,9 +6,17 @@ pub struct Label(pub &'static str);
 pub struct LabelToEntity {
     map: HashMap<Label, Entity>,
 }
+impl LabelToEntity {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+}
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(LabelToEntity::new());
         app.add_startup_system(setup);
         app.add_system(update_label);
     }

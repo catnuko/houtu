@@ -34,15 +34,15 @@ fn setup(
     let x = ellipsoid.semimajor_axis() as f32;
     let y = ellipsoid.semimajor_axis() as f32;
     let z = ellipsoid.semiminor_axis() as f32;
-    // let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
+    let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
-    // commands.spawn((PbrBundle {
-    //     mesh: meshes.add(mesh),
-    //     material: debug_material.into(),
-    //     transform: Transform::from_xyz(0.0, 0.0, 0.0),
-    //     // visibility: Visibility::Hidden,
-    //     ..default()
-    // },));
+    commands.spawn((PbrBundle {
+        mesh: meshes.add(mesh),
+        material: debug_material.into(),
+        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        // visibility: Visibility::Hidden,
+        ..default()
+    },));
     // commands.spawn({
     //     MaterialMeshBundle {
     //         mesh: meshes.add(Box::default().into()),

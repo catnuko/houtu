@@ -2,6 +2,8 @@ use std::collections::LinkedList;
 
 use bevy::prelude::*;
 
+use super::tile_quad_tree::GlobeSurfaceTileQuery;
+
 // pub struct Plugin;
 // impl bevy::prelude::Plugin for Plugin {
 //     fn build(&self, app: &mut App) {
@@ -30,12 +32,14 @@ impl PartialEq for TileReplacementState {
     }
 }
 fn set_state_of_entity(
-    query: &mut Query<(&TileReplacementState)>,
+    query: &mut Query<(GlobeSurfaceTileQuery)>,
     entity: Entity,
     state_entity: Option<Entity>,
     is_next: bool,
 ) {
-    let (mut inner_state) = query.get_mut(entity).unwrap();
+    let (mut inner_state) = query
+        .get_component_mut::<TileReplacementState>(entity)
+        .unwrap();
     if is_next {
         inner_state.replacementNext = state_entity;
     } else {
@@ -79,11 +83,10 @@ impl TileReplacementQueue {
             self._lastBeforeStartOfFrame = None;
         }
     }
-    fn remove(
-        &mut self,
-        query: &mut Query<(&TileReplacementState)>,
-        item: &mut TileReplacementState,
-    ) {
+    fn remove(&mut self, query: &mut Query<(GlobeSurfaceTileQuery)>, entity: Entity) {
+        let mut item = query
+            .get_component_mut::<TileReplacementState>(entity)
+            .unwrap();
         {
             if self._lastBeforeStartOfFrame.is_some()
                 && self._lastBeforeStartOfFrame.unwrap() == item.entity
@@ -92,7 +95,7 @@ impl TileReplacementQueue {
             }
         }
         let head_mut = self.get_head_mut();
-        if *head_mut.unwrap() == item.entity {
+        if head_mut == Some(&mut item.entity) {
             if let Some(t) = item.replacementNext {
                 if let Some(v) = head_mut {
                     *v = t.clone();
@@ -103,15 +106,16 @@ impl TileReplacementQueue {
                 }
             }
         } else {
-            set_state_of_entity(
-                query,
-                item.replacementPrevious.unwrap(),
-                item.replacementNext,
-                true,
-            );
+            let entity = item.replacementPrevious.unwrap().clone();
+            let state_entity = item.replacementNext.clone();
+            set_state_of_entity(query, entity, state_entity, true);
         }
+
+        let mut item = query
+            .get_component_mut::<TileReplacementState>(entity)
+            .unwrap();
         let tail_mut = self.get_tail_mut();
-        if tail_mut.is_some() && *tail_mut.unwrap() == item.entity {
+        if tail_mut.is_some() && tail_mut == Some(&mut item.entity) {
             if let Some(t) = item.replacementPrevious {
                 if let Some(v) = tail_mut {
                     *v = t.clone();
@@ -122,19 +126,15 @@ impl TileReplacementQueue {
                 }
             }
         } else {
-            set_state_of_entity(
-                query,
-                item.replacementNext.unwrap(),
-                item.replacementPrevious,
-                false,
-            );
+            let entity = item.replacementNext.unwrap().clone();
+            let state_entity = item.replacementPrevious.clone();
+            set_state_of_entity(query, entity, state_entity, false);
         }
     }
-    pub fn markTileRendered(
-        &mut self,
-        query: &mut Query<(&TileReplacementState)>,
-        item: &mut TileReplacementState,
-    ) {
+    pub fn markTileRendered(&mut self, query: &mut Query<(GlobeSurfaceTileQuery)>, entity: Entity) {
+        let mut item = query
+            .get_component_mut::<TileReplacementState>(entity)
+            .unwrap();
         {
             let head_mut = self.get_head_mut();
             if head_mut.is_some() && *head_mut.unwrap() == item.entity {
@@ -167,13 +167,18 @@ impl TileReplacementQueue {
             }
         }
         if item.replacementNext.is_some() || item.replacementPrevious.is_some() {
-            self.remove(query, item);
+            self.remove(query, entity);
         }
+        let mut item = query
+            .get_component_mut::<TileReplacementState>(entity)
+            .unwrap();
         let head_mut = self.get_head_mut();
         item.replacementPrevious = None;
         if let Some(v) = head_mut {
             item.replacementNext = Some(v.clone());
-            set_state_of_entity(query, v.clone(), Some(item.entity), false);
+            let entity = v.clone();
+            let state_entity = Some(item.entity.clone());
+            set_state_of_entity(query, entity, state_entity, false);
         } else {
             item.replacementNext = None;
         }

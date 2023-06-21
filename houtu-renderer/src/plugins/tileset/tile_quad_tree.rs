@@ -31,8 +31,38 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(TileQuadTree::new());
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(RootTraversalDetails::new());
-        app.add_system(begin_frame.before(render).before(end_frame));
+        // app.add_system(test);
+        app.add_system(render);
+        // app.add_system(begin_frame.before(render).before(end_frame));
     }
+}
+fn test(
+    mut commands: Commands,
+    mut tile_quad_tree: ResMut<TileQuadTree>,
+    render_queue_query: Query<Entity, With<TileToRender>>,
+    mut datasource_query: Query<
+        (&Ready, &TilingSchemeWrap<GeographicTilingScheme>),
+        With<QuadTreeTileDatasourceMark>,
+    >,
+    // mut quadtree_tile_query: Query<GlobeSurfaceTileQuery>,
+    // mut quadtree_tile_query2: Query<GlobeSurfaceTileQuery>,
+    mut globe_camera_query: Query<(&mut GlobeCamera)>,
+    ellipsoidalOccluder: Res<EllipsoidalOccluder>,
+    mut root_traversal_details: ResMut<RootTraversalDetails>,
+    frame_count: Res<FrameCount>,
+    primary_query: Query<&Window, With<PrimaryWindow>>,
+    mut all_traversal_quad_details: ResMut<AllTraversalQuadDetails>,
+    mut queue_params_set: ParamSet<(
+        Query<Entity, With<TileToRender>>,
+        Query<Entity, With<TileToUpdateHeight>>,
+        Query<Entity, With<TileLoadHigh>>,
+        Query<Entity, With<TileLoadMedium>>,
+        Query<Entity, With<TileLoadLow>>,
+        Query<GlobeSurfaceTileQuery>,
+        Query<GlobeSurfaceTileQuery>,
+    )>,
+) {
+    println!("in render system");
 }
 #[derive(Resource, Debug)]
 pub struct TileQuadTree {
@@ -119,7 +149,6 @@ fn render(
         With<QuadTreeTileDatasourceMark>,
     >,
     mut quadtree_tile_query: Query<GlobeSurfaceTileQuery>,
-    mut quadtree_tile_query2: Query<GlobeSurfaceTileQuery>,
     mut globe_camera_query: Query<(&mut GlobeCamera)>,
     ellipsoidalOccluder: Res<EllipsoidalOccluder>,
     mut root_traversal_details: ResMut<RootTraversalDetails>,
@@ -132,9 +161,9 @@ fn render(
         Query<Entity, With<TileLoadHigh>>,
         Query<Entity, With<TileLoadMedium>>,
         Query<Entity, With<TileLoadLow>>,
-        &World,
     )>,
 ) {
+    println!("in render system");
     let Ok(window) = primary_query.get_single() else {
         return;
     };
@@ -205,12 +234,14 @@ fn render(
     //按相机位置排序，从近到远
     let p = globe_camera.get_position_cartographic();
     let mut tt = vec![];
-    quadtree_tile_query.iter().for_each(|x| tt.push(x));
+    quadtree_tile_query
+        .iter()
+        .for_each(|x| tt.push((x.0.clone(), x.2.clone())));
     tt.sort_by(|a, b| {
-        let mut center = a.2.center();
+        let mut center = a.1.center();
         let alon = center.longitude - p.longitude;
         let alat = center.latitude - p.latitude;
-        center = b.2.center();
+        center = b.1.center();
         let blon = center.longitude - p.longitude;
         let blat = center.latitude - p.latitude;
         let v = alon * alon + alat * alat - (blon * blon + blat * blat);
@@ -228,10 +259,13 @@ fn render(
     tile_quad_tree._cameraReferenceFrameOriginCartographic =
         Ellipsoid::WGS84.cartesianToCartographic(&cameraFrameOrigin);
     tt.iter().enumerate().for_each(|(_, x)| {
-        let (entity, _, _, _, other_state, _, _, _, _, _, _, _, _) = x;
+        let (entity, _) = x;
         tile_quad_tree
             .replacement_queue
-            .markTileRendered(&mut quadtree_tile_query2, *entity);
+            .markTileRendered(&mut quadtree_tile_query, *entity);
+        let mut other_state = quadtree_tile_query
+            .get_component_mut::<QuadtreeTileOtherState>(*entity)
+            .unwrap();
         if !other_state.renderable {
             commands.entity(*entity).insert(TileLoadHigh);
         } else {
@@ -241,7 +275,7 @@ fn render(
                 &mut tile_quad_tree,
                 &ellipsoidalOccluder.ellipsoid,
                 &ellipsoidalOccluder,
-                &mut quadtree_tile_query2,
+                &mut quadtree_tile_query,
                 &cl,
                 &frame_count,
                 &mut globe_camera,
@@ -290,7 +324,6 @@ fn visitTile(
         Query<Entity, With<TileLoadHigh>>,
         Query<Entity, With<TileLoadMedium>>,
         Query<Entity, With<TileLoadLow>>,
-        &World,
     )>,
     quadtree_tile_entity: Entity,
 ) {
@@ -419,9 +452,8 @@ fn visitTile(
     if globe_surface_tile.terrainData.is_some() {
         let mut allAreUpsampled = true;
         if let TileNode::Internal(v) = southwestChild {
-            let state = queue_params_set
-                .p5()
-                .get::<QuadtreeTileOtherState>(v)
+            let state = quadtree_tile_query
+                .get_component_mut::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -429,9 +461,8 @@ fn visitTile(
             return;
         }
         if let TileNode::Internal(v) = southeastChild {
-            let state = queue_params_set
-                .p5()
-                .get::<QuadtreeTileOtherState>(v)
+            let state = quadtree_tile_query
+                .get_component_mut::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -439,9 +470,8 @@ fn visitTile(
             return;
         }
         if let TileNode::Internal(v) = northwestChild {
-            let state = queue_params_set
-                .p5()
-                .get::<QuadtreeTileOtherState>(v)
+            let state = quadtree_tile_query
+                .get_component_mut::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -449,9 +479,8 @@ fn visitTile(
             return;
         }
         if let TileNode::Internal(v) = northeastChild {
-            let state = queue_params_set
-                .p5()
-                .get::<QuadtreeTileOtherState>(v)
+            let state = quadtree_tile_query
+                .get_component_mut::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -497,8 +526,10 @@ fn visitTile(
 
             return;
         }
-
         // SSE is not good enough, so refine.
+        let mut other_state = quadtree_tile_query
+            .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
+            .unwrap();
         other_state._lastSelectionResultFrame = Some(frame_count.0);
         other_state._lastSelectionResult = TileSelectionResult::REFINED;
 
@@ -672,7 +703,6 @@ fn visitIfVisible(
         Query<Entity, With<TileLoadHigh>>,
         Query<Entity, With<TileLoadMedium>>,
         Query<Entity, With<TileLoadLow>>,
-        &World,
     )>,
     quadtree_tile_entity: Entity,
 ) {
@@ -1019,7 +1049,6 @@ fn visitVisibleChildrenNearToFar(
         Query<Entity, With<TileLoadHigh>>,
         Query<Entity, With<TileLoadMedium>>,
         Query<Entity, With<TileLoadLow>>,
-        &World,
     )>,
 
     all_traversal_quad_details: &mut ResMut<AllTraversalQuadDetails>,

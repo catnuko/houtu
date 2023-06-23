@@ -1,11 +1,7 @@
 use bevy::{math::UVec3, prelude::*};
 use rand::Rng;
 
-use super::{
-    terrian_material::TerrainMeshMaterial,
-    tile_bundle::{TerrainMeshWrap, TileMark},
-    tile_state::TileState,
-};
+use super::{terrian_material::TerrainMeshMaterial, tile_state::TileState};
 
 pub fn tile_system(
     mut commands: Commands,

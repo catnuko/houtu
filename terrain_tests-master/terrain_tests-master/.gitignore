@@ -1,6 +1,0 @@
-**/target
-**/*.rs.bk
-
-.vscode
-amethyst_terrain/Cargo.lock
-cnquadtree/Cargo.lock

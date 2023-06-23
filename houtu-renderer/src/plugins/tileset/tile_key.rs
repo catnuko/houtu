@@ -45,6 +45,20 @@ impl TileKey {
             level: self.level + 1,
         }
     }
+    pub fn parent(&self) -> Option<TileKey> {
+        if self.level != 0 {
+            let parentX = (self.x / 2) | 0;
+            let parentY = (self.y / 2) | 0;
+            let parentLevel = self.level - 1;
+            Some(TileKey {
+                x: parentX,
+                y: parentY,
+                level: parentLevel,
+            })
+        } else {
+            None
+        }
+    }
 }
 
 impl From<TileKey> for UVec3 {

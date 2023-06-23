@@ -140,11 +140,11 @@ impl Default for QuadtreeTileOtherState {
         }
     }
 }
-#[derive(Debug, Component)]
+#[derive(Component)]
 pub struct QuadtreeTileData(pub Option<GlobeSurfaceTile>);
 #[derive(Debug, Component)]
 pub struct QuadtreeTileParent(pub TileNode);
-#[derive(Bundle, Debug)]
+#[derive(Bundle)]
 pub struct QuadtreeTile {
     pub mark: QuadtreeTileMark,
     pub key: TileKey,
@@ -155,7 +155,7 @@ pub struct QuadtreeTile {
     pub children: NodeChildren,
     pub state: QuadtreeTileLoadState,
     pub other_state: QuadtreeTileOtherState,
-    pub data: QuadtreeTileData,
+    pub data: GlobeSurfaceTile,
 }
 impl QuadtreeTile {
     pub fn new(
@@ -173,9 +173,8 @@ impl QuadtreeTile {
             children: Default::default(),
             state: QuadtreeTileLoadState::START,
             other_state: QuadtreeTileOtherState::default(),
-            data: QuadtreeTileData(None),
             parent,
-            // node: node_id,
+            data: GlobeSurfaceTile::new(), // node: node_id,
         };
         return me;
     }
@@ -193,3 +192,5 @@ pub struct TileLoadMedium;
 
 #[derive(Component)]
 pub struct TileLoadLow;
+#[derive(Component)]
+pub struct TileToLoad;

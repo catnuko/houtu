@@ -9,7 +9,7 @@ use bevy::prelude::*;
 #[derive(Default, Clone, Debug, Component)]
 pub struct TerrainMesh {
     pub center: DVec3,
-    pub vertices: Vec<f64>,
+    pub vertices: Vec<f32>,
     pub indices: Vec<u32>,
     pub indexCountWithoutSkirts: Option<u32>,
     pub vertexCountWithoutSkirts: u32,
@@ -28,7 +28,7 @@ pub struct TerrainMesh {
 impl TerrainMesh {
     pub fn new(
         center: DVec3,
-        vertices: Vec<f64>,
+        vertices: Vec<f32>,
         indices: Vec<u32>,
         indexCountWithoutSkirts: Option<u32>,
         vertexCountWithoutSkirts: u32,

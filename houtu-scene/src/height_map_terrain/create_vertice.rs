@@ -84,7 +84,7 @@ impl bevy::app::Plugin for Plugin {
     fn build(&self, _app: &mut bevy::app::App) {}
 }
 pub struct CreateVerticeOptions<'a> {
-    pub heightmap: &'a mut Vec<f64>,
+    pub heightmap: &'a mut Vec<f32>,
     pub width: u32,
     pub height: u32,
     pub skirtHeight: f64,
@@ -99,7 +99,7 @@ pub struct CreateVerticeOptions<'a> {
     pub includeWebMercatorT: Option<bool>,
 }
 pub struct CreateVerticeReturn {
-    pub vertices: Vec<f64>,
+    pub vertices: Vec<f32>,
     pub maximumHeight: f64,
     pub minimumHeight: f64,
     pub encoding: TerrainEncoding,
@@ -317,20 +317,20 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
             let mut heightSample: f64;
             if (elementsPerHeight == 1) {
-                heightSample = heightmap[terrainOffset as usize];
+                heightSample = heightmap[terrainOffset as usize] as f64;
             } else {
                 heightSample = 0.;
 
                 if (isBigEndian) {
                     for elementOffset in 0..elementsPerHeight {
                         heightSample = heightSample * elementMultiplier as f64
-                            + heightmap[(terrainOffset + elementOffset) as usize];
+                            + heightmap[(terrainOffset + elementOffset) as usize] as f64;
                     }
                 } else {
                     //可能会出问题，注意
                     for elementOffset in (0..elementsPerHeight).rev() {
                         heightSample = heightSample * elementMultiplier as f64
-                            + heightmap[(terrainOffset + elementOffset) as usize];
+                            + heightmap[(terrainOffset + elementOffset) as usize] as f64;
                     }
                 }
             }
@@ -516,7 +516,7 @@ mod tests {
         structure.stride = 3;
         structure.elementsPerHeight = 2;
         structure.elementMultiplier = 10;
-        let mut heightmap: Vec<f64> = [
+        let mut heightmap: Vec<f32> = [
             1.0, 2.0, 100.0, 3.0, 4.0, 100.0, 5.0, 6.0, 100.0, 7.0, 8.0, 100.0, 9.0, 10.0, 100.0,
             11.0, 12.0, 100.0, 13.0, 14.0, 100.0, 15.0, 16.0, 100.0, 17.0, 18.0, 100.0,
         ]
@@ -570,7 +570,7 @@ mod tests {
 
                 let heightSampleIndex = ((j * width + i) * structure.stride) as usize;
                 let heightSample =
-                    heightmap[heightSampleIndex] + heightmap[heightSampleIndex + 1] * 10.0;
+                    (heightmap[heightSampleIndex] + heightmap[heightSampleIndex + 1] * 10.0) as f64;
 
                 let expectedVertexPosition = ellipsoid.cartographicToCartesian(&Cartographic {
                     longitude: longitude,
@@ -579,19 +579,22 @@ mod tests {
                 });
 
                 let index = ((j * width + i) * 6) as usize;
-                let vertexPosition =
-                    DVec3::new(vertices[index], vertices[index + 1], vertices[index + 2]);
+                let vertexPosition = DVec3::new(
+                    vertices[index] as f64,
+                    vertices[index + 1] as f64,
+                    vertices[index + 2] as f64,
+                );
 
                 assert!(vertexPosition.equals_epsilon(expectedVertexPosition, Some(1.0), None));
-                assert!(vertices[index + 3] == heightSample);
+                assert!(vertices[index + 3] == heightSample as f32);
                 assert!(equals_epsilon(
-                    vertices[(index + 4)],
+                    vertices[(index + 4)] as f64,
                     compute_u32(i, width - 1),
                     Some(EPSILON7),
                     None
                 ));
                 assert!(equals_epsilon(
-                    vertices[(index + 5)],
+                    vertices[(index + 5)] as f64,
                     1.0 - compute_u32(j, height - 1),
                     Some(EPSILON7),
                     None

@@ -8,10 +8,11 @@ use houtu_scene::{
 use crate::plugins::camera::GlobeCamera;
 
 use super::{
+    imagery::TileImagery,
     quadtree_tile::{QuadtreeTileMark, QuadtreeTileOtherState, TileNode},
     tile_quad_tree::GlobeSurfaceTileQuery,
 };
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TerrainState {
     FAILED = 0,
     UNLOADED = 1,
@@ -32,7 +33,7 @@ pub enum TileVisibility {
     PARTIAL = 0,
     FULL = 1,
 }
-#[derive(Component, Debug)]
+#[derive(Component)]
 pub struct GlobeSurfaceTile {
     pub tileBoundingRegion: Option<TileBoundingRegion>,
     pub occludeePointInScaledSpace: Option<DVec3>,
@@ -43,6 +44,7 @@ pub struct GlobeSurfaceTile {
     pub terrainData: Option<HeightmapTerrainData>,
     pub boundingVolumeSourceTile: Option<Entity>,
     pub vertexArray: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
+    pub imagery: Vec<TileImagery>,
 }
 impl GlobeSurfaceTile {
     pub fn new() -> Self {
@@ -56,7 +58,26 @@ impl GlobeSurfaceTile {
             mesh: None,
             boundingVolumeSourceTile: None,
             vertexArray: None,
+            imagery: Vec::new(),
         }
+    }
+    pub fn eligibleForUnloading(&self) -> bool {
+        let loadingIsTransitioning = self.terrain_state == TerrainState::RECEIVING
+            || self.terrain_state == TerrainState::TRANSFORMING;
+
+        let shouldRemoveTile = !loadingIsTransitioning;
+
+        //TODO
+        // let imagery = self.imagery;
+
+        // for (let i = 0, len = imagery.length; shouldRemoveTile && i < len; ++i) {
+        //   let tileImagery = imagery[i];
+        //   shouldRemoveTile =
+        //     !defined(tileImagery.loadingImagery) ||
+        //     tileImagery.loadingImagery.state != ImageryState.TRANSITIONING;
+        // }
+
+        return shouldRemoveTile;
     }
 }
 pub fn computeTileVisibility(
@@ -76,7 +97,7 @@ pub fn computeTileVisibility(
         quadtree_tile_entity,
         camera,
     );
-    let (_, globe_surface_tile, _, _, _, _, _, _, _, _, _, _, _) =
+    let (_, globe_surface_tile, _, _, _, _, _, _, _, _, _) =
         quadtree_tile_query.get(quadtree_tile_entity).unwrap();
 
     let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_ref().unwrap();
@@ -141,7 +162,7 @@ fn computeDistanceToTile(
         quadtree_tile_query,
         quadtree_tile_entity,
     );
-    let (entity, mut globe_surface_tile, _, _, mut other_state, _, _, _, _, _, _, _, _) =
+    let (entity, mut globe_surface_tile, _, mut other_state, _, _, _, _, _, _, _) =
         quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let boundingVolumeSourceTile = globe_surface_tile.boundingVolumeSourceTile;
     if (boundingVolumeSourceTile.is_none()) {
@@ -197,26 +218,13 @@ pub fn test(
     quadtree_tile_entity: Entity,
 ) {
     let (globe_surface_tile) = {
-        let (
-            entity,
-            mut globe_surface_tile,
-            rectangle,
-            parent,
-            other_state,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-        ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+        let (entity, mut globe_surface_tile, rectangle, other_state, _, _, _, _, _, _, _) =
+            quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
         (globe_surface_tile)
     };
     if true {
-        let (_, ancestor_globe_surface_tile, _, parent_node, _, _, _, _, _, _, _, _, _) =
-            quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+        // let (_, ancestor_globe_surface_tile, _, _, _, _, _, _, _, _, _, _) =
+        //     quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     }
 }
 pub fn updateTileBoundingRegion(
@@ -227,21 +235,8 @@ pub fn updateTileBoundingRegion(
     quadtree_tile_entity: Entity,
 ) {
     let (entity, mut globe_surface_tile, rectangle, parent, other_state) = {
-        let (
-            entity,
-            mut globe_surface_tile,
-            rectangle,
-            parent,
-            other_state,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-        ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+        let (entity, mut globe_surface_tile, rectangle, other_state, _, _, _, _, _, _, parent) =
+            quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
         (entity, globe_surface_tile, rectangle, parent, other_state)
     };
 
@@ -279,10 +274,10 @@ pub fn updateTileBoundingRegion(
         let mut minimumHeight = 0.0;
         let mut maximumHeight = 0.0;
 
-        while let TileNode::Internal(ancestorTile) = ancestorTileNode {
+        while let TileNode::Internal(ancestorTile) = ancestorTileNode.0 {
             let mut is_pass = false;
             let (ancestor_globe_surface_tile, parent_node) = {
-                let (_, ancestor_globe_surface_tile, _, parent_node, _, _, _, _, _, _, _, _, _) =
+                let (_, ancestor_globe_surface_tile, _, _, _, _, _, _, _, _, parent_node) =
                     quadtree_tile_query.get(ancestorTile).unwrap();
                 (ancestor_globe_surface_tile, parent_node)
             };
@@ -300,7 +295,7 @@ pub fn updateTileBoundingRegion(
             }
         }
         let (mut globe_surface_tile,) = {
-            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _, _, _) =
+            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _) =
                 quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
             (globe_surface_tile,)
         };
@@ -312,7 +307,7 @@ pub fn updateTileBoundingRegion(
     // // Update bounding regions from the min and max heights
     if source_tile.is_some() {
         let (mut globe_surface_tile, rectangle) = {
-            let (_, mut globe_surface_tile, rectangle, _, _, _, _, _, _, _, _, _, _) =
+            let (_, mut globe_surface_tile, rectangle, _, _, _, _, _, _, _, _) =
                 quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
             (globe_surface_tile, rectangle)
         };
@@ -379,7 +374,7 @@ pub fn updateTileBoundingRegion(
         globe_surface_tile.boundingVolumeIsFromMesh = hasBoundingVolumesFromMesh;
     } else {
         let (mut globe_surface_tile,) = {
-            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _, _, _) =
+            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _) =
                 quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
             (globe_surface_tile,)
         };

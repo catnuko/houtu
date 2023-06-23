@@ -381,11 +381,11 @@ pub fn pan_orbit_camera(
                         );
                     }
                     globe_camera.update_camera_matrix(&mut transform);
-                    println!("controlevent zoom {:?}", data);
+                    // println!("controlevent zoom {:?}", data);
                 }
 
                 ControlEvent::Spin(data) => {
-                    println!("controlevent spin {:?}", data);
+                    // println!("controlevent spin {:?}", data);
                     let startPosition =
                         aggregator.getStartMousePosition("LEFT_DRAG", &event_start_position_wrap);
                     let mut movement = data.movement.clone();
@@ -400,7 +400,7 @@ pub fn pan_orbit_camera(
                 }
 
                 ControlEvent::Tilt(data) => {
-                    println!("controlevent tilt {:?}", data);
+                    // println!("controlevent tilt {:?}", data);
                     let startPosition =
                         aggregator.getStartMousePosition("MIDDLE_DRAG", &event_start_position_wrap);
                     let mut movement = data.movement.clone();

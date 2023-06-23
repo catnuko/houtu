@@ -42,7 +42,7 @@ fn setup(mut commands: Commands) {
             label: label::Label("_地形"),
             mark: TileDatasourceMark,
             tiling_scheme: TilingSchemeWrap(Arc::new(GeographicTilingScheme::default())),
-            ready: Ready(false),
+            ready: Ready(true),
         },
         QuadTreeTileDatasourceMark,
     ));

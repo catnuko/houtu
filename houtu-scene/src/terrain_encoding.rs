@@ -138,7 +138,7 @@ impl TerrainEncoding {
     }
     pub fn encode(
         &self,
-        vertexBuffer: &mut Vec<f64>,
+        vertexBuffer: &mut Vec<f32>,
         bufferIndex: i64,
         position: &mut DVec3,
         uv: &DVec2,
@@ -162,13 +162,13 @@ impl TerrainEncoding {
             let h = ((height - self.minimumHeight) / hDim).clamp(0.0, 1.0);
 
             let mut cartesian2Scratch = DVec2::new(position.x, position.y);
-            let compressed0 = compressTextureCoordinates(&cartesian2Scratch);
+            let compressed0 = compressTextureCoordinates(&cartesian2Scratch) as f32;
 
             cartesian2Scratch = DVec2::new(position.z, h);
-            let compressed1 = compressTextureCoordinates(&cartesian2Scratch);
+            let compressed1 = compressTextureCoordinates(&cartesian2Scratch) as f32;
 
             cartesian2Scratch = DVec2::new(u, v);
-            let compressed2 = compressTextureCoordinates(&cartesian2Scratch);
+            let compressed2 = compressTextureCoordinates(&cartesian2Scratch) as f32;
 
             vertexBuffer[new_bufferIndex] = compressed0;
             new_bufferIndex += 1;
@@ -179,7 +179,7 @@ impl TerrainEncoding {
 
             if (self.hasWebMercatorT) {
                 let cartesian2Scratch = DVec2::new(webMercatorT.unwrap(), 0.0);
-                let compressed3 = compressTextureCoordinates(&cartesian2Scratch);
+                let compressed3 = compressTextureCoordinates(&cartesian2Scratch) as f32;
                 vertexBuffer[new_bufferIndex] = compressed3;
                 new_bufferIndex += 1;
             }
@@ -187,40 +187,44 @@ impl TerrainEncoding {
             // let cartesian3Scratch = position.subtract(self.center);
             let cartesian3Scratch = position.clone();
 
-            vertexBuffer[new_bufferIndex] = cartesian3Scratch.x;
+            vertexBuffer[new_bufferIndex] = cartesian3Scratch.x as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = cartesian3Scratch.y;
+            vertexBuffer[new_bufferIndex] = cartesian3Scratch.y as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = cartesian3Scratch.z;
+            vertexBuffer[new_bufferIndex] = cartesian3Scratch.z as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = height;
+            vertexBuffer[new_bufferIndex] = height as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = u;
+            vertexBuffer[new_bufferIndex] = u as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = v;
+            vertexBuffer[new_bufferIndex] = v as f32;
             new_bufferIndex += 1;
 
             if (self.hasWebMercatorT) {
-                vertexBuffer[new_bufferIndex] = webMercatorT.unwrap();
+                vertexBuffer[new_bufferIndex] = webMercatorT.unwrap() as f32;
                 new_bufferIndex += 1;
             }
         }
 
         if (self.hasVertexNormals) {
-            vertexBuffer[new_bufferIndex] = octPackFloat(&normalToPack.unwrap());
+            vertexBuffer[new_bufferIndex] = octPackFloat(&normalToPack.unwrap()) as f32;
             new_bufferIndex += 1;
         }
 
         if (self.hasGeodeticSurfaceNormals) {
             let new_geodeticSurfaceNormal = geodeticSurfaceNormal.unwrap();
-            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.x;
+            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.x as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.y;
+            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.y as f32;
             new_bufferIndex += 1;
-            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.z;
+            vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.z as f32;
             new_bufferIndex += 1;
         }
 
         return new_bufferIndex as i64;
+    }
+    pub fn decodeHeight(&self, buffer: &Vec<f32>, index: usize) -> f64 {
+        let index = index * self.stride as usize;
+        return buffer[index + 3] as f64;
     }
 }

@@ -159,6 +159,18 @@ impl TilingScheme for WebMercatorTilingScheme {
 
         return Some(UVec2::new(xTileCoordinate, yTileCoordinate));
     }
+    fn rectangle_to_native_rectangle(&self, rectangle: &Rectangle) -> Rectangle {
+        let west = rectangle.west.to_degrees();
+        let south = rectangle.south.to_degrees();
+        let east = rectangle.east.to_degrees();
+        let north = rectangle.north.to_degrees();
+        let mut result = Rectangle::default();
+        result.west = west;
+        result.south = south;
+        result.east = east;
+        result.north = north;
+        return result;
+    }
 }
 
 #[cfg(test)]

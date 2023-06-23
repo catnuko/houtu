@@ -2,11 +2,13 @@ use crate::{ellipsoid::Ellipsoid, geometry::Rectangle};
 mod create_vertice;
 mod height_map_encoding;
 mod height_map_terrain_data;
+mod terrain_exaggeration;
 mod terrian_mesh;
 use bevy::math::DVec3;
 pub use create_vertice::*;
 pub use height_map_encoding::*;
 pub use height_map_terrain_data::*;
+pub use terrain_exaggeration::*;
 pub use terrian_mesh::*;
 // mod create_mesh_job;
 #[derive(Debug, Clone, Copy, PartialEq)]

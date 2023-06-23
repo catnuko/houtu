@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use bevy::prelude::*;
 
-use super::tile_quad_tree::GlobeSurfaceTileQuery;
+use super::{globe_surface_tile::GlobeSurfaceTile, tile_quad_tree::GlobeSurfaceTileQuery};
 
 // pub struct Plugin;
 // impl bevy::prelude::Plugin for Plugin {
@@ -83,6 +83,45 @@ impl TileReplacementQueue {
             self._lastBeforeStartOfFrame = None;
         }
     }
+    pub fn trimTiles(&mut self, maximumTiles: u32, query: &mut Query<(GlobeSurfaceTileQuery)>) {
+        // let mut tileToTrim = self.get_tail_mut();
+        let mut keepTrimming = true;
+        let mut count = self.count;
+        while (keepTrimming
+            // && self._lastBeforeStartOfFrame.is_some()
+            && count > maximumTiles as usize)
+            && self.get_tail_mut().is_some()
+        {
+            // Stop trimming after we process the last tile not used in the
+            // current frame.
+            keepTrimming = self.get_tail() != self._lastBeforeStartOfFrame.as_ref();
+
+            let tileToTrim = self.get_tail_mut();
+            let tileToTrim_entity = tileToTrim.unwrap();
+            let mut tileToTrim_state = query
+                .get_component_mut::<TileReplacementState>(tileToTrim_entity.clone())
+                .unwrap();
+
+            let previous = tileToTrim_state.replacementPrevious;
+
+            let globe_surface_tile = query
+                .get_component_mut::<GlobeSurfaceTile>(tileToTrim_entity.clone())
+                .unwrap();
+
+            if (globe_surface_tile.eligibleForUnloading()) {
+                // tileToTrim_state.freeResources();
+
+                let entity = tileToTrim_entity.clone();
+                self.remove(query, entity);
+            }
+            if let Some(entity) = previous {
+                if let Some(v) = self.get_tail_mut() {
+                    *v = entity;
+                }
+            }
+            count = self.count;
+        }
+    }
     fn remove(&mut self, query: &mut Query<(GlobeSurfaceTileQuery)>, entity: Entity) {
         let mut item = query
             .get_component_mut::<TileReplacementState>(entity)
@@ -130,6 +169,7 @@ impl TileReplacementQueue {
             let state_entity = item.replacementPrevious.clone();
             set_state_of_entity(query, entity, state_entity, false);
         }
+        self.count -= 1;
     }
     pub fn markTileRendered(&mut self, query: &mut Query<(GlobeSurfaceTileQuery)>, entity: Entity) {
         let mut item = query

@@ -86,7 +86,6 @@ pub fn computeTileVisibility(
     ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     camera: &mut GlobeCamera,
-    culling_volume: &CullingVolume,
     quadtree_tile_entity: Entity,
 ) -> TileVisibility {
     computeDistanceToTile(
@@ -118,7 +117,9 @@ pub fn computeTileVisibility(
     };
     let boundingVolume = boundingVolume.unwrap();
     let mut visibility = TileVisibility::NONE;
-    let intersection = culling_volume.computeVisibility(&boundingVolume);
+    let intersection = camera
+        .get_culling_volume()
+        .computeVisibility(&boundingVolume);
 
     if (intersection == Intersect::OUTSIDE) {
         visibility = TileVisibility::NONE;
@@ -275,24 +276,22 @@ pub fn updateTileBoundingRegion(
         let mut maximumHeight = 0.0;
 
         while let TileNode::Internal(ancestorTile) = ancestorTileNode.0 {
-            let mut is_pass = false;
-            let (ancestor_globe_surface_tile, parent_node) = {
+            let (min, max, parent_node) = {
                 let (_, ancestor_globe_surface_tile, _, _, _, _, _, _, _, _, parent_node) =
                     quadtree_tile_query.get(ancestorTile).unwrap();
-                (ancestor_globe_surface_tile, parent_node)
+                // (ancestor_globe_surface_tile, parent_node)
+                if (ancestor_globe_surface_tile.mesh.is_some()) {
+                    let t = ancestor_globe_surface_tile.mesh.as_ref().unwrap();
+                    (t.minimumHeight, t.maximumHeight, parent_node)
+                } else {
+                    break;
+                }
             };
 
-            if (ancestor_globe_surface_tile.mesh.is_some()) {
-                let t = ancestor_globe_surface_tile.mesh.as_ref().unwrap();
-                minimumHeight = t.minimumHeight;
-                maximumHeight = t.maximumHeight;
-                is_pass = true;
-                ancestorTileNode = parent_node.clone();
-                source_tile = None;
-            }
-            if is_pass {
-                break;
-            }
+            minimumHeight = min;
+            maximumHeight = max;
+            ancestorTileNode = parent_node.clone();
+            source_tile = None;
         }
         let (mut globe_surface_tile,) = {
             let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _) =

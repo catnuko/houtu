@@ -1,4 +1,7 @@
-use std::any::type_name;
+use std::{
+    any::type_name,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     getEstimatedLevelZeroGeometricErrorForAHeightmap,
@@ -84,7 +87,7 @@ impl HeightmapTerrainData {
         level: u32,
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
-        indicesAndEdgesCache: &mut IndicesAndEdgesCache,
+        indicesAndEdgesCacheArc: Arc<Mutex<IndicesAndEdgesCache>>,
     ) -> TerrainMesh {
         let result = self.create_vertice(
             tilingScheme,
@@ -93,9 +96,9 @@ impl HeightmapTerrainData {
             level,
             exaggeration,
             exaggerationRelativeHeight,
-            indicesAndEdgesCache,
         );
 
+        let mut indicesAndEdgesCache = indicesAndEdgesCacheArc.lock().unwrap();
         let indicesAndEdges;
         if (self._skirtHeight.unwrap() > 0.0) {
             indicesAndEdges = indicesAndEdgesCache
@@ -134,7 +137,6 @@ impl HeightmapTerrainData {
         level: u32,
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
-        indicesAndEdgesCache: &mut IndicesAndEdgesCache,
     ) -> CreateVerticeReturn {
         let tilingScheme = tilingScheme;
         let x = x;

@@ -135,7 +135,7 @@ impl IntersectionTests {
         BB[6] = thirdAxis.x;
         BB[7] = thirdAxis.y;
         BB[8] = thirdAxis.z;
-        let B = DMat3::from_row_list(BB);
+        let B = DMat3::from_raw_list(BB);
         let B_T = B.transpose();
 
         // Get the scaling matrix and its inverse.
@@ -152,7 +152,7 @@ impl IntersectionTests {
         CC[6] = -direction.y;
         CC[7] = direction.x;
         CC[8] = 0.0;
-        let C = DMat3::from_row_list(CC);
+        let C = DMat3::from_raw_list(CC);
 
         let temp = B_T.mul_mat3(&D).mul_mat3(&C);
         let A = temp.mul_mat3(&D_I).mul_mat3(&B);

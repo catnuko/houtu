@@ -3,14 +3,22 @@ use std::{
     sync::Arc,
 };
 
-use bevy::{math::DVec4, prelude::*, utils::HashMap};
+use bevy::{
+    math::DVec4,
+    prelude::*,
+    render::render_resource::{
+        Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    },
+    utils::HashMap,
+};
 use houtu_scene::{
     Ellipsoid, GeographicTilingScheme, HeightmapTerrainData, Rectangle, TilingScheme,
 };
 
 use super::{
-    imagery::{Imagery, TileImagery},
+    imagery::{Imagery, ImageryState, TileImagery},
     quadtree_tile::TileToLoad,
+    reproject_texture::{self, ReprojectTextureTask, ReprojectTextureTaskQueue},
     tile_quad_tree::GlobeSurfaceTileQuery,
     TileKey,
 };
@@ -36,8 +44,9 @@ pub struct ImageryLayer {
     pub colorToAlpha: f64,
     pub colorToAlphaThreshold: f64,
     pub _rectangle: Rectangle,
-    pub _skeletonPlaceholder: TileImagery,
-    pub _imageryCache: HashMap<String, Arc<Imagery>>,
+    // pub _skeletonPlaceholder: TileImagery,
+    pub _imageryCache: HashMap<TileKey, Imagery>,
+    pub entity: Entity,
 }
 impl ImageryLayer {
     pub fn new(imagery_layer_entity: Entity) -> Self {
@@ -57,12 +66,20 @@ impl ImageryLayer {
             colorToAlphaThreshold: 0.004,
             ready: true,
             _rectangle: Rectangle::MAX_VALUE.clone(),
-            _skeletonPlaceholder: TileImagery::createPlaceholder(imagery_layer_entity, None),
+            // _skeletonPlaceholder: TileImagery::createPlaceholder(imagery_layer_entity, None),
             _imageryCache: HashMap::new(),
+            entity: imagery_layer_entity,
         }
     }
-}
-impl ImageryLayer {
+    fn create_empty_tile_imagery(&mut self, imageryLayer: Entity) -> TileImagery {
+        let key = TileKey {
+            x: 0,
+            y: 0,
+            level: 0,
+        };
+        self.add_imagery(&key, imageryLayer);
+        return TileImagery::new(imageryLayer, key, None, false);
+    }
     fn getLevelWithMaximumTexelSpacing(
         &mut self,
         texelSpacing: f64,
@@ -70,7 +87,7 @@ impl ImageryLayer {
         imageryProvider: &mut XYZDataSource,
     ) -> u32 {
         // PERFORMANCE_IDEA: factor out the stuff that doesn't change.
-        let tilingScheme = imageryProvider.tiling_scheme;
+        let tilingScheme = &imageryProvider.tiling_scheme;
         let ellipsoid = tilingScheme.ellipsoid;
         let latitudeFactor = if false {
             latitudeClosestToEquator.cos()
@@ -93,16 +110,11 @@ impl ImageryLayer {
         return self._isBaseLayer;
     }
     pub fn _createTileImagerySkeletons(
-        &self,
+        &mut self,
         quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
         globe_surface_tile_entity: Entity,
         terrain_datasource: &mut TerrainDataSource,
-        imagery_layer_query: &mut Query<(
-            Entity,
-            &mut Visibility,
-            &mut ImageryLayer,
-            &mut XYZDataSource,
-        )>,
+        imagery_datasource: &mut XYZDataSource,
         imagery_layer_entity: Entity,
     ) -> bool {
         let (
@@ -120,8 +132,8 @@ impl ImageryLayer {
         ) = quadtree_tile_query
             .get_mut(globe_surface_tile_entity)
             .unwrap();
-        let (_, visibility, _, mut imagery_datasource) =
-            imagery_layer_query.get_mut(imagery_layer_entity).unwrap();
+        // let (_, visibility, _, mut imagery_datasource) =
+        //     imagery_layer_query.get_mut(imagery_layer_entity).unwrap();
         let mut insertionPoint = globe_surface_tile.imagery.len();
 
         // ready is deprecated. This is here for backwards compatibility
@@ -130,9 +142,10 @@ impl ImageryLayer {
             // Instead, add a placeholder so that we'll know to create
             // the skeletons once the provider is ready.
             // self._skeletonPlaceholder.loadingImagery.addReference();
+            let _skeletonPlaceholder = self.create_empty_tile_imagery(imagery_layer_entity);
             globe_surface_tile
                 .imagery
-                .insert(insertionPoint, self._skeletonPlaceholder);
+                .insert(insertionPoint, _skeletonPlaceholder);
             return true;
         }
 
@@ -204,7 +217,7 @@ impl ImageryLayer {
         let mut imageryLevel = self.getLevelWithMaximumTexelSpacing(
             targetGeometricError,
             latitudeClosestToEquator,
-            &mut imagery_datasource,
+            imagery_datasource,
         );
         imageryLevel = 0.max(imageryLevel);
         let maximumLevel = imagery_datasource.maximumLevel;
@@ -216,7 +229,7 @@ impl ImageryLayer {
             imageryLevel = minimumLevel;
         }
 
-        let imageryTilingScheme = imagery_datasource.tiling_scheme;
+        let imageryTilingScheme = &imagery_datasource.tiling_scheme;
         let mut northwestTileCoordinates = imageryTilingScheme
             .position_to_tile_x_y(&rectangle.north_west(), imageryLevel)
             .expect("northwestTileCoordinates");
@@ -404,14 +417,16 @@ impl ImageryLayer {
                 }
 
                 let texCoordsRectangle = DVec4::new(minU, minV, maxU, maxV);
-                let imagery = self.getImageryFromCache(
-                    &TileKey::new(i, j, imageryLevel),
-                    None,
-                    imagery_layer_entity.clone(),
-                );
+                let key = TileKey::new(i, j, imageryLevel);
+                self.add_imagery(&key, imagery_layer_entity.clone());
                 globe_surface_tile.imagery.insert(
                     insertionPoint,
-                    TileImagery::new(imagery.unwrap(), Some(texCoordsRectangle), useWebMercatorT),
+                    TileImagery::new(
+                        imagery_layer_entity,
+                        key,
+                        Some(texCoordsRectangle),
+                        useWebMercatorT,
+                    ),
                 );
                 insertionPoint += 1;
             }
@@ -419,38 +434,32 @@ impl ImageryLayer {
 
         return true;
     }
-    pub fn getImageryFromCache(
-        &mut self,
-        key: &TileKey,
-        imageryRectangle: Option<Rectangle>,
-        imageryLayer: Entity,
-    ) -> Option<Arc<Imagery>> {
-        let id = key.get_id();
-        let imagery = self._imageryCache.get(&id);
+    pub fn get_imagery_mut(&mut self, key: &TileKey) -> Option<&mut Imagery> {
+        return self._imageryCache.get_mut(key);
+    }
+    pub fn get_imagery(&self, key: &TileKey) -> Option<&Imagery> {
+        return self._imageryCache.get(key);
+    }
+    pub fn add_imagery(&mut self, key: &TileKey, imageryLayer: Entity) {
+        let imagery = self._imageryCache.get(key);
         if imagery.is_none() {
             let parent_key = key.parent();
-            if let Some(parent_key) = key.parent() {
-                let parent = self
-                    ._imageryCache
-                    .get(&parent_key.get_id())
-                    .and_then(|x| Some(x.clone()));
-                let new_imagery = Arc::new(Imagery::new(key.clone(), imageryLayer, parent));
-                self._imageryCache.insert(id, new_imagery);
-                return Some(new_imagery.clone());
-            } else {
-                return None;
-            }
-        } else {
-            return Some(imagery.unwrap().clone());
+            let new_imagery = Imagery::new(key.clone(), imageryLayer, parent_key);
+            self._imageryCache.insert(*key, new_imagery);
         }
     }
+
     pub fn _calculateTextureTranslationAndScale(
-        &self,
+        &mut self,
         tileImagery: &TileImagery,
         quand_tile_rectangle: &Rectangle,
         imagery_datasource_tiling_scheme: &GeographicTilingScheme,
     ) -> DVec4 {
-        let mut imageryRectangle = tileImagery.readyImagery.unwrap().rectangle.clone();
+        let mut imageryRectangle = tileImagery
+            .get_ready_imagery(self)
+            .unwrap()
+            .rectangle
+            .clone();
         let mut quand_tile_rectangle = quand_tile_rectangle.clone();
 
         if (tileImagery.useWebMercatorT) {
@@ -472,7 +481,55 @@ impl ImageryLayer {
             scaleY,
         );
     }
-    pub fn _reprojectTexture(&self, imagery: &Arc<Imagery>, needGeographicProjection: bool) {}
+    pub fn _reprojectTexture(
+        imagery: &Imagery,
+        needGeographicProjection: bool,
+        images: &mut ResMut<Assets<Image>>,
+        width: u32,
+        height: u32,
+        render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
+    ) {
+        let output_texture = images.add(Image {
+            texture_descriptor: TextureDescriptor {
+                label: "reproject_texture".into(),
+                size: Extent3d {
+                    width: width,
+
+                    height: height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 0,
+                sample_count: 0,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Bgra8UnormSrgb,
+                usage: TextureUsages::COPY_DST
+                    | TextureUsages::RENDER_ATTACHMENT
+                    | TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            },
+            ..Default::default()
+        });
+        let task = ReprojectTextureTask {
+            key: imagery.key,
+            output_texture,
+            image: imagery.texture.as_ref().expect("imagery.texture").clone(),
+            rectangle: imagery.rectangle.clone(),
+        };
+        render_world_queue.push(task);
+    }
+    pub fn finish_reproject_texture_system(
+        mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
+        imagery_layer: &mut ImageryLayer,
+    ) {
+        let (_, receiver) = render_world_queue.status_channel.clone();
+        for i in 0..render_world_queue.count() {
+            let Ok(key)  =receiver.try_recv()else{continue;};
+            let task = render_world_queue.get(&key).expect("task");
+            let mut imagery = imagery_layer.get_imagery_mut(&key).expect("imagery");
+            imagery.set_texture(task.output_texture.clone());
+            imagery.state = ImageryState::READY;
+        }
+    }
 }
 #[derive(Component)]
 pub struct XYZDataSource {
@@ -528,7 +585,7 @@ impl ImageryLayerBundle {
 }
 #[derive(Component)]
 pub struct TerrainDataSource {
-    pub tiling_scheme: Arc<GeographicTilingScheme>,
+    pub tiling_scheme: GeographicTilingScheme,
     _levelZeroMaximumGeometricError: f64,
     pub ready: bool,
     pub rectangle: Rectangle,
@@ -537,9 +594,9 @@ impl TerrainDataSource {
     pub fn new() -> Self {
         let tiling_scheme = GeographicTilingScheme::default();
         let _levelZeroMaximumGeometricError = get_levelZeroMaximumGeometricError(&tiling_scheme);
-        let tiling_scheme_arc = Arc::new(tiling_scheme);
+
         Self {
-            tiling_scheme: tiling_scheme_arc,
+            tiling_scheme: tiling_scheme,
             _levelZeroMaximumGeometricError: _levelZeroMaximumGeometricError,
             ready: true,
             rectangle: Rectangle::MAX_VALUE.clone(),
@@ -555,7 +612,7 @@ impl TerrainDataSource {
         return self._levelZeroMaximumGeometricError / (1 << level) as f64;
     }
 
-    pub async fn requestTileGeometry(&self, key: &TileKey) -> Option<HeightmapTerrainData> {
+    pub async fn requestTileGeometry(&self) -> Option<HeightmapTerrainData> {
         let width = 16;
         let height = 16;
         return Some(HeightmapTerrainData::new(
@@ -590,6 +647,7 @@ fn get_levelZeroMaximumGeometricError(tiling_scheme: &GeographicTilingScheme) ->
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(reproject_texture::Plugin);
         app.add_startup_system(setup);
     }
 }

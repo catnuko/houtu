@@ -23,7 +23,7 @@ pub trait Matrix3 {
     fn get_column(&self, index: usize) -> DVec3;
     fn equals_epsilon(&self, right: &DMat3, epsilon: f64) -> bool;
     fn from_quaternion(quaternion: &DQuat) -> DMat3;
-    fn from_row_list(slice: [f64; 9]) -> DMat3;
+    fn from_raw_list(slice: [f64; 9]) -> DMat3;
 }
 impl Matrix3 for DMat3 {
     const COLUMN0ROW0: usize = 0;
@@ -58,11 +58,11 @@ impl Matrix3 for DMat3 {
         let m20 = 2.0 * (xz - yw);
         let m21 = 2.0 * (yz + xw);
         let m22 = -x2 - y2 + z2 + w2;
-        return Self::from_row_list([m00, m01, m02, m10, m11, m12, m20, m21, m22]);
+        return Self::from_raw_list([m00, m01, m02, m10, m11, m12, m20, m21, m22]);
         // return Matrix3(m00, m01, m02, m10, m11, m12, m20, m21, m22);
     }
-    fn from_row_list(slice: [f64; 9]) -> DMat3 {
-        return make_matrix3_from_row(slice);
+    fn from_raw_list(slice: [f64; 9]) -> DMat3 {
+        return make_matrix3_from_raw(slice);
     }
     fn equals_epsilon(&self, right: &DMat3, epsilon: f64) -> bool {
         let mut slice: [f64; 9] = [0.; 9];
@@ -136,7 +136,7 @@ impl Matrix3 for DMat3 {
         return result;
     }
 }
-fn make_matrix4_from_row(slice: [f64; 16]) -> DMat4 {
+fn make_matrix4_from_raw(slice: [f64; 16]) -> DMat4 {
     DMat4 {
         x_axis: [slice[0], slice[4], slice[8], slice[12]].into(),
         y_axis: [slice[1], slice[5], slice[9], slice[13]].into(),
@@ -144,7 +144,7 @@ fn make_matrix4_from_row(slice: [f64; 16]) -> DMat4 {
         w_axis: [slice[3], slice[7], slice[11], slice[15]].into(),
     }
 }
-fn make_matrix3_from_row(slice: [f64; 9]) -> DMat3 {
+fn make_matrix3_from_raw(slice: [f64; 9]) -> DMat3 {
     DMat3 {
         x_axis: [slice[0], slice[3], slice[6]].into(),
         y_axis: [slice[1], slice[4], slice[7]].into(),
@@ -160,8 +160,61 @@ pub trait Matrix4 {
     fn compute_view(position: &DVec3, direction: &DVec3, up: &DVec3, right: &DVec3) -> DMat4;
     fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4;
     fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3;
+    fn from_raw_list(slice: [f64; 16]) -> DMat4;
+
+    fn compute_orthographic_off_center(
+        &self,
+        left: f64,
+        right: f64,
+        bottom: f64,
+        top: f64,
+        near: f64,
+        far: f64,
+    ) -> DMat4;
 }
 impl Matrix4 for DMat4 {
+    fn from_raw_list(slice: [f64; 16]) -> DMat4 {
+        return make_matrix4_from_raw(slice);
+    }
+    fn compute_orthographic_off_center(
+        &self,
+        left: f64,
+        right: f64,
+        bottom: f64,
+        top: f64,
+        near: f64,
+        far: f64,
+    ) -> DMat4 {
+        let mut matrix: [f64; 16] = [0.; 16];
+        let mut a = 1.0 / (right - left);
+        let mut b = 1.0 / (top - bottom);
+        let mut c = 1.0 / (far - near);
+
+        let tx = -(right + left) * a;
+        let ty = -(top + bottom) * b;
+        let tz = -(far + near) * c;
+        a *= 2.0;
+        b *= 2.0;
+        c *= -2.0;
+
+        matrix[0] = a;
+        matrix[1] = 0.0;
+        matrix[2] = 0.0;
+        matrix[3] = 0.0;
+        matrix[4] = 0.0;
+        matrix[5] = b;
+        matrix[6] = 0.0;
+        matrix[7] = 0.0;
+        matrix[8] = 0.0;
+        matrix[9] = 0.0;
+        matrix[10] = c;
+        matrix[11] = 0.0;
+        matrix[12] = tx;
+        matrix[13] = ty;
+        matrix[14] = tz;
+        matrix[15] = 1.0;
+        return DMat4::from_raw_list(matrix);
+    }
     fn set_translation(&mut self, cartesian: &DVec3) {
         self.x_axis.w = cartesian.x;
         self.y_axis.w = cartesian.y;

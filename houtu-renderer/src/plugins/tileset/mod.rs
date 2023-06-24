@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use bevy::prelude::*;
 use houtu_scene::IndicesAndEdgesCache;
 
@@ -9,6 +11,7 @@ mod imagery_layer;
 mod imagery_layer_collection;
 mod label;
 mod quadtree_tile;
+mod reproject_texture;
 mod terrian_material;
 mod tile_datasource;
 mod tile_id;
@@ -23,12 +26,19 @@ mod tile_selection_result;
 mod tile_state;
 mod tile_system;
 pub use tile_key::TileKey;
+#[derive(Resource)]
+pub struct IndicesAndEdgesCacheArc(pub Arc<Mutex<IndicesAndEdgesCache>>);
+impl IndicesAndEdgesCacheArc {
+    fn new() -> Self {
+        IndicesAndEdgesCacheArc(Arc::new(Mutex::new(IndicesAndEdgesCache::new())))
+    }
+}
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(label::Plugin);
         app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
-        app.insert_resource(IndicesAndEdgesCache::new());
+        app.insert_resource(IndicesAndEdgesCacheArc::new());
         app.add_plugin(tile_quad_tree::Plugin);
         // app.add_system(layer_system);
         // app.add_startup_system(setup);

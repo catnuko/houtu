@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use bevy::{math::DVec3, prelude::*};
 use houtu_scene::{
     BoundingVolume, Cartesian3, CullingVolume, Ellipsoid, EllipsoidalOccluder,
@@ -41,7 +43,7 @@ pub struct GlobeSurfaceTile {
     pub boundingVolumeIsFromMesh: bool,
     pub clippedByBoundaries: bool,
     pub mesh: Option<TerrainMesh>,
-    pub terrainData: Option<HeightmapTerrainData>,
+    pub terrainData: Option<Arc<Mutex<HeightmapTerrainData>>>,
     pub boundingVolumeSourceTile: Option<Entity>,
     pub vertexArray: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,

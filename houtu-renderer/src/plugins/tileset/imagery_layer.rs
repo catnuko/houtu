@@ -16,6 +16,7 @@ use houtu_scene::{
 };
 
 use super::{
+    globe_surface_tile::GlobeSurfaceTile,
     imagery::{Imagery, ImageryState, TileImagery},
     quadtree_tile::TileToLoad,
     reproject_texture::{self, ReprojectTextureTask, ReprojectTextureTaskQueue},
@@ -111,27 +112,30 @@ impl ImageryLayer {
     }
     pub fn _createTileImagerySkeletons(
         &mut self,
-        quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
-        globe_surface_tile_entity: Entity,
+        globe_surface_tile: &mut GlobeSurfaceTile,
+        rectangle: &Rectangle,
+        key: &TileKey,
+        // quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
+        // globe_surface_tile_entity: Entity,
         terrain_datasource: &mut TerrainDataSource,
         imagery_datasource: &mut XYZDataSource,
         imagery_layer_entity: Entity,
     ) -> bool {
-        let (
-            entity,
-            mut globe_surface_tile,
-            rectangle,
-            mut other_state,
-            mut replacement_state,
-            key,
-            node_id,
-            mut node_children,
-            mut state,
-            location,
-            parent,
-        ) = quadtree_tile_query
-            .get_mut(globe_surface_tile_entity)
-            .unwrap();
+        // let (
+        //     entity,
+        //     mut globe_surface_tile,
+        //     rectangle,
+        //     mut other_state,
+        //     mut replacement_state,
+        //     key,
+        //     node_id,
+        //     mut node_children,
+        //     mut state,
+        //     location,
+        //     parent,
+        // ) = quadtree_tile_query
+        //     .get_mut(globe_surface_tile_entity)
+        //     .unwrap();
         // let (_, visibility, _, mut imagery_datasource) =
         //     imagery_layer_query.get_mut(imagery_layer_entity).unwrap();
         let mut insertionPoint = globe_surface_tile.imagery.len();
@@ -612,7 +616,7 @@ impl TerrainDataSource {
         return self._levelZeroMaximumGeometricError / (1 << level) as f64;
     }
 
-    pub async fn requestTileGeometry(&self) -> Option<HeightmapTerrainData> {
+    pub fn requestTileGeometry(&self) -> Option<HeightmapTerrainData> {
         let width = 16;
         let height = 16;
         return Some(HeightmapTerrainData::new(

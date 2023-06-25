@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use houtu_scene::IndicesAndEdgesCache;
 
 use self::tile_layer_id::TileLayerId;
+mod create_terrain_mesh_job;
 mod ellipsoid_terrain_provider;
 mod globe_surface_tile;
 mod imagery;
@@ -25,12 +26,16 @@ mod tile_replacement_queue;
 mod tile_selection_result;
 mod tile_state;
 mod tile_system;
+mod unsample_job;
 pub use tile_key::TileKey;
 #[derive(Resource)]
 pub struct IndicesAndEdgesCacheArc(pub Arc<Mutex<IndicesAndEdgesCache>>);
 impl IndicesAndEdgesCacheArc {
     fn new() -> Self {
         IndicesAndEdgesCacheArc(Arc::new(Mutex::new(IndicesAndEdgesCache::new())))
+    }
+    fn get_cloned_cache(&self) -> Arc<Mutex<IndicesAndEdgesCache>> {
+        return self.0.clone();
     }
 }
 pub struct Plugin;

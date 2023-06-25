@@ -88,7 +88,7 @@ impl HeightmapTerrainData {
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
         indicesAndEdgesCacheArc: Arc<Mutex<IndicesAndEdgesCache>>,
-    ) -> TerrainMesh {
+    ) {
         let result = self.create_vertice(
             tilingScheme,
             x,
@@ -109,7 +109,7 @@ impl HeightmapTerrainData {
         }
 
         let vertexCountWithoutSkirts = 0;
-        return TerrainMesh::new(
+        self._mesh = Some(TerrainMesh::new(
             result.relativeToCenter.unwrap(),
             result.vertices,
             indicesAndEdges.indices,
@@ -126,7 +126,7 @@ impl HeightmapTerrainData {
             indicesAndEdges.southIndicesEastToWest,
             indicesAndEdges.eastIndicesNorthToSouth,
             indicesAndEdges.northIndicesWestToEast,
-        );
+        ));
     }
 
     pub fn create_vertice<T: TilingScheme>(

@@ -38,5 +38,3 @@ thiserror = "1.0"
 lazy_static = "1.4.0"
 # debug
 bevy_prototype_debug_lines = {version="0.10",features=["3d"]}
-
-bevy-async-task={git="https://github.com/vectorgameexperts/bevy-async-task.git",branch="main"}

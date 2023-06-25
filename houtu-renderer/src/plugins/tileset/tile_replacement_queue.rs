@@ -3,14 +3,6 @@ use std::collections::LinkedList;
 use bevy::prelude::*;
 
 use super::{globe_surface_tile::GlobeSurfaceTile, tile_quad_tree::GlobeSurfaceTileQuery};
-
-// pub struct Plugin;
-// impl bevy::prelude::Plugin for Plugin {
-//     fn build(&self, app: &mut App) {
-//         app.insert_resource(TileReplacementQueue::new());
-//         app.add_system(system);
-//     }
-// }
 #[derive(Component, Clone)]
 pub struct TileReplacementState {
     replacementPrevious: Option<Entity>,

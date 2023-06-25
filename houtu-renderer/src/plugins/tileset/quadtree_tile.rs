@@ -9,7 +9,7 @@ use std::sync::Arc;
 use super::globe_surface_tile::GlobeSurfaceTile;
 use super::tile_replacement_queue::TileReplacementState;
 use super::tile_selection_result::TileSelectionResult;
-use super::{tile_datasource::TilingSchemeWrap, TileKey};
+use super::TileKey;
 #[derive(Component, Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum TileNode {
     /// None variant.

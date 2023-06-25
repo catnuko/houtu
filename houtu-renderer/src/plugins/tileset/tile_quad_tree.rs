@@ -24,14 +24,13 @@ use super::imagery_layer::{ImageryLayer, TerrainDataSource, XYZDataSource};
 use super::reproject_texture::ReprojectTextureTaskQueue;
 use super::tile_selection_result::TileSelectionResult;
 use super::unsample_job::UnsampleJob;
-use super::{IndicesAndEdgesCacheArc, TileKey};
+use super::TileKey;
 
 use super::quadtree_tile::{
     NodeChildren, Quadrant, QuadtreeTile, QuadtreeTileData, QuadtreeTileLoadState,
     QuadtreeTileMark, QuadtreeTileOtherState, QuadtreeTileParent, TileLoadHigh, TileLoadLow,
     TileLoadMedium, TileNode, TileToLoad, TileToRender, TileToUpdateHeight,
 };
-use super::tile_datasource::{self, QuadTreeTileDatasourceMark, Ready, TilingSchemeWrap};
 use super::tile_replacement_queue::{TileReplacementQueue, TileReplacementState};
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
@@ -39,8 +38,8 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(TileQuadTree::new());
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(RootTraversalDetails::new());
+        app.insert_resource(IndicesAndEdgesCacheArc::new());
         app.add_event::<TileLoadEvent>();
-        // app.add_system(test);
         app.add_system(begin_frame.before(render).before(end_frame));
         app.add_system(render.before(end_frame));
         app.add_system(end_frame.before(updateTileLoadProgress_system));
@@ -53,6 +52,16 @@ impl bevy::prelude::Plugin for Plugin {
             transform_system,
             quad_tile_state_end_system,
         ));
+    }
+}
+#[derive(Resource)]
+pub struct IndicesAndEdgesCacheArc(pub Arc<Mutex<IndicesAndEdgesCache>>);
+impl IndicesAndEdgesCacheArc {
+    fn new() -> Self {
+        IndicesAndEdgesCacheArc(Arc::new(Mutex::new(IndicesAndEdgesCache::new())))
+    }
+    fn get_cloned_cache(&self) -> Arc<Mutex<IndicesAndEdgesCache>> {
+        return self.0.clone();
     }
 }
 #[derive(Resource)]

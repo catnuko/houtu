@@ -2,13 +2,14 @@ use std::borrow::Cow;
 
 use async_channel::{Receiver, Sender};
 use bevy::{
+    core::cast_slice,
     prelude::*,
     render::{
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         render_asset::RenderAssets,
         render_graph::{self, RenderGraph},
         render_resource::*,
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
         Extract, RenderApp, RenderSet,
     },
@@ -16,7 +17,7 @@ use bevy::{
 };
 use houtu_scene::Rectangle;
 
-use super::TileKey;
+use super::{tile_quad_tree::IndicesAndEdgesCacheArc, TileKey};
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
@@ -86,7 +87,7 @@ pub struct ReprojectTextureTask {
     pub key: TileKey,
     pub image: Handle<Image>,
     pub output_texture: Handle<Image>,
-    pub rectangle: Rectangle,
+    pub webmercartor_buffer: Buffer,
 }
 impl Clone for ReprojectTextureTask {
     fn clone(&self) -> Self {
@@ -94,7 +95,7 @@ impl Clone for ReprojectTextureTask {
             image: self.image.clone(),
             key: self.key.clone(),
             output_texture: self.output_texture.clone(),
-            rectangle: self.rectangle.clone(),
+            webmercartor_buffer: self.webmercartor_buffer.clone(),
         }
     }
 }
@@ -102,6 +103,8 @@ impl Clone for ReprojectTextureTask {
 pub struct ReprojectTexturePipeline {
     texture_bind_group_layout: BindGroupLayout,
     pipeline: CachedRenderPipelineId,
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
 }
 
 impl FromWorld for ReprojectTexturePipeline {
@@ -158,9 +161,45 @@ impl FromWorld for ReprojectTexturePipeline {
             multisample: MultisampleState::default(),
             depth_stencil: None,
         });
+
+        let render_device = world.resource::<RenderDevice>();
+        let render_queue = world.resource::<RenderQueue>();
+        let mut positions = vec![0.0; 2 * 64 * 2];
+        let mut index = 0;
+        for j in 0..64 {
+            let y = j as f32 / 63.0;
+            positions[index] = 0.0;
+            index += 1;
+            positions[index] = y;
+            index += 1;
+            positions[index] = 1.0;
+            index += 1;
+            positions[index] = y;
+            index += 1;
+        }
+        let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: Some("indices_buffer"),
+            contents: cast_slice(&positions),
+            usage: BufferUsages::VERTEX,
+        });
+        let indicesAndEdgesCache = world.resource::<IndicesAndEdgesCacheArc>();
+        let indices = indicesAndEdgesCache
+            .0
+            .clone()
+            .lock()
+            .unwrap()
+            .getRegularGridIndices(2, 64);
+        let index_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: Some("indices_buffer"),
+            contents: cast_slice(&indices),
+            usage: BufferUsages::VERTEX,
+        });
+
         ReprojectTexturePipeline {
             texture_bind_group_layout,
             pipeline,
+            index_buffer,
+            vertex_buffer,
         }
     }
 }
@@ -211,6 +250,9 @@ impl render_graph::Node for ReprojectTextureNode {
                     });
             render_pass.set_pipeline(render_pipeline);
             render_pass.set_bind_group(0, &bind_group, &[]);
+            render_pass.set_vertex_buffer(0, *pipeline.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, *task.1.webmercartor_buffer.slice(..));
+            render_pass.set_index_buffer(*pipeline.index_buffer.slice(..), IndexFormat::Uint32);
             render_pass.draw(0..3, 0..1);
         }
         Ok(())

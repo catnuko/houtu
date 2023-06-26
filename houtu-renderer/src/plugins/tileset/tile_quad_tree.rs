@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use bevy::core::FrameCount;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use bevy::render::renderer::RenderDevice;
 use bevy::window::PrimaryWindow;
 use houtu_jobs::{FinishedJobs, JobSpawner};
 use houtu_scene::{
@@ -21,7 +22,7 @@ use super::globe_surface_tile::{
 };
 use super::imagery::ImageryState;
 use super::imagery_layer::{ImageryLayer, TerrainDataSource, XYZDataSource};
-use super::reproject_texture::ReprojectTextureTaskQueue;
+use super::reproject_texture::{self, ReprojectTextureTaskQueue};
 use super::tile_selection_result::TileSelectionResult;
 use super::unsample_job::UnsampleJob;
 use super::TileKey;
@@ -35,6 +36,7 @@ use super::tile_replacement_queue::{TileReplacementQueue, TileReplacementState};
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(reproject_texture::Plugin);
         app.insert_resource(TileQuadTree::new());
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(RootTraversalDetails::new());
@@ -1559,6 +1561,8 @@ fn quad_tile_state_end_system(
     mut asset_server: Res<AssetServer>,
     mut images: ResMut<Assets<Image>>,
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
+    mut indicesAndEdgesCache: ResMut<IndicesAndEdgesCacheArc>,
+    render_device: Res<RenderDevice>,
 ) {
     let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
     for (
@@ -1659,6 +1663,8 @@ fn quad_tile_state_end_system(
                     &mut asset_server,
                     &mut images,
                     &mut render_world_queue,
+                    &mut indicesAndEdgesCache,
+                    &render_device,
                 );
                 isDoneLoading = isDoneLoading && thisTileDoneLoading;
 
@@ -1696,7 +1702,6 @@ fn quad_tile_state_end_system(
 }
 
 fn quad_tile_state_init_system(
-    mut quadtree_tile_query: Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
     mut imagery_layer_query: Query<(
         Entity,
         &mut Visibility,
@@ -1704,34 +1709,28 @@ fn quad_tile_state_init_system(
         &mut XYZDataSource,
     )>,
     mut datasource_query: Query<&mut TerrainDataSource>,
-    mut quadtree_tile_key_query: Query<(&TileKey), With<TileToLoad>>,
+    // mut query: Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
+    query_immut: Query<(Entity, &Rectangle, &TileKey, &QuadtreeTileParent), With<TileToLoad>>,
     mut globe_surface_tile_query: Query<(&GlobeSurfaceTile), With<TileToLoad>>,
+    mut state_query: Query<(&QuadtreeTileLoadState), With<TileToLoad>>,
 ) {
     let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
-    for (
-        entity,
-        mut globe_surface_tile,
-        rectangle,
-        mut other_state,
-        mut replacement_state,
-        key,
-        node_id,
-        node_children,
-        mut state,
-        location,
-        parent,
-    ) in &mut quadtree_tile_query
-    {
+    for (entity, rectangle, key, parent) in query_immut.iter() {
+        let state = state_query
+            .get_component::<QuadtreeTileLoadState>(entity)
+            .unwrap();
         if *state == QuadtreeTileLoadState::START {
             //prepare new
             let mut available = terrain_datasource.getTileDataAvailable(key);
             if !available && parent.0 != TileNode::None {
                 if let TileNode::Internal(e) = parent.0 {
+                    let parentKey = {
+                        let key = query_immut.get_component::<TileKey>(e).unwrap();
+                        key.clone()
+                    };
                     let parentSurfaceTile =
-                        globe_surface_tile_query.get_component::<GlobeSurfaceTile>(e);
+                        globe_surface_tile_query.get_component_mut::<GlobeSurfaceTile>(e);
                     if parentSurfaceTile.is_ok() {
-                        let parentKey =
-                            quadtree_tile_key_query.get_component::<TileKey>(e).unwrap();
                         // let parentKey = quadtree_tile_query.get_component::<TileKey>(e).unwrap();
                         let parentSurfaceTile = parentSurfaceTile.unwrap();
                         if parentSurfaceTile.terrainData.is_some() {
@@ -1746,10 +1745,11 @@ fn quad_tile_state_init_system(
                     }
                 }
             }
+
             if !available {
-                // let mut globe_surface_tile = quadtree_tile_query
-                //     .get_component_mut::<GlobeSurfaceTile>(entity)
-                //     .unwrap();
+                let mut globe_surface_tile = globe_surface_tile_query
+                    .get_component_mut::<GlobeSurfaceTile>(entity)
+                    .unwrap();
                 globe_surface_tile.terrain_state = TerrainState::FAILED
             }
 
@@ -1757,6 +1757,9 @@ fn quad_tile_state_init_system(
             for (imagery_layer_entity, visibility, mut imagery_layer, mut xyz_datasource) in
                 &mut imagery_layer_query
             {
+                let mut globe_surface_tile = globe_surface_tile_query
+                    .get_component_mut::<GlobeSurfaceTile>(entity)
+                    .unwrap();
                 if let Visibility::Visible = *visibility {
                     imagery_layer._createTileImagerySkeletons(
                         &mut globe_surface_tile,
@@ -1770,9 +1773,9 @@ fn quad_tile_state_init_system(
                     );
                 }
             }
-            // let mut state = quadtree_tile_query
-            //     .get_component_mut::<QuadtreeTileLoadState>(entity)
-            //     .unwrap();
+            let mut state = state_query
+                .get_component_mut::<QuadtreeTileLoadState>(entity)
+                .unwrap();
             *state = QuadtreeTileLoadState::LOADING;
         }
     }
@@ -1781,7 +1784,6 @@ fn terrain_state_machine_system(
     mut quadtree_tile_query: Query<
         (
             Entity,
-            &mut GlobeSurfaceTile,
             &QuadtreeTileParent,
             &mut QuadtreeTileLoadState,
             &TileKey,
@@ -1790,8 +1792,11 @@ fn terrain_state_machine_system(
     >,
     mut globe_surface_tile_query: Query<(&GlobeSurfaceTile), With<TileToLoad>>,
 ) {
-    for (entity, mut globe_surface_tile, parent, mut state, key) in &mut quadtree_tile_query {
+    for (entity, parent, mut state, key) in &mut quadtree_tile_query {
         if *state == QuadtreeTileLoadState::LOADING {
+            let globe_surface_tile = globe_surface_tile_query
+                .get_component::<GlobeSurfaceTile>(entity)
+                .unwrap();
             if globe_surface_tile.terrain_state == TerrainState::FAILED
                 && parent.0 != TileNode::None
             {
@@ -1830,7 +1835,10 @@ fn terrain_state_machine_system(
     }
 }
 fn unsample_system(
-    mut quadtree_tile_query: Query<
+    mut datasource_query: Query<(&mut TerrainDataSource)>,
+    mut job_spawner: JobSpawner,
+    mut finished_jobs: FinishedJobs,
+    mut query: Query<
         (
             Entity,
             &mut GlobeSurfaceTile,
@@ -1840,50 +1848,54 @@ fn unsample_system(
         ),
         With<TileToLoad>,
     >,
-    mut datasource_query: Query<(&mut TerrainDataSource)>,
-    mut job_spawner: JobSpawner,
-    mut finished_jobs: FinishedJobs,
-    mut globe_surface_tile_query: Query<(&GlobeSurfaceTile), With<TileToLoad>>,
-    mut quadtree_tile_key_query: Query<(&TileKey), With<TileToLoad>>,
 ) {
     let Ok(terrain_datasource) = datasource_query.get_single() else {
         return;
     };
-    for (entity, mut globe_surface_tile, parent, mut state, key) in &mut quadtree_tile_query {
+    // let mut quadtree_tile_query = params_set.p0();
+    for (entity, globe_surface_tile, parent, mut state, key) in query.iter() {
         if globe_surface_tile.terrain_state == TerrainState::FAILED {
             if parent.0 == TileNode::None {
+                let mut state = query
+                    .get_component_mut::<QuadtreeTileLoadState>(entity)
+                    .unwrap();
                 *state = QuadtreeTileLoadState::FAILED;
                 return;
             }
 
             if let TileNode::Internal(v) = parent.0 {
-                let parent_globe_surface_tile = globe_surface_tile_query
-                    .get_component_mut::<GlobeSurfaceTile>(v)
-                    .unwrap();
-                if parent_globe_surface_tile.terrainData.is_none() {
-                    return;
-                }
-                let parent_key = quadtree_tile_key_query
-                    .get_component_mut::<TileKey>(v)
-                    .unwrap();
+                let (terrain_data, parent_key) = {
+                    // let mut world = params_set.p1();
+                    let parent_globe_surface_tile =
+                        query.get_component::<GlobeSurfaceTile>(v).unwrap();
+                    if parent_globe_surface_tile.terrainData.is_none() {
+                        continue;
+                    }
+                    let parent_key = query.get_component::<TileKey>(v).unwrap();
+                    (
+                        parent_globe_surface_tile
+                            .terrainData
+                            .as_ref()
+                            .unwrap()
+                            .clone(),
+                        parent_key.clone(),
+                    )
+                };
+
                 job_spawner.spawn(UnsampleJob {
-                    terrain_data: parent_globe_surface_tile
-                        .terrainData
-                        .as_ref()
-                        .unwrap()
-                        .clone(),
+                    terrain_data: terrain_data,
                     tiling_scheme: terrain_datasource.tiling_scheme.clone(),
-                    parent_key: *parent_key,
+                    parent_key: parent_key,
                     key: key.clone(),
                     entity: entity,
                 });
-                globe_surface_tile.terrain_state = TerrainState::RECEIVING;
+                // globe_surface_tile.terrain_state = TerrainState::RECEIVING;
             }
         }
     }
     while let Some(result) = finished_jobs.take_next::<UnsampleJob>() {
         if let Ok(res) = result {
-            let mut globe_surface_tile = quadtree_tile_query
+            let mut globe_surface_tile = query
                 .get_component_mut::<GlobeSurfaceTile>(res.entity)
                 .unwrap();
             if let Some(new_terrain_data) = res.terrain_data {

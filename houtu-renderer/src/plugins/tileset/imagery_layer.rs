@@ -1,26 +1,35 @@
 use std::{
-    f64::consts::{E, PI},
+    f32::consts::E,
+    f64::consts::{E as Ef64, PI},
     sync::Arc,
 };
 
 use bevy::{
+    core::cast_slice,
     math::DVec4,
     prelude::*,
-    render::render_resource::{
-        Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    render::{
+        render_resource::{
+            BufferInitDescriptor, BufferUsages, Extent3d, TextureDescriptor, TextureDimension,
+            TextureFormat, TextureUsages,
+        },
+        renderer::RenderDevice,
     },
     utils::HashMap,
 };
 use houtu_scene::{
-    Ellipsoid, GeographicTilingScheme, HeightmapTerrainData, Rectangle, TilingScheme,
+    lerp, lerp_f32, Ellipsoid, GeographicTilingScheme, HeightmapTerrainData, Rectangle,
+    TilingScheme,
 };
+
+use crate::plugins::tileset::imagery;
 
 use super::{
     globe_surface_tile::GlobeSurfaceTile,
     imagery::{Imagery, ImageryState, TileImagery},
     quadtree_tile::TileToLoad,
     reproject_texture::{self, ReprojectTextureTask, ReprojectTextureTaskQueue},
-    tile_quad_tree::GlobeSurfaceTileQuery,
+    tile_quad_tree::{GlobeSurfaceTileQuery, IndicesAndEdgesCacheArc},
     TileKey,
 };
 #[derive(Debug, Component)]
@@ -102,7 +111,7 @@ impl ImageryLayer {
             / (imageryProvider.tile_width * tilingScheme.get_number_of_x_tiles_at_level(0)) as f64;
 
         let twoToTheLevelPower = levelZeroMaximumTexelSpacing / texelSpacing;
-        let level = E.log(twoToTheLevelPower) / E.log(2.);
+        let level = Ef64.log(twoToTheLevelPower) / Ef64.log(2.);
         let rounded = level.round() as u32;
         return rounded | 0;
     }
@@ -492,6 +501,8 @@ impl ImageryLayer {
         width: u32,
         height: u32,
         render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
+        indicesAndEdgesCache: &mut IndicesAndEdgesCacheArc,
+        render_device: &Res<RenderDevice>,
     ) {
         let output_texture = images.add(Image {
             texture_descriptor: TextureDescriptor {
@@ -513,11 +524,39 @@ impl ImageryLayer {
             },
             ..Default::default()
         });
+        let rectangle = &imagery.rectangle;
+        let mut sinLatitude = rectangle.south.sin() as f32;
+        let southMercatorY = 0.5 * E.log((1.0 + sinLatitude) / (1.0 - sinLatitude));
+
+        sinLatitude = rectangle.north.sin() as f32;
+        let northMercatorY = 0.5 * E.log((1.0 + sinLatitude) / (1.0 - sinLatitude));
+        let oneOverMercatorHeight = 1.0 / (northMercatorY - southMercatorY);
+        let mut webMercatorT: Vec<f32> = vec![0.0; 2 * 64];
+        let south = imagery.rectangle.south as f32;
+        let north = imagery.rectangle.north as f32;
+
+        let mut outputIndex = 0;
+        for webMercatorTIndex in 0..64 {
+            let fraction = webMercatorTIndex as f32 / 63.0;
+            let latitude = lerp_f32(south, north, fraction);
+            sinLatitude = latitude.sin();
+            let mercatorY = 0.5 * E.log((1.0 + sinLatitude) / (1.0 - sinLatitude));
+            let mercatorFraction = (mercatorY - southMercatorY) * oneOverMercatorHeight;
+            webMercatorT[outputIndex] = mercatorFraction;
+            outputIndex += 1;
+            webMercatorT[outputIndex] = mercatorFraction;
+            outputIndex += 1;
+        }
+        let webmercartor_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: Some("webmercator_buffer"),
+            contents: cast_slice(&webMercatorT),
+            usage: BufferUsages::VERTEX,
+        });
         let task = ReprojectTextureTask {
             key: imagery.key,
             output_texture,
             image: imagery.texture.as_ref().expect("imagery.texture").clone(),
-            rectangle: imagery.rectangle.clone(),
+            webmercartor_buffer,
         };
         render_world_queue.push(task);
     }

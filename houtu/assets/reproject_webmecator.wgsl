@@ -7,8 +7,8 @@ struct ParamsUniforms {
     viewportOrthographic: mat4x4<f32>
 };
 struct VertexInput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) webMercatorT: vec2<f32>,
+  @location(0) position: vec4<f32>,
+  @location(1) webMercatorT: vec2<f32>,
 }
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,

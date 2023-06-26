@@ -170,6 +170,9 @@ pub fn zero_to_two_pi(angle: f64) -> f64 {
 pub fn lerp(p: f64, q: f64, time: f64) -> f64 {
     return (1.0 - time) * p + time * q;
 }
+pub fn lerp_f32(p: f32, q: f32, time: f32) -> f32 {
+    return (1.0 - time) * p + time * q;
+}
 pub fn acos_clamped(value: f64) -> f64 {
     value.clamp(-1.0, 1.0).acos()
 }

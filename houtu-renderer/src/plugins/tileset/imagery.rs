@@ -4,12 +4,14 @@ use bevy::{
     math::DVec4,
     prelude::{AssetServer, Assets, Component, Entity, Handle, Image, Query, ResMut},
     prelude::{Res, Visibility},
+    render::renderer::RenderDevice,
 };
 use houtu_scene::Rectangle;
 
 use super::{
     imagery_layer::{ImageryLayer, XYZDataSource},
     reproject_texture::ReprojectTextureTaskQueue,
+    tile_quad_tree::IndicesAndEdgesCacheArc,
     TileKey,
 };
 
@@ -95,6 +97,8 @@ impl Imagery {
         skipLoading: bool,
         images: &mut ResMut<Assets<Image>>,
         render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
+        indicesAndEdgesCache: &mut IndicesAndEdgesCacheArc,
+        render_device: &Res<RenderDevice>,
     ) {
         if (self.state == ImageryState::UNLOADED && !skipLoading) {
             self.state = ImageryState::TRANSITIONING;
@@ -126,6 +130,8 @@ impl Imagery {
                 256,
                 256,
                 render_world_queue,
+                indicesAndEdgesCache,
+                render_device,
             );
         }
     }
@@ -185,6 +191,8 @@ impl TileImagery {
         asset_server: &Res<AssetServer>,
         images: &mut ResMut<Assets<Image>>,
         render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
+        indicesAndEdgesCache: &mut IndicesAndEdgesCacheArc,
+        render_device: &Res<RenderDevice>,
     ) -> bool {
         let loadingImagery = self
             .get_loading_imagery_mut(imagery_layer)
@@ -198,6 +206,8 @@ impl TileImagery {
             skipLoading,
             images,
             render_world_queue,
+            indicesAndEdgesCache,
+            render_device,
         );
 
         if (loadingImagery.state == ImageryState::READY) {
@@ -290,6 +300,8 @@ impl TileImagery {
                         skipLoading,
                         images,
                         render_world_queue,
+                        indicesAndEdgesCache,
+                        render_device,
                     );
                 return false; // not done loading
             }

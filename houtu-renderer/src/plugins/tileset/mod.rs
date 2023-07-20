@@ -22,15 +22,5 @@ impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
         app.add_plugin(tile_quad_tree::Plugin);
-        // app.add_system(layer_system);
-        // app.add_startup_system(setup);
-        // app.add_system(tile_system::tile_system);
     }
 }
-// fn setup(mut commands: Commands) {
-//     let tilemap_entity = commands.spawn_empty().id();
-//     commands.spawn(TileLayerBundle {
-//         id: TileLayerId(tilemap_entity),
-//         ..Default::default()
-//     });
-// }

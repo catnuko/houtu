@@ -20,8 +20,10 @@ use super::create_terrain_mesh_job::CreateTileJob;
 use super::globe_surface_tile::{
     self, computeTileVisibility, GlobeSurfaceTile, TerrainState, TileVisibility,
 };
-use super::imagery::ImageryState;
-use super::imagery_layer::{ImageryLayer, TerrainDataSource, XYZDataSource};
+use super::imagery::{Imagery, ImageryState};
+use super::imagery_layer::{
+    self, ImageryLayer, ImageryLayerOtherState, TerrainDataSource, XYZDataSource,
+};
 use super::reproject_texture::{self, ReprojectTextureTaskQueue};
 use super::tile_selection_result::TileSelectionResult;
 use super::unsample_job::UnsampleJob;
@@ -36,7 +38,20 @@ use super::tile_replacement_queue::{TileReplacementQueue, TileReplacementState};
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(reproject_texture::Plugin);
+        app.add_plugin(imagery_layer::Plugin);
+        app.register_type::<TileKey>()
+            .register_type::<TileReplacementState>()
+            .register_type::<Quadrant>()
+            .register_type::<NodeChildren>()
+            .register_type::<QuadtreeTileMark>()
+            .register_type::<QuadtreeTileParent>()
+            .register_type::<TileToRender>()
+            .register_type::<TileToUpdateHeight>()
+            .register_type::<TileLoadHigh>()
+            .register_type::<TileLoadMedium>()
+            .register_type::<TileLoadLow>()
+            .register_type::<TileToLoad>();
+
         app.insert_resource(TileQuadTree::new());
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(RootTraversalDetails::new());
@@ -54,6 +69,7 @@ impl bevy::prelude::Plugin for Plugin {
             transform_system,
             quad_tile_state_end_system,
         ));
+        app.add_system(ImageryLayer::finish_reproject_texture_system);
     }
 }
 #[derive(Resource)]
@@ -214,7 +230,6 @@ fn render(
         Query<Entity, With<TileLoadLow>>,
     )>,
 ) {
-    println!("in render system");
     let Ok(window) = primary_query.get_single() else {
         return;
     };
@@ -402,7 +417,7 @@ fn visitTile(
         location,
         parent,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-
+    info!("visit tile key={:?}", key);
     if key.level > tile_quad_tree.debug.maxDepthVisited {
         tile_quad_tree.debug.maxDepthVisited = key.level;
     }
@@ -765,6 +780,7 @@ fn visitIfVisible(
     )>,
     quadtree_tile_entity: Entity,
 ) {
+    info!("visit if visible entity={:?}", quadtree_tile_entity);
     if computeTileVisibility(
         commands,
         ellipsoid,
@@ -1105,6 +1121,10 @@ fn visitVisibleChildrenNearToFar(
             None
         }
     };
+    info!(
+        "visitVisibleChildrenNearToFar key={:?}",
+        quadtree_tile_entity
+    );
     let southwest_entity = get_tile_ndoe_entity(southwest).expect("data不存在");
     let southeast_entity = get_tile_ndoe_entity(southeast).expect("data不存在");
     let northwest_entity = get_tile_ndoe_entity(northwest).expect("data不存在");
@@ -1563,7 +1583,9 @@ fn quad_tile_state_end_system(
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
     mut indicesAndEdgesCache: ResMut<IndicesAndEdgesCacheArc>,
     render_device: Res<RenderDevice>,
+    globe_camera_query: Query<(&GlobeCamera)>,
 ) {
+    let globe_camera = globe_camera_query.get_single().expect("GlobeCamera不存在");
     let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
     for (
         entity,
@@ -1584,6 +1606,7 @@ fn quad_tile_state_end_system(
         if terrainOnly {
             return;
         }
+        info!("quad_tile_state_end_system");
 
         let wasAlreadyRenderable = other_state.renderable;
 
@@ -1665,6 +1688,7 @@ fn quad_tile_state_end_system(
                     &mut render_world_queue,
                     &mut indicesAndEdgesCache,
                     &render_device,
+                    &globe_camera,
                 );
                 isDoneLoading = isDoneLoading && thisTileDoneLoading;
 
@@ -1711,8 +1735,8 @@ fn quad_tile_state_init_system(
     mut datasource_query: Query<&mut TerrainDataSource>,
     // mut query: Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
     query_immut: Query<(Entity, &Rectangle, &TileKey, &QuadtreeTileParent), With<TileToLoad>>,
-    mut globe_surface_tile_query: Query<(&GlobeSurfaceTile), With<TileToLoad>>,
-    mut state_query: Query<(&QuadtreeTileLoadState), With<TileToLoad>>,
+    mut globe_surface_tile_query: Query<(&mut GlobeSurfaceTile), With<TileToLoad>>,
+    mut state_query: Query<(&mut QuadtreeTileLoadState), With<TileToLoad>>,
 ) {
     let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
     for (entity, rectangle, key, parent) in query_immut.iter() {
@@ -1722,7 +1746,7 @@ fn quad_tile_state_init_system(
         if *state == QuadtreeTileLoadState::START {
             //prepare new
             let mut available = terrain_datasource.getTileDataAvailable(key);
-            if !available && parent.0 != TileNode::None {
+            if !available.is_none() && parent.0 != TileNode::None {
                 if let TileNode::Internal(e) = parent.0 {
                     let parentKey = {
                         let key = query_immut.get_component::<TileKey>(e).unwrap();
@@ -1734,23 +1758,27 @@ fn quad_tile_state_init_system(
                         // let parentKey = quadtree_tile_query.get_component::<TileKey>(e).unwrap();
                         let parentSurfaceTile = parentSurfaceTile.unwrap();
                         if parentSurfaceTile.terrainData.is_some() {
-                            available = parentSurfaceTile
-                                .terrainData
-                                .as_ref()
-                                .unwrap()
-                                .lock()
-                                .unwrap()
-                                .isChildAvailable(parentKey.x, parentKey.y, key.x, key.y);
+                            available = Some(
+                                parentSurfaceTile
+                                    .terrainData
+                                    .as_ref()
+                                    .unwrap()
+                                    .lock()
+                                    .unwrap()
+                                    .isChildAvailable(parentKey.x, parentKey.y, key.x, key.y),
+                            );
                         }
                     }
                 }
             }
 
-            if !available {
-                let mut globe_surface_tile = globe_surface_tile_query
-                    .get_component_mut::<GlobeSurfaceTile>(entity)
-                    .unwrap();
-                globe_surface_tile.terrain_state = TerrainState::FAILED
+            if let Some(v) = available {
+                if v == false {
+                    let mut globe_surface_tile = globe_surface_tile_query
+                        .get_component_mut::<GlobeSurfaceTile>(entity)
+                        .expect("entity have GlobeSurfaceTile component");
+                    globe_surface_tile.terrain_state = TerrainState::FAILED;
+                }
             }
 
             // // Map imagery tiles to this terrain tile
@@ -1765,8 +1793,6 @@ fn quad_tile_state_init_system(
                         &mut globe_surface_tile,
                         rectangle,
                         key,
-                        // &mut quadtree_tile_query,
-                        // entity,
                         &mut terrain_datasource,
                         &mut xyz_datasource,
                         imagery_layer_entity,
@@ -1855,7 +1881,7 @@ fn unsample_system(
     // let mut quadtree_tile_query = params_set.p0();
     for (entity, globe_surface_tile, parent, mut state, key) in query.iter() {
         if globe_surface_tile.terrain_state == TerrainState::FAILED {
-            if parent.0 == TileNode::None {
+            if let TileNode::None = parent.0 {
                 let mut state = query
                     .get_component_mut::<QuadtreeTileLoadState>(entity)
                     .unwrap();

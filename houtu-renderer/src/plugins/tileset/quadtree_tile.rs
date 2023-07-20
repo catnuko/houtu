@@ -10,14 +10,14 @@ use super::globe_surface_tile::GlobeSurfaceTile;
 use super::tile_replacement_queue::TileReplacementState;
 use super::tile_selection_result::TileSelectionResult;
 use super::TileKey;
-#[derive(Component, Clone, Copy, Hash, Debug, PartialEq, Eq)]
+#[derive(Component, Clone, Copy, Hash, Debug, PartialEq, Eq, Reflect)]
 pub enum TileNode {
     /// None variant.
     None,
     /// Identifier of an internal node.
     Internal(Entity),
 }
-#[derive(Component, Debug, PartialEq)]
+#[derive(Component, Debug, PartialEq, Reflect)]
 pub enum Quadrant {
     Northwest,
     Northeast,
@@ -26,7 +26,7 @@ pub enum Quadrant {
     Root(usize),
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, Component)]
+#[derive(Clone, Copy, PartialEq, Debug, Component, Reflect)]
 pub struct NodeChildren {
     pub(super) northwest: TileNode,
     pub(super) northeast: TileNode,
@@ -110,7 +110,7 @@ impl Direction {
         }
     }
 }
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect)]
 pub struct QuadtreeTileMark;
 #[derive(Component, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum QuadtreeTileLoadState {
@@ -142,7 +142,7 @@ impl Default for QuadtreeTileOtherState {
 }
 #[derive(Component)]
 pub struct QuadtreeTileData(pub Option<GlobeSurfaceTile>);
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Reflect)]
 pub struct QuadtreeTileParent(pub TileNode);
 #[derive(Bundle)]
 pub struct QuadtreeTile {
@@ -180,17 +180,17 @@ impl QuadtreeTile {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TileToRender;
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TileToUpdateHeight;
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TileLoadHigh;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TileLoadMedium;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TileLoadLow;
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TileToLoad;

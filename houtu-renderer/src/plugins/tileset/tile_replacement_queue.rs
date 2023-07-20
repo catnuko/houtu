@@ -3,7 +3,7 @@ use std::collections::LinkedList;
 use bevy::prelude::*;
 
 use super::{globe_surface_tile::GlobeSurfaceTile, tile_quad_tree::GlobeSurfaceTileQuery};
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Reflect)]
 pub struct TileReplacementState {
     replacementPrevious: Option<Entity>,
     replacementNext: Option<Entity>,

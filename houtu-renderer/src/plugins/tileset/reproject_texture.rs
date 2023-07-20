@@ -15,6 +15,8 @@ use bevy::{
     },
     utils::HashMap,
 };
+use std::mem;
+
 use houtu_scene::Rectangle;
 
 use super::{tile_quad_tree::IndicesAndEdgesCacheArc, TileKey};
@@ -43,7 +45,7 @@ impl bevy::prelude::Plugin for Plugin {
 #[derive(Resource)]
 pub struct ReprojectTextureTaskQueue {
     map: HashMap<TileKey, ReprojectTextureTask>,
-    pub status_channel: (Sender<TileKey>, Receiver<TileKey>),
+    pub status_channel: (Sender<(Entity, TileKey)>, Receiver<(Entity, TileKey)>),
 }
 impl Default for ReprojectTextureTaskQueue {
     fn default() -> Self {
@@ -69,7 +71,7 @@ impl ReprojectTextureTaskQueue {
     pub fn clear(&mut self) {
         self.map.clear()
     }
-    pub fn clone_status_channel(&self) -> (Sender<TileKey>, Receiver<TileKey>) {
+    pub fn clone_status_channel(&self) -> (Sender<(Entity, TileKey)>, Receiver<(Entity, TileKey)>) {
         self.status_channel.clone()
     }
 }
@@ -88,6 +90,9 @@ pub struct ReprojectTextureTask {
     pub image: Handle<Image>,
     pub output_texture: Handle<Image>,
     pub webmercartor_buffer: Buffer,
+    pub index_buffer: Buffer,
+    pub uniform_buffer: Buffer,
+    pub imagery_layer_entity: Entity,
 }
 impl Clone for ReprojectTextureTask {
     fn clone(&self) -> Self {
@@ -96,15 +101,24 @@ impl Clone for ReprojectTextureTask {
             key: self.key.clone(),
             output_texture: self.output_texture.clone(),
             webmercartor_buffer: self.webmercartor_buffer.clone(),
+            index_buffer: self.index_buffer.clone(),
+            uniform_buffer: self.uniform_buffer.clone(),
+            imagery_layer_entity: self.imagery_layer_entity.clone(),
         }
     }
 }
+#[derive(Copy, Clone, Debug, Default, ShaderType)]
+pub struct ParamsUniforms {
+    pub viewportOrthographic: Mat4,
+    pub textureDimensions: UVec2,
+}
+pub(crate) const UNIFORM_BUFFER_SIZE: BufferAddress =
+    mem::size_of::<ParamsUniforms>() as BufferAddress;
 #[derive(Resource)]
 pub struct ReprojectTexturePipeline {
     texture_bind_group_layout: BindGroupLayout,
     pipeline: CachedRenderPipelineId,
     vertex_buffer: Buffer,
-    index_buffer: Buffer,
 }
 
 impl FromWorld for ReprojectTexturePipeline {
@@ -114,30 +128,67 @@ impl FromWorld for ReprojectTexturePipeline {
                 .resource::<RenderDevice>()
                 .create_bind_group_layout(&BindGroupLayoutDescriptor {
                     label: None,
-                    entries: &[BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::ReadWrite,
-                            format: TextureFormat::Rgba8Unorm,
-                            view_dimension: TextureViewDimension::D2,
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::FRAGMENT,
+                            ty: BindingType::Texture {
+                                sample_type: TextureSampleType::Float { filterable: true },
+                                view_dimension: TextureViewDimension::D2,
+                                multisampled: false,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    }],
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStages::FRAGMENT,
+                            ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                            count: None,
+                        },
+                        BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: ShaderStages::VERTEX_FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: BufferSize::new(UNIFORM_BUFFER_SIZE),
+                            },
+                            count: None,
+                        },
+                    ],
                 });
         let shader = world
             .resource::<AssetServer>()
             .load("reproject_webmecator.wgsl");
         let pipeline_cache = world.resource::<PipelineCache>();
         let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
-            label: Some(Cow::from("reproject_texture")),
+            label: None,
             layout: vec![texture_bind_group_layout.clone()],
             push_constant_ranges: Vec::new(),
             vertex: VertexState {
                 shader: shader.clone(),
                 shader_defs: vec![],
                 entry_point: Cow::from("vertex_main"),
-                buffers: vec![],
+                buffers: vec![
+                    VertexBufferLayout {
+                        array_stride: 0,
+                        step_mode: VertexStepMode::Vertex,
+                        attributes: vec![VertexAttribute {
+                            shader_location: 0,
+                            format: VertexFormat::Float32x4,
+                            offset: 0,
+                        }],
+                    },
+                    VertexBufferLayout {
+                        array_stride: 0,
+                        step_mode: VertexStepMode::Vertex,
+                        attributes: vec![VertexAttribute {
+                            shader_location: 1,
+                            format: VertexFormat::Float32x2,
+                            offset: 0,
+                        }],
+                    },
+                ],
             },
             fragment: Some(FragmentState {
                 shader: shader.clone(),
@@ -163,7 +214,7 @@ impl FromWorld for ReprojectTexturePipeline {
         });
 
         let render_device = world.resource::<RenderDevice>();
-        let render_queue = world.resource::<RenderQueue>();
+        // let render_queue = world.resource::<RenderQueue>();
         let mut positions = vec![0.0; 2 * 64 * 2];
         let mut index = 0;
         for j in 0..64 {
@@ -182,23 +233,10 @@ impl FromWorld for ReprojectTexturePipeline {
             contents: cast_slice(&positions),
             usage: BufferUsages::VERTEX,
         });
-        let indicesAndEdgesCache = world.resource::<IndicesAndEdgesCacheArc>();
-        let indices = indicesAndEdgesCache
-            .0
-            .clone()
-            .lock()
-            .unwrap()
-            .getRegularGridIndices(2, 64);
-        let index_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            label: Some("indices_buffer"),
-            contents: cast_slice(&indices),
-            usage: BufferUsages::VERTEX,
-        });
 
         ReprojectTexturePipeline {
             texture_bind_group_layout,
             pipeline,
-            index_buffer,
             vertex_buffer,
         }
     }
@@ -216,31 +254,52 @@ impl render_graph::Node for ReprojectTextureNode {
         let pipeline = world.resource::<ReprojectTexturePipeline>();
         let task_queue = world.resource::<ReprojectTextureTaskQueue>();
         let gpu_images = world.resource::<RenderAssets<Image>>();
+        let device = render_context.render_device();
         let render_pipeline = pipeline_cache
             .get_render_pipeline(pipeline.pipeline)
-            .expect("reproject texture pipeline");
-
+            .expect("need a reproject texture pipeline");
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            label: None,
+            ..Default::default()
+        });
+        bevy::log::debug!("task queue length is {}", task_queue.count());
         for task in task_queue.map.iter() {
             let view = &gpu_images.get(&task.1.image).expect("task.image");
             let output_texture = &gpu_images
                 .get(&task.1.output_texture)
                 .expect("task.output_texture");
+
             let bind_group =
                 render_context
                     .render_device()
                     .create_bind_group(&BindGroupDescriptor {
                         label: None,
+
                         layout: &pipeline.texture_bind_group_layout,
-                        entries: &[BindGroupEntry {
-                            binding: 0,
-                            resource: BindingResource::TextureView(&view.texture_view),
-                        }],
+                        entries: &[
+                            BindGroupEntry {
+                                binding: 0,
+                                resource: BindingResource::TextureView(&view.texture_view),
+                            },
+                            BindGroupEntry {
+                                binding: 1,
+                                resource: BindingResource::Sampler(&sampler),
+                            },
+                            BindGroupEntry {
+                                binding: 2,
+                                resource: BindingResource::Buffer(BufferBinding {
+                                    buffer: &task.1.uniform_buffer,
+                                    offset: 0,
+                                    size: BufferSize::new(UNIFORM_BUFFER_SIZE),
+                                }),
+                            },
+                        ],
                     });
             let mut render_pass =
                 render_context
                     .command_encoder()
                     .begin_render_pass(&RenderPassDescriptor {
-                        label: "reproject_texture".into(),
+                        label: "reproject_texture_pass".into(),
                         color_attachments: &[Some(RenderPassColorAttachment {
                             view: &output_texture.texture_view,
                             resolve_target: None,
@@ -252,7 +311,7 @@ impl render_graph::Node for ReprojectTextureNode {
             render_pass.set_bind_group(0, &bind_group, &[]);
             render_pass.set_vertex_buffer(0, *pipeline.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, *task.1.webmercartor_buffer.slice(..));
-            render_pass.set_index_buffer(*pipeline.index_buffer.slice(..), IndexFormat::Uint32);
+            render_pass.set_index_buffer(*task.1.index_buffer.slice(..), IndexFormat::Uint32);
             render_pass.draw(0..3, 0..1);
         }
         Ok(())

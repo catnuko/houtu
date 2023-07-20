@@ -10,10 +10,10 @@ use bevy_easings::Lerp;
 use bevy_egui::EguiSet;
 use egui::EguiWantsFocus;
 use houtu_scene::{
-    acos_clamped, equals_epsilon, to_mat4_32, zero_to_two_pi, Cartesian3, Cartographic,
-    CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll,
-    IntersectionTests, Matrix3, Matrix4, PerspectiveOffCenterFrustum, Projection, Quaternion,
-    Rectangle, Transforms, EPSILON10, EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
+    acos_clamped, equals_epsilon, to_mat4_32, zero_to_two_pi, BoundingRectangle, Cartesian3,
+    Cartographic, CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection,
+    HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4, PerspectiveOffCenterFrustum, Projection,
+    Quaternion, Rectangle, Transforms, EPSILON10, EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
 };
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::f64::NEG_INFINITY;
@@ -135,6 +135,8 @@ pub struct GlobeCamera {
     pub frustum: GlobeCameraFrustum,
     pub inited: bool,
     pub constrainedAxis: Option<DVec3>,
+
+    pub viewport: BoundingRectangle,
 }
 
 impl Default for GlobeCamera {
@@ -182,6 +184,7 @@ impl Default for GlobeCamera {
             frustum: GlobeCameraFrustum::default(),
             inited: false,
             constrainedAxis: None,
+            viewport: BoundingRectangle::new(),
         };
         return me;
     }
@@ -223,6 +226,13 @@ fn globe_camera_setup_system(
         globe_camera.up = DVec3::new(y_axis.x as f64, y_axis.y as f64, y_axis.z as f64);
         globe_camera.right = globe_camera.direction.cross(globe_camera.up);
 
+        let window_size = camera
+            .logical_viewport_size()
+            .expect("logical_viewport_size is undifined");
+        globe_camera.viewport.x = 0.;
+        globe_camera.viewport.y = 0.;
+        globe_camera.viewport.width = window_size.x as f64;
+        globe_camera.viewport.height = window_size.y as f64;
         globe_camera.update_self();
         globe_camera.update_camera_matrix(&mut transform);
     }

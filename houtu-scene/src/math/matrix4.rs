@@ -161,9 +161,9 @@ pub trait Matrix4 {
     fn multiply_by_vector(&self, cartesian: &DVec4) -> DVec4;
     fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3;
     fn from_raw_list(slice: [f64; 16]) -> DMat4;
+    fn to_mat4_32(&self) -> Mat4;
 
     fn compute_orthographic_off_center(
-        &self,
         left: f64,
         right: f64,
         bottom: f64,
@@ -177,7 +177,6 @@ impl Matrix4 for DMat4 {
         return make_matrix4_from_raw(slice);
     }
     fn compute_orthographic_off_center(
-        &self,
         left: f64,
         right: f64,
         bottom: f64,
@@ -338,6 +337,9 @@ impl Matrix4 for DMat4 {
         result[14] = direction.dot(*position);
         result[15] = 1.0;
         return DMat4::from_cols_array(&result);
+    }
+    fn to_mat4_32(&self) -> Mat4 {
+        to_mat4_32(self)
     }
 }
 pub fn to_mat4_64(mat4: &Mat4) -> DMat4 {

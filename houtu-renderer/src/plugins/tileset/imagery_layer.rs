@@ -6,29 +6,30 @@ use std::{
 
 use bevy::{
     core::cast_slice,
-    math::DVec4,
+    math::{DMat4, DVec4},
     prelude::*,
     render::{
         render_resource::{
-            BufferInitDescriptor, BufferUsages, Extent3d, TextureDescriptor, TextureDimension,
-            TextureFormat, TextureUsages,
+            encase, BufferInitDescriptor, BufferUsages, Extent3d, TextureDescriptor,
+            TextureDimension, TextureFormat, TextureUsages,
         },
         renderer::RenderDevice,
     },
     utils::HashMap,
 };
+use bevy_egui::egui::epaint::image;
 use houtu_scene::{
-    lerp, lerp_f32, Ellipsoid, GeographicTilingScheme, HeightmapTerrainData, Rectangle,
-    TilingScheme,
+    lerp, lerp_f32, BoundingRectangle, Ellipsoid, GeographicTilingScheme, HeightmapTerrainData,
+    Matrix4, Rectangle, TilingScheme,
 };
 
-use crate::plugins::tileset::imagery;
+use crate::plugins::{camera::GlobeCamera, tileset::imagery};
 
 use super::{
     globe_surface_tile::GlobeSurfaceTile,
     imagery::{Imagery, ImageryState, TileImagery},
     quadtree_tile::TileToLoad,
-    reproject_texture::{self, ReprojectTextureTask, ReprojectTextureTaskQueue},
+    reproject_texture::{self, ParamsUniforms, ReprojectTextureTask, ReprojectTextureTaskQueue},
     tile_quad_tree::{GlobeSurfaceTileQuery, IndicesAndEdgesCacheArc},
     TileKey,
 };
@@ -111,7 +112,7 @@ impl ImageryLayer {
             / (imageryProvider.tile_width * tilingScheme.get_number_of_x_tiles_at_level(0)) as f64;
 
         let twoToTheLevelPower = levelZeroMaximumTexelSpacing / texelSpacing;
-        let level = Ef64.log(twoToTheLevelPower) / Ef64.log(2.);
+        let level = twoToTheLevelPower.ln() / 2f64.ln();
         let rounded = level.round() as u32;
         return rounded | 0;
     }
@@ -503,7 +504,9 @@ impl ImageryLayer {
         render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
         indicesAndEdgesCache: &mut IndicesAndEdgesCacheArc,
         render_device: &Res<RenderDevice>,
+        globe_camera: &GlobeCamera,
     ) {
+        info!("reproject texture key={:?}", imagery.key);
         let output_texture = images.add(Image {
             texture_descriptor: TextureDescriptor {
                 label: "reproject_texture".into(),
@@ -526,10 +529,10 @@ impl ImageryLayer {
         });
         let rectangle = &imagery.rectangle;
         let mut sinLatitude = rectangle.south.sin() as f32;
-        let southMercatorY = 0.5 * E.log((1.0 + sinLatitude) / (1.0 - sinLatitude));
+        let southMercatorY = 0.5 * ((1.0 + sinLatitude) / (1.0 - sinLatitude)).ln();
 
         sinLatitude = rectangle.north.sin() as f32;
-        let northMercatorY = 0.5 * E.log((1.0 + sinLatitude) / (1.0 - sinLatitude));
+        let northMercatorY = 0.5 * ((1.0 + sinLatitude) / (1.0 - sinLatitude).ln());
         let oneOverMercatorHeight = 1.0 / (northMercatorY - southMercatorY);
         let mut webMercatorT: Vec<f32> = vec![0.0; 2 * 64];
         let south = imagery.rectangle.south as f32;
@@ -540,7 +543,7 @@ impl ImageryLayer {
             let fraction = webMercatorTIndex as f32 / 63.0;
             let latitude = lerp_f32(south, north, fraction);
             sinLatitude = latitude.sin();
-            let mercatorY = 0.5 * E.log((1.0 + sinLatitude) / (1.0 - sinLatitude));
+            let mercatorY = 0.5 * ((1.0 + sinLatitude) / (1.0 - sinLatitude)).ln();
             let mercatorFraction = (mercatorY - southMercatorY) * oneOverMercatorHeight;
             webMercatorT[outputIndex] = mercatorFraction;
             outputIndex += 1;
@@ -552,22 +555,61 @@ impl ImageryLayer {
             contents: cast_slice(&webMercatorT),
             usage: BufferUsages::VERTEX,
         });
+        let indices = indicesAndEdgesCache
+            .0
+            .clone()
+            .lock()
+            .unwrap()
+            .getRegularGridIndices(2, 64);
+        let index_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: Some("indices_buffer"),
+            contents: cast_slice(&indices),
+            usage: BufferUsages::VERTEX,
+        });
+        let v = &globe_camera.viewport;
+        let _viewportOrthographicMatrix = DMat4::compute_orthographic_off_center(
+            v.x,
+            v.x + v.width,
+            v.y,
+            v.y + v.height,
+            0.0,
+            1.0,
+        )
+        .to_mat4_32();
+        let unifrom_params = ParamsUniforms {
+            textureDimensions: UVec2::new(width, height),
+            viewportOrthographic: _viewportOrthographicMatrix,
+        };
+        let mut buffer = encase::UniformBuffer::new(Vec::new());
+        buffer.write(&unifrom_params).unwrap();
+
+        let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: None,
+            contents: &buffer.into_inner(),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
         let task = ReprojectTextureTask {
             key: imagery.key,
             output_texture,
             image: imagery.texture.as_ref().expect("imagery.texture").clone(),
             webmercartor_buffer,
+            index_buffer,
+            uniform_buffer: buffer,
+            imagery_layer_entity: imagery.imageryLayer.clone(),
         };
         render_world_queue.push(task);
     }
     pub fn finish_reproject_texture_system(
         mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
-        imagery_layer: &mut ImageryLayer,
+        mut imagery_layer_query: Query<(&mut ImageryLayer,)>,
     ) {
         let (_, receiver) = render_world_queue.status_channel.clone();
         for i in 0..render_world_queue.count() {
-            let Ok(key)  =receiver.try_recv()else{continue;};
+            let Ok((imagery_layer_entity,key))  =receiver.try_recv()else{continue;};
             let task = render_world_queue.get(&key).expect("task");
+            let mut imagery_layer = imagery_layer_query
+                .get_component_mut::<ImageryLayer>(imagery_layer_entity)
+                .expect("imagery_layer");
             let mut imagery = imagery_layer.get_imagery_mut(&key).expect("imagery");
             imagery.set_texture(task.output_texture.clone());
             imagery.state = ImageryState::READY;
@@ -645,11 +687,11 @@ impl TerrainDataSource {
             rectangle: Rectangle::MAX_VALUE.clone(),
         }
     }
-    pub fn getTileDataAvailable(&self, key: &TileKey) -> bool {
-        return false;
+    pub fn getTileDataAvailable(&self, key: &TileKey) -> Option<bool> {
+        return None;
     }
-    pub fn loadTileDataAvailability(&self, key: &TileKey) -> bool {
-        return false;
+    pub fn loadTileDataAvailability(&self, key: &TileKey) -> Option<bool> {
+        return None;
     }
     pub fn getLevelMaximumGeometricError(&self, level: u32) -> f64 {
         return self._levelZeroMaximumGeometricError / (1 << level) as f64;

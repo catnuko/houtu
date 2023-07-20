@@ -1,10 +1,10 @@
 @group(0) @binding(0) var texture_input: texture_2d<f32>;
 @group(0) @binding(1) var mySampler : sampler;
-@group(0) @binding(3) var<uniform> params: ParamsUniforms;
+@group(0) @binding(2) var<uniform> params: ParamsUniforms;
 
 struct ParamsUniforms {
+    viewportOrthographic: mat4x4<f32>,
     textureDimensions: vec2<f32>,
-    viewportOrthographic: mat4x4<f32>
 };
 struct VertexInput {
   @location(0) position: vec4<f32>,

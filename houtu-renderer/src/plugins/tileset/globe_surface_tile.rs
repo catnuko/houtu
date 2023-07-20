@@ -237,7 +237,7 @@ pub fn updateTileBoundingRegion(
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
 ) {
-    let (entity, mut globe_surface_tile, rectangle, parent, other_state) = {
+    let (entity, mut globe_surface_tile, rectangle, parent, _) = {
         let (entity, mut globe_surface_tile, rectangle, other_state, _, _, _, _, _, _, parent) =
             quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
         (entity, globe_surface_tile, rectangle, parent, other_state)

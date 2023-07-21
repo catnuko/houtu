@@ -3,27 +3,18 @@ import { onBeforeUnmount, onMounted } from 'vue';
 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1MmIxYWJmNy0yZDA1LTRiYmQtYmI3Ny1iMGIwNTk5NWQyMWYiLCJpZCI6Mjk5MjQsImlhdCI6MTU5OTIwMDkxOX0.aUw9ehdKoobH0GEq5lp3s3Uk9_QSMZVvFFrsLsAACqc"
 const {Cartesian2,Cartesian3,Cartographic,Camera,Scene,defaultValue,GeographicProjection,TweenCollection,MapMode2D   ,SceneMode ,Rectangle} = Cesium
 const CesiumMath = Cesium.Math
-let viewer
 onMounted(() => {
-  viewer = new Cesium.Viewer("map")
-  let cartographic = Cartographic.fromCartesian(new Cartesian3( 
-        2036958.0464795611,
-        -15472232.458995726,
-        10964412.23869562
-    ));
-console.log(cartographic)
-console.log(Rectangle.fromDegrees(
-  -95.0,
-  -20.0,
-  -70.0,
-  90.0
-))
-let cartographic2 = Cartographic.fromCartesian(new Cartesian3( 
-  3158361.6202377677,
-  -23990138.266394306,
-  17020972.591239184
-    ));
-console.log(cartographic2)
+  window.viewer = new Cesium.Viewer("map")
+  
+  let p_wc = new Cartesian3( 
+    0,0,17020972.5
+    );
+    let d_wc = new Cartesian3(0,0,-1)
+    let u_wc = new Cartesian3(0,1,0)
+    let v = viewer.camera.frustum.computeCullingVolume(p_wc,d_wc,u_wc);
+    console.log(v)
+    // Cesium.PerspectiveOffCenterFrustum.
+
   // let scene;
   // let camera;
 

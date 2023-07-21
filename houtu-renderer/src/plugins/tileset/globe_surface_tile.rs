@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use bevy::{math::DVec3, prelude::*};
 use houtu_scene::{
@@ -14,7 +14,7 @@ use super::{
     quadtree_tile::{QuadtreeTileMark, QuadtreeTileOtherState, TileNode},
     tile_quad_tree::GlobeSurfaceTileQuery,
 };
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TerrainState {
     FAILED = 0,
     UNLOADED = 1,
@@ -63,6 +63,13 @@ impl GlobeSurfaceTile {
             imagery: Vec::new(),
         }
     }
+    pub fn has_mesh(&self) -> bool {
+        if let Some(v) = self.terrainData.as_ref() {
+            v.clone().lock().unwrap().has_mesh()
+        } else {
+            false
+        }
+    }
     pub fn eligibleForUnloading(&self) -> bool {
         let loadingIsTransitioning = self.terrain_state == TerrainState::RECEIVING
             || self.terrain_state == TerrainState::TRANSFORMING;
@@ -83,16 +90,16 @@ impl GlobeSurfaceTile {
     }
 }
 pub fn computeTileVisibility(
-    commands: &mut Commands,
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    // commands: &mut Commands,
+    // ellipsoid: &Ellipsoid,
+    ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     camera: &mut GlobeCamera,
     quadtree_tile_entity: Entity,
 ) -> TileVisibility {
     computeDistanceToTile(
-        commands,
-        ellipsoid,
+        // commands,
+        // ellipsoid,
         ellipsoidalOccluder,
         quadtree_tile_query,
         quadtree_tile_entity,
@@ -151,16 +158,16 @@ pub fn computeTileVisibility(
 }
 //计算瓦片到相机的距离
 fn computeDistanceToTile(
-    commands: &mut Commands,
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    // commands: &mut Commands,
+    // ellipsoid: &Ellipsoid,
+    ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
     camera: &mut GlobeCamera,
 ) {
     updateTileBoundingRegion(
-        commands,
-        ellipsoid,
+        // commands,
+        // ellipsoid,
         ellipsoidalOccluder,
         quadtree_tile_query,
         quadtree_tile_entity,
@@ -214,9 +221,9 @@ fn computeDistanceToTile(
 }
 
 pub fn test(
-    commands: &mut Commands,
+    // commands: &mut Commands,
     ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
 ) {
@@ -231,9 +238,9 @@ pub fn test(
     }
 }
 pub fn updateTileBoundingRegion(
-    commands: &mut Commands,
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    // commands: &mut Commands,
+    // ellipsoid: &Ellipsoid,
+    ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
 ) {
@@ -262,9 +269,12 @@ pub fn updateTileBoundingRegion(
     // If the terrain data is not available either, get them from an ancestor.
     // If none of the ancestors are available, then there are no min and max heights for this tile at this time.
     let mut source_tile = Some(entity);
-    if (globe_surface_tile.mesh.is_some()) {
+    if (globe_surface_tile.has_mesh()) {
         let (minimumHeight, maximumHeight) = {
-            let mesh = globe_surface_tile.mesh.as_ref().unwrap();
+            let cloned = globe_surface_tile.terrainData.as_ref().unwrap().clone();
+            let terrain_data = cloned.lock().unwrap();
+            let mesh = terrain_data._mesh.as_ref().unwrap();
+            // let mesh = globe_surface_tile.mesh.as_ref().unwrap();
             (mesh.minimumHeight, mesh.maximumHeight)
         };
         let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_mut().unwrap();
@@ -282,9 +292,16 @@ pub fn updateTileBoundingRegion(
                 let (_, ancestor_globe_surface_tile, _, _, _, _, _, _, _, _, parent_node) =
                     quadtree_tile_query.get(ancestorTile).unwrap();
                 // (ancestor_globe_surface_tile, parent_node)
-                if (ancestor_globe_surface_tile.mesh.is_some()) {
-                    let t = ancestor_globe_surface_tile.mesh.as_ref().unwrap();
-                    (t.minimumHeight, t.maximumHeight, parent_node)
+                if (ancestor_globe_surface_tile.has_mesh()) {
+                    let cloned = ancestor_globe_surface_tile
+                        .terrainData
+                        .as_ref()
+                        .unwrap()
+                        .clone();
+                    let terrain_data = cloned.lock().unwrap();
+                    let mesh = terrain_data._mesh.as_ref().unwrap();
+                    // let t = ancestor_globe_surface_tile.mesh.as_ref().unwrap();
+                    (mesh.minimumHeight, mesh.maximumHeight, parent_node)
                 } else {
                     break;
                 }
@@ -314,7 +331,10 @@ pub fn updateTileBoundingRegion(
         };
         if (hasBoundingVolumesFromMesh) {
             let (orientedBoundingBox, boundingSphere3D, occludeePointInScaledSpace) = {
-                let mesh = globe_surface_tile.mesh.as_ref().unwrap();
+                // let mesh = globe_surface_tile.mesh.as_ref().unwrap();
+                let cloned = globe_surface_tile.terrainData.as_ref().unwrap().clone();
+                let terrain_data = cloned.lock().unwrap();
+                let mesh = terrain_data._mesh.as_ref().unwrap();
                 (
                     mesh.orientedBoundingBox.clone(),
                     mesh.boundingSphere3D.clone(),
@@ -333,7 +353,7 @@ pub fn updateTileBoundingRegion(
                 // If the occludee point is not defined, fallback to calculating it from the OBB
                 if globe_surface_tile.occludeePointInScaledSpace.is_none() {
                     globe_surface_tile.occludeePointInScaledSpace = computeOccludeePoint(
-                        &ellipsoid,
+                        // &ellipsoid,
                         &ellipsoidalOccluder,
                         &center,
                         rectangle,
@@ -358,9 +378,9 @@ pub fn updateTileBoundingRegion(
                 || tileBoundingRegion.maximumHeight != oldMaximumHeight;
             if (heightChanged || needsBounds) {
                 // Bounding volumes need to be recomputed in some circumstances
-                tileBoundingRegion.computeBoundingVolumes(&ellipsoid);
+                tileBoundingRegion.computeBoundingVolumes(&ellipsoidalOccluder.ellipsoid);
                 globe_surface_tile.occludeePointInScaledSpace = computeOccludeePoint(
-                    &ellipsoid,
+                    // &ellipsoid,
                     &ellipsoidalOccluder,
                     &center,
                     rectangle,
@@ -385,14 +405,15 @@ pub fn updateTileBoundingRegion(
 }
 
 fn computeOccludeePoint(
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    // ellipsoid: &Ellipsoid,
+    ellipsoidalOccluder: &EllipsoidalOccluder,
     center: &DVec3,
     rectangle: &Rectangle,
     minimumHeight: f64,
     maximumHeight: f64,
 ) -> Option<DVec3> {
     let mut cornerPositions = vec![DVec3::ZERO, DVec3::ZERO, DVec3::ZERO, DVec3::ZERO];
+    let ellipsoid = ellipsoidalOccluder.ellipsoid;
     cornerPositions[0] = DVec3::from_radians(
         rectangle.west,
         rectangle.south,
@@ -424,3 +445,4 @@ fn computeOccludeePoint(
         minimumHeight,
     );
 }
+pub fn processStateMachine_system() {}

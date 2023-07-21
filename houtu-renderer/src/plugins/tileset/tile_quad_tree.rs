@@ -277,6 +277,7 @@ fn render(
                     let r = terrain_datasource
                         .tiling_scheme
                         .tile_x_y_to_rectange(x, y, 0);
+
                     make_new_quadtree_tile(
                         &mut commands,
                         TileKey {
@@ -291,9 +292,8 @@ fn render(
                     i += 1;
                 }
             }
-            let count = render_queue_query.iter().count();
-            if root_traversal_details.0.len() < count {
-                root_traversal_details.0 = vec![TraversalDetails::default(); count]
+            if root_traversal_details.0.len() < i {
+                root_traversal_details.0 = vec![TraversalDetails::default(); i];
             }
         } else {
             return;
@@ -493,6 +493,7 @@ fn visitTile(
                 entity_mut.insert(TileLoadMedium);
             }
             entity_mut.insert(TileToRender);
+            entity_mut.remove::<(TileToLoad)>();
 
             traversalDetails.allAreRenderable = other_state.renderable;
             traversalDetails.anyWereRenderedLastFrame =
@@ -528,7 +529,7 @@ fn visitTile(
         let mut allAreUpsampled = true;
         if let TileNode::Internal(v) = southwestChild {
             let state = quadtree_tile_query
-                .get_component_mut::<QuadtreeTileOtherState>(v)
+                .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -537,7 +538,7 @@ fn visitTile(
         }
         if let TileNode::Internal(v) = southeastChild {
             let state = quadtree_tile_query
-                .get_component_mut::<QuadtreeTileOtherState>(v)
+                .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -546,7 +547,7 @@ fn visitTile(
         }
         if let TileNode::Internal(v) = northwestChild {
             let state = quadtree_tile_query
-                .get_component_mut::<QuadtreeTileOtherState>(v)
+                .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -555,7 +556,7 @@ fn visitTile(
         }
         if let TileNode::Internal(v) = northeastChild {
             let state = quadtree_tile_query
-                .get_component_mut::<QuadtreeTileOtherState>(v)
+                .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
@@ -782,8 +783,8 @@ fn visitIfVisible(
 ) {
     info!("visit if visible entity={:?}", quadtree_tile_entity);
     if computeTileVisibility(
-        commands,
-        ellipsoid,
+        // commands,
+        // ellipsoid,
         ellipsoidalOccluder,
         quadtree_tile_query,
         globe_camera,
@@ -866,17 +867,6 @@ fn visitIfVisible(
     other_state._lastSelectionResultFrame = Some(frame_count.0);
 }
 
-// type QueueParmaSet<'world, 'state> = ParamSet<
-//     'world,
-//     'state,
-//     (
-//         Query<'world, 'state, Entity, With<TileToRender>>,
-//         Query<'world, 'state, Entity, With<TileToUpdateHeight>>,
-//         Query<'world, 'state, Entity, With<TileLoadHigh>>,
-//         Query<'world, 'state, Entity, With<TileLoadMedium>>,
-//         Query<'world, 'state, Entity, With<TileLoadLow>>,
-//     ),
-// >;
 pub type GlobeSurfaceTileQuery<'a> = (
     Entity,
     &'a mut GlobeSurfaceTile,
@@ -1012,7 +1002,7 @@ fn make_new_quadtree_tile(
 ) -> TileNode {
     let mut entity_mut = commands.spawn(QuadtreeTile::new(key, rectangle, location, parent));
     let entity = entity_mut.id();
-    let node_id = TileNode::Internal(entity_mut.id());
+    let node_id = TileNode::Internal(entity);
     entity_mut.insert((TileReplacementState::new(entity), node_id.clone()));
     return node_id;
 }
@@ -1577,15 +1567,18 @@ fn quad_tile_state_end_system(
         &mut ImageryLayer,
         &mut XYZDataSource,
     )>,
+    mut tile_quad_tree: ResMut<TileQuadTree>,
     mut datasource_query: Query<&mut TerrainDataSource>,
     mut asset_server: Res<AssetServer>,
     mut images: ResMut<Assets<Image>>,
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
     mut indicesAndEdgesCache: ResMut<IndicesAndEdgesCacheArc>,
     render_device: Res<RenderDevice>,
-    globe_camera_query: Query<(&GlobeCamera)>,
+    mut globe_camera_query: Query<(&mut GlobeCamera)>,
 ) {
-    let globe_camera = globe_camera_query.get_single().expect("GlobeCamera不存在");
+    let mut globe_camera = globe_camera_query
+        .get_single_mut()
+        .expect("GlobeCamera不存在");
     let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
     for (
         entity,
@@ -1601,8 +1594,14 @@ fn quad_tile_state_end_system(
         parent,
     ) in &mut quadtree_tile_query
     {
-        let mut terrainOnly = globe_surface_tile.boundingVolumeSourceTile != Some(entity)
-            || other_state._lastSelectionResult == TileSelectionResult::CULLED_BUT_NEEDED;
+        let mut terrainOnly = if let Some(v) = globe_surface_tile.boundingVolumeSourceTile {
+            v == entity
+        } else {
+            false
+        } || other_state._lastSelectionResult
+            == TileSelectionResult::CULLED_BUT_NEEDED;
+        // let terrainStateBefore = globe_surface_tile.terrain_state.clone();
+
         if terrainOnly {
             return;
         }
@@ -1611,7 +1610,7 @@ fn quad_tile_state_end_system(
         let wasAlreadyRenderable = other_state.renderable;
 
         // The terrain is renderable as soon as we have a valid vertex array.
-        other_state.renderable = globe_surface_tile.mesh.is_some();
+        other_state.renderable = globe_surface_tile.has_mesh();
 
         // But it's not done loading until it's in the READY state.
         let isTerrainDoneLoading = globe_surface_tile.terrain_state == TerrainState::READY;
@@ -1722,6 +1721,25 @@ fn quad_tile_state_end_system(
         if (wasAlreadyRenderable) {
             other_state.renderable = true;
         }
+        // if terrainOnly && terrainStateBefore != globe_surface_tile.terrain_state {
+        //     if computeTileVisibility(
+        //         // commands,
+        //         // ellipsoid,
+        //         &tile_quad_tree._occluders,
+        //         &mut quadtree_tile_query,
+        //         &mut globe_camera,
+        //         entity,
+        //     ) != TileVisibility::NONE
+        //         && if let Some(v) = globe_surface_tile.boundingVolumeSourceTile {
+        //             v == entity
+        //         } else {
+        //             false
+        //         }
+        //     {
+        //         terrainOnly = false;
+
+        //     }
+        // }
     }
 }
 

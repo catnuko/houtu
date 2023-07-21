@@ -41,7 +41,7 @@ impl PerspectiveOffCenterFrustum {
         direction: &DVec3,
         up: &DVec3,
     ) -> &CullingVolume {
-        let planes = self._cullingVolume.planes;
+        let planes = &mut self._cullingVolume.planes;
         let position = *position;
         let direction = *direction;
         let up = *up;
@@ -64,7 +64,7 @@ impl PerspectiveOffCenterFrustum {
             .cross(up)
             .normalize();
 
-        let mut plane = planes[0];
+        let mut plane = &mut planes[0];
         plane.x = normal.x;
         plane.y = normal.y;
         plane.z = normal.z;
@@ -73,7 +73,7 @@ impl PerspectiveOffCenterFrustum {
         //Right plane computation
         normal = up.cross((right * r + nearCenter - position)).normalize();
 
-        plane = planes[1];
+        plane = &mut planes[1];
         plane.x = normal.x;
         plane.y = normal.y;
         plane.z = normal.z;
@@ -82,7 +82,7 @@ impl PerspectiveOffCenterFrustum {
         //Bottom plane computation
         normal = right.cross(up * b + nearCenter - position).normalize();
 
-        plane = planes[2];
+        plane = &mut planes[2];
         plane.x = normal.x;
         plane.y = normal.y;
         plane.z = normal.z;
@@ -91,14 +91,14 @@ impl PerspectiveOffCenterFrustum {
         //Top plane computation
         normal = (up * t + nearCenter - position).cross(right).normalize();
 
-        plane = planes[3];
+        plane = &mut planes[3];
         plane.x = normal.x;
         plane.y = normal.y;
         plane.z = normal.z;
         plane.w = -normal.dot(position);
 
         //Near plane computation
-        plane = planes[4];
+        plane = &mut planes[4];
         plane.x = direction.x;
         plane.y = direction.y;
         plane.z = direction.z;
@@ -107,11 +107,12 @@ impl PerspectiveOffCenterFrustum {
         //Far plane computation
         normal = direction.negate();
 
-        plane = planes[5];
+        plane = &mut planes[5];
         plane.x = normal.x;
         plane.y = normal.y;
         plane.z = normal.z;
         plane.w = -normal.dot(farCenter);
+        // self._cullingVolume = CullingVolume::new(Some([]))
         return &self._cullingVolume;
     }
 }

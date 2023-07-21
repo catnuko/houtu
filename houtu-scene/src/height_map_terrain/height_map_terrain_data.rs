@@ -62,6 +62,12 @@ impl HeightmapTerrainData {
             _mesh: mesh,
         }
     }
+    pub fn get_mesh(&self) -> Option<&TerrainMesh> {
+        return self._mesh.as_ref();
+    }
+    pub fn has_mesh(&self) -> bool {
+        return self._mesh.is_some();
+    }
     pub fn canUpsample(&self) -> bool {
         return self._mesh.is_some();
     }

@@ -337,8 +337,8 @@ impl GlobeCamera {
     }
     pub fn get_culling_volume(&mut self) -> &CullingVolume {
         let p = self.get_position_wc();
-        let d = self.get_position_wc();
-        let u = self.get_position_wc();
+        let d = self.get_direction_wc();
+        let u = self.get_up_wc();
 
         return &self
             .frustum

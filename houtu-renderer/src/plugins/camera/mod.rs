@@ -57,6 +57,12 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
                 near: 1.,
                 far: 500000000.0,
             }),
+            // transform: Transform::from_translation(Vec3 {
+            //     x: x + 10000000.,
+            //     y: x + 10000000.,
+            //     z: x + 10000000.,
+            // })
+            // .looking_at(Vec3::ZERO, Vec3::Z),
             ..Default::default()
         },
         GlobeCamera::default(),

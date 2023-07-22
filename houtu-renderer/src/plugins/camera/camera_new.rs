@@ -234,6 +234,7 @@ fn globe_camera_setup_system(
         globe_camera.viewport.width = window_size.x as f64;
         globe_camera.viewport.height = window_size.y as f64;
         globe_camera.update_self();
+        globe_camera.updateMembers();
         globe_camera.update_camera_matrix(&mut transform);
     }
 }
@@ -260,9 +261,9 @@ impl GlobeCamera {
 
     fn update_self(&mut self) {
         self.updateViewMatrix();
-        // self.position = self
-        //     .rectangleCameraPosition3D(&GlobeCamera::DEFAULT_VIEW_RECTANGLE, Some(true))
-        //     .unwrap();
+        self.position = self
+            .rectangleCameraPosition3D(&GlobeCamera::DEFAULT_VIEW_RECTANGLE, Some(true))
+            .unwrap();
         self.position = DVec3::new(0., 0., 11347315.0);
         let mut mag = self.position.magnitude();
         mag += mag * Self::DEFAULT_VIEW_FACTOR;
@@ -366,13 +367,8 @@ impl GlobeCamera {
         self._viewMatrix = self._viewMatrix * self._actualInvTransform;
         self._invViewMatrix = self._viewMatrix.inverse_transformation();
     }
-    pub fn update_camera_matrix(&self, transform: &mut Transform) {
-        transform.translation = Vec3::new(
-            self.position.x as f32,
-            self.position.y as f32,
-            self.position.z as f32,
-        );
-        transform.rotation = Quat::from_mat4(&to_mat4_32(&self._transform));
+    pub fn update_camera_matrix(&mut self, transform: &mut Transform) {
+        *transform = Transform::from_matrix(self.get_inverse_view_matrix().to_mat4_32());
     }
     pub fn getRectangleCameraCoordinates(&mut self, rectangle: &Rectangle) -> Option<DVec3> {
         return self.rectangleCameraPosition3D(rectangle, None);

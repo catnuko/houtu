@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 
 use bevy::core::FrameCount;
-use bevy::ecs::system::EntityCommands;
+use bevy::ecs::system::{EntityCommands, QueryComponentError};
 use bevy::prelude::*;
 use bevy::render::renderer::RenderDevice;
 use bevy::window::PrimaryWindow;
@@ -13,6 +13,7 @@ use houtu_scene::{
     HeightmapTerrainData, IndicesAndEdgesCache, Matrix4, Rectangle, TerrainExaggeration,
     TerrainMesh, TileBoundingRegion, TilingScheme,
 };
+use rand::Rng;
 
 use crate::plugins::camera::GlobeCamera;
 
@@ -25,6 +26,7 @@ use super::imagery_layer::{
     self, ImageryLayer, ImageryLayerOtherState, TerrainDataSource, XYZDataSource,
 };
 use super::reproject_texture::{self, ReprojectTextureTaskQueue};
+use super::terrian_material::TerrainMeshMaterial;
 use super::tile_selection_result::TileSelectionResult;
 use super::unsample_job::UnsampleJob;
 use super::TileKey;
@@ -70,6 +72,7 @@ impl bevy::prelude::Plugin for Plugin {
             quad_tile_state_end_system,
         ));
         app.add_system(ImageryLayer::finish_reproject_texture_system);
+        app.add_system(quadtree_tile_load_state_done_system);
     }
 }
 #[derive(Resource)]
@@ -417,7 +420,7 @@ fn visitTile(
         location,
         parent,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-    info!("visit tile key={:?}", key);
+    // info!("visitTile key={:?}", key);
     if key.level > tile_quad_tree.debug.maxDepthVisited {
         tile_quad_tree.debug.maxDepthVisited = key.level;
     }
@@ -528,10 +531,15 @@ fn visitTile(
     if globe_surface_tile.terrainData.is_some() {
         let mut allAreUpsampled = true;
         if let TileNode::Internal(v) = southwestChild {
-            let state = quadtree_tile_query
-                .get_component::<QuadtreeTileOtherState>(v)
-                .unwrap();
-            allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
+            if let Ok(state) = quadtree_tile_query.get_component::<QuadtreeTileOtherState>(v) {
+                allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
+            } else {
+                return;
+            }
+            // let state = quadtree_tile_query
+            //     .get_component::<QuadtreeTileOtherState>(v)
+            //     .unwrap();
+            // allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
         if !allAreUpsampled {
             return;
@@ -781,7 +789,7 @@ fn visitIfVisible(
     )>,
     quadtree_tile_entity: Entity,
 ) {
-    info!("visit if visible entity={:?}", quadtree_tile_entity);
+    // info!("visitIfVisible entity={:?}", quadtree_tile_entity);
     if computeTileVisibility(
         // commands,
         // ellipsoid,
@@ -975,7 +983,6 @@ fn screenSpaceError(
     let mut error = (maxGeometricError * height) / (distance * sseDenominator);
 
     error /= window.scale_factor();
-
     return error;
 }
 fn containsNeededPosition(
@@ -1013,6 +1020,9 @@ fn subdivide(
     children: &mut NodeChildren,
     terrain_datasource: &mut TerrainDataSource,
 ) {
+    if let TileNode::Internal(v) = children.southeast {
+        return;
+    }
     if let TileNode::Internal(index) = node_id {
         let southwest = key.southwest();
         let southwest_rectangle = terrain_datasource.tiling_scheme.tile_x_y_to_rectange(
@@ -1038,35 +1048,62 @@ fn subdivide(
             northeast.y,
             northeast.level,
         );
-        let nw = make_new_quadtree_tile(
+        // let nw = make_new_quadtree_tile(
+        //     commands,
+        //     southwest,
+        //     southwest_rectangle,
+        //     Quadrant::Southwest,
+        //     QuadtreeTileParent(node_id.clone()),
+        // );
+        // let ne = make_new_quadtree_tile(
+        //     commands,
+        //     southeast,
+        //     southeast_rectangle,
+        //     Quadrant::Southeast,
+        //     QuadtreeTileParent(node_id.clone()),
+        // );
+        // let sw = make_new_quadtree_tile(
+        //     commands,
+        //     northwest,
+        //     northwest_rectangle,
+        //     Quadrant::Northwest,
+        //     QuadtreeTileParent(node_id.clone()),
+        // );
+        // let se = make_new_quadtree_tile(
+        //     commands,
+        //     northeast,
+        //     northeast_rectangle,
+        //     Quadrant::Northeast,
+        //     QuadtreeTileParent(node_id.clone()),
+        // );
+        let sw = make_new_quadtree_tile(
             commands,
             southwest,
             southwest_rectangle,
             Quadrant::Southwest,
             QuadtreeTileParent(node_id.clone()),
         );
-        let ne = make_new_quadtree_tile(
+        let se = make_new_quadtree_tile(
             commands,
             southeast,
             southeast_rectangle,
             Quadrant::Southeast,
             QuadtreeTileParent(node_id.clone()),
         );
-        let sw = make_new_quadtree_tile(
+        let nw = make_new_quadtree_tile(
             commands,
             northwest,
             northwest_rectangle,
             Quadrant::Northwest,
             QuadtreeTileParent(node_id.clone()),
         );
-        let se = make_new_quadtree_tile(
+        let ne = make_new_quadtree_tile(
             commands,
             northeast,
             northeast_rectangle,
             Quadrant::Northeast,
             QuadtreeTileParent(node_id.clone()),
         );
-
         children.northwest = nw;
         children.northeast = ne;
         children.southwest = sw;
@@ -1742,7 +1779,53 @@ fn quad_tile_state_end_system(
         // }
     }
 }
-
+fn quadtree_tile_load_state_done_system(
+    mut quadtree_tile_query: Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
+    mut commands: Commands,
+    mut terrain_materials: ResMut<Assets<TerrainMeshMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    for (
+        entity,
+        mut globe_surface_tile,
+        rectangle,
+        mut other_state,
+        mut replacement_state,
+        key,
+        node_id,
+        node_children,
+        mut state,
+        location,
+        parent,
+    ) in &mut quadtree_tile_query
+    {
+        if *state == QuadtreeTileLoadState::DONE {
+            info!("render tile key={:?}", key);
+            let mut rng = rand::thread_rng();
+            let r: f32 = rng.gen();
+            let g: f32 = rng.gen();
+            let b: f32 = rng.gen();
+            commands.spawn(MaterialMeshBundle {
+                mesh: meshes.add(globe_surface_tile.get_mesh().unwrap()),
+                material: terrain_materials.add(TerrainMeshMaterial {
+                    color: Color::rgba(r, g, b, 1.0),
+                    image: Some(asset_server.load("icon.png")),
+                    // image: asset_server.load(format!("https://t5.tianditu.gov.cn/img_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILECOL={}&TILEROW={}&TILEMATRIX={}&tk=b931d6faa76fc3fbe622bddd6522e57b",x,y,level)),
+                    // image: asset_server.load(format!("tile/{}/{}/{}.png", level, y, x,)),
+                    // image: Some(asset_server.load(format!(
+                    //     "https://maps.omniscale.net/v2/houtu-b8084b0b/style.default/{}/{}/{}.png",
+                    //     key.level, key.x, key.y,
+                    // ))),
+                    // image: None,
+                }),
+                // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
+                ..Default::default()
+            });
+            commands.entity(entity).remove::<TileToLoad>();
+        }
+    }
+}
 fn quad_tile_state_init_system(
     mut imagery_layer_query: Query<(
         Entity,

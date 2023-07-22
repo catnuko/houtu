@@ -31,14 +31,14 @@ impl Material for TerrainMeshMaterial {
     fn vertex_shader() -> ShaderRef {
         "terrain_material.wgsl".into()
     }
-    // fn specialize(
-    //     _pipeline: &MaterialPipeline<Self>,
-    //     descriptor: &mut RenderPipelineDescriptor,
-    //     _layout: &MeshVertexBufferLayout,
-    //     _key: MaterialPipelineKey<Self>,
-    // ) -> Result<(), SpecializedMeshPipelineError> {
-    //     // This is the important part to tell bevy to render this material as a line between vertices
-    //     descriptor.primitive.polygon_mode = PolygonMode::Line;
-    //     Ok(())
-    // }
+    fn specialize(
+        _pipeline: &MaterialPipeline<Self>,
+        descriptor: &mut RenderPipelineDescriptor,
+        _layout: &MeshVertexBufferLayout,
+        _key: MaterialPipelineKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        // This is the important part to tell bevy to render this material as a line between vertices
+        descriptor.primitive.polygon_mode = PolygonMode::Line;
+        Ok(())
+    }
 }

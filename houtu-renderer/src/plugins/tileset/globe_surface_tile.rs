@@ -70,6 +70,15 @@ impl GlobeSurfaceTile {
             false
         }
     }
+    pub fn get_mesh(&self) -> Option<Mesh> {
+        if let Some(terrain_data) = self.terrainData.as_ref() {
+            if let Some(v) = terrain_data.clone().lock().unwrap()._mesh.as_ref() {
+                let mesh: Mesh = v.into();
+                return Some(mesh);
+            }
+        }
+        return None;
+    }
     pub fn eligibleForUnloading(&self) -> bool {
         let loadingIsTransitioning = self.terrain_state == TerrainState::RECEIVING
             || self.terrain_state == TerrainState::TRANSFORMING;
@@ -220,23 +229,6 @@ fn computeDistanceToTile(
     other_state._distance = result;
 }
 
-pub fn test(
-    // commands: &mut Commands,
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &EllipsoidalOccluder,
-    quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
-    quadtree_tile_entity: Entity,
-) {
-    let (globe_surface_tile) = {
-        let (entity, mut globe_surface_tile, rectangle, other_state, _, _, _, _, _, _, _) =
-            quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-        (globe_surface_tile)
-    };
-    if true {
-        // let (_, ancestor_globe_surface_tile, _, _, _, _, _, _, _, _, _, _) =
-        //     quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-    }
-}
 pub fn updateTileBoundingRegion(
     // commands: &mut Commands,
     // ellipsoid: &Ellipsoid,

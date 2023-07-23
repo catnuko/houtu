@@ -41,14 +41,14 @@ fn set_state_of_entity(
 #[derive(Debug)]
 pub struct TileReplacementQueue {
     list: LinkedList<Entity>,
-    _lastBeforeStartOfFrame: Option<Entity>,
+    last_before_start_of_frame: Option<Entity>,
     count: usize,
 }
 impl TileReplacementQueue {
     pub fn new() -> Self {
         Self {
             list: LinkedList::new(),
-            _lastBeforeStartOfFrame: None,
+            last_before_start_of_frame: None,
             count: 0,
         }
     }
@@ -70,40 +70,40 @@ impl TileReplacementQueue {
     pub fn markStartOfRenderFrame(&mut self) {
         let head = self.get_head();
         if let Some(v) = head {
-            self._lastBeforeStartOfFrame = Some(v.clone());
+            self.last_before_start_of_frame = Some(v.clone());
         } else {
-            self._lastBeforeStartOfFrame = None;
+            self.last_before_start_of_frame = None;
         }
     }
-    pub fn trimTiles(&mut self, maximumTiles: u32, query: &mut Query<(GlobeSurfaceTileQuery)>) {
-        // let mut tileToTrim = self.get_tail_mut();
-        let mut keepTrimming = true;
+    pub fn trimTiles(&mut self, maximum_tiles: u32, query: &mut Query<(GlobeSurfaceTileQuery)>) {
+        // let mut tile_to_trim = self.get_tail_mut();
+        let mut keep_trimming = true;
         let mut count = self.count;
-        while (keepTrimming
-            // && self._lastBeforeStartOfFrame.is_some()
-            && count > maximumTiles as usize)
+        while (keep_trimming
+            // && self.last_before_start_of_frame.is_some()
+            && count > maximum_tiles as usize)
             && self.get_tail_mut().is_some()
         {
             // Stop trimming after we process the last tile not used in the
             // current frame.
-            keepTrimming = self.get_tail() != self._lastBeforeStartOfFrame.as_ref();
+            keep_trimming = self.get_tail() != self.last_before_start_of_frame.as_ref();
 
-            let tileToTrim = self.get_tail_mut();
-            let tileToTrim_entity = tileToTrim.unwrap();
-            let mut tileToTrim_state = query
-                .get_component_mut::<TileReplacementState>(tileToTrim_entity.clone())
+            let tile_to_trim = self.get_tail_mut();
+            let tile_to_trim_entity = tile_to_trim.unwrap();
+            let mut tile_to_trim_state = query
+                .get_component_mut::<TileReplacementState>(tile_to_trim_entity.clone())
                 .unwrap();
 
-            let previous = tileToTrim_state.replacementPrevious;
+            let previous = tile_to_trim_state.replacementPrevious;
 
             let globe_surface_tile = query
-                .get_component_mut::<GlobeSurfaceTile>(tileToTrim_entity.clone())
+                .get_component_mut::<GlobeSurfaceTile>(tile_to_trim_entity.clone())
                 .unwrap();
 
-            if (globe_surface_tile.eligibleForUnloading()) {
-                // tileToTrim_state.freeResources();
+            if globe_surface_tile.eligible_for_unloading() {
+                // tile_to_trim_state.freeResources();
 
-                let entity = tileToTrim_entity.clone();
+                let entity = tile_to_trim_entity.clone();
                 self.remove(query, entity);
             }
             if let Some(entity) = previous {
@@ -119,10 +119,10 @@ impl TileReplacementQueue {
             .get_component_mut::<TileReplacementState>(entity)
             .unwrap();
         {
-            if self._lastBeforeStartOfFrame.is_some()
-                && self._lastBeforeStartOfFrame.unwrap() == item.entity
+            if self.last_before_start_of_frame.is_some()
+                && self.last_before_start_of_frame.unwrap() == item.entity
             {
-                self._lastBeforeStartOfFrame = item.replacementNext.clone();
+                self.last_before_start_of_frame = item.replacementNext.clone();
             }
         }
         let head_mut = self.get_head_mut();
@@ -163,20 +163,24 @@ impl TileReplacementQueue {
         }
         self.count -= 1;
     }
-    pub fn markTileRendered(&mut self, query: &mut Query<(GlobeSurfaceTileQuery)>, entity: Entity) {
+    pub fn mark_tile_rendered(
+        &mut self,
+        query: &mut Query<(GlobeSurfaceTileQuery)>,
+        entity: Entity,
+    ) {
         let mut item = query
             .get_component_mut::<TileReplacementState>(entity)
             .unwrap();
         {
             let head_mut = self.get_head_mut();
             if head_mut.is_some() && *head_mut.unwrap() == item.entity {
-                if self._lastBeforeStartOfFrame.is_some()
-                    && self._lastBeforeStartOfFrame.unwrap() == item.entity
+                if self.last_before_start_of_frame.is_some()
+                    && self.last_before_start_of_frame.unwrap() == item.entity
                 {
                     if let Some(t) = item.replacementPrevious {
-                        self._lastBeforeStartOfFrame = Some(t.clone());
+                        self.last_before_start_of_frame = Some(t.clone());
                     } else {
-                        self._lastBeforeStartOfFrame = None;
+                        self.last_before_start_of_frame = None;
                     }
                 }
                 return;

@@ -65,7 +65,7 @@ impl Cartographic {
     pub fn to_cartesian(&self, ellipsoid: Option<Ellipsoid>) -> DVec3 {
         return DVec3::from_radians(self.longitude, self.latitude, Some(self.height), {
             if let Some(e) = ellipsoid {
-                Some(e.radiiSquared)
+                Some(e.radii_squared)
             } else {
                 None
             }

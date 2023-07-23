@@ -4,9 +4,9 @@ use std::{
 };
 
 use crate::{
-    getEstimatedLevelZeroGeometricErrorForAHeightmap,
+    get_estimated_level_zero_geometric_error_for_a_heightmap,
     lerp,
-    // getEstimatedLevelZeroGeometricErrorForAHeightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
+    // get_estimated_level_zero_geometric_error_for_a_heightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
     // getRegularGridIndicesAndEdgeIndices,
     CreateVerticeOptions,
     CreateVerticeReturn,
@@ -68,26 +68,26 @@ impl HeightmapTerrainData {
     pub fn has_mesh(&self) -> bool {
         return self._mesh.is_some();
     }
-    pub fn canUpsample(&self) -> bool {
+    pub fn can_upsample(&self) -> bool {
         return self._mesh.is_some();
     }
-    pub fn isChildAvailable(&self, thisX: u32, thisY: u32, childX: u32, childY: u32) -> bool {
+    pub fn is_child_available(&self, thisX: u32, thisY: u32, childX: u32, childY: u32) -> bool {
         let mut bitNumber = 2; // northwest child
-        if (childX != thisX * 2) {
+        if childX != thisX * 2 {
             bitNumber += 1; // east child
         }
-        if (childY != thisY * 2) {
+        if childY != thisY * 2 {
             bitNumber -= 2; // south child
         }
 
         return (self._childTileMask & (1 << bitNumber)) != 0;
     }
-    pub fn wasCreatedByUpsampling(&self) -> bool {
+    pub fn was_created_by_upsampling(&self) -> bool {
         return self._createdByUpsampling;
     }
     pub async fn createMesh<T: TilingScheme>(
         &mut self,
-        tilingScheme: &T,
+        tiling_scheme: &T,
         x: u32,
         y: u32,
         level: u32,
@@ -96,7 +96,7 @@ impl HeightmapTerrainData {
         indicesAndEdgesCacheArc: Arc<Mutex<IndicesAndEdgesCache>>,
     ) {
         let result = self.create_vertice(
-            tilingScheme,
+            tiling_scheme,
             x,
             y,
             level,
@@ -104,66 +104,66 @@ impl HeightmapTerrainData {
             exaggerationRelativeHeight,
         );
 
-        let mut indicesAndEdgesCache = indicesAndEdgesCacheArc.lock().unwrap();
+        let mut indices_and_edges_cache = indicesAndEdgesCacheArc.lock().unwrap();
         let indicesAndEdges;
-        if (self._skirtHeight.unwrap() > 0.0) {
-            indicesAndEdges = indicesAndEdgesCache
+        if self._skirtHeight.unwrap() > 0.0 {
+            indicesAndEdges = indices_and_edges_cache
                 .getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
         } else {
-            indicesAndEdges =
-                indicesAndEdgesCache.getRegularGridIndicesAndEdgeIndices(self._width, self._height);
+            indicesAndEdges = indices_and_edges_cache
+                .getRegularGridIndicesAndEdgeIndices(self._width, self._height);
         }
 
-        let vertexCountWithoutSkirts = 0;
+        let vertex_count_without_skirts = 0;
         self._mesh = Some(TerrainMesh::new(
             result.relativeToCenter.unwrap(),
             result.vertices,
             indicesAndEdges.indices,
-            indicesAndEdges.indexCountWithoutSkirts,
-            vertexCountWithoutSkirts,
-            result.minimumHeight,
-            result.maximumHeight,
-            result.boundingSphere3D,
-            result.occludeePointInScaledSpace,
+            indicesAndEdges.index_count_without_skirts,
+            vertex_count_without_skirts,
+            result.minimum_height,
+            result.maximum_height,
+            result.bounding_sphere_3d,
+            result.occludee_point_in_scaled_space,
             result.encoding.stride,
-            result.orientedBoundingBox,
+            result.oriented_bounding_box,
             result.encoding,
-            indicesAndEdges.westIndicesSouthToNorth,
-            indicesAndEdges.southIndicesEastToWest,
-            indicesAndEdges.eastIndicesNorthToSouth,
-            indicesAndEdges.northIndicesWestToEast,
+            indicesAndEdges.west_indices_south_to_north,
+            indicesAndEdges.south_indices_east_to_west,
+            indicesAndEdges.east_indices_north_to_south,
+            indicesAndEdges.north_indices_west_to_east,
         ));
     }
 
     pub fn create_vertice<T: TilingScheme>(
         &mut self,
-        tilingScheme: &T,
+        tiling_scheme: &T,
         x: u32,
         y: u32,
         level: u32,
         exaggeration: Option<f64>,
         exaggerationRelativeHeight: Option<f64>,
     ) -> CreateVerticeReturn {
-        let tilingScheme = tilingScheme;
+        let tiling_scheme = tiling_scheme;
         let x = x;
         let y = y;
         let level = level;
         let exaggeration = exaggeration.unwrap_or(1.0);
         let exaggerationRelativeHeight = exaggerationRelativeHeight.unwrap_or(0.0);
 
-        let ellipsoid = tilingScheme.get_ellipsoid();
-        let nativeRectangle = tilingScheme.tile_x_y_to_native_rectange(x, y, level);
-        let rectangle = tilingScheme.tile_x_y_to_rectange(x, y, level);
+        let ellipsoid = tiling_scheme.get_ellipsoid();
+        let nativeRectangle = tiling_scheme.tile_x_y_to_native_rectange(x, y, level);
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(x, y, level);
 
         // Compute the center of the tile for RTC rendering.
         let center = ellipsoid.cartographicToCartesian(&rectangle.center());
 
         let structure = self._structure;
 
-        let levelZeroMaxError = getEstimatedLevelZeroGeometricErrorForAHeightmap(
+        let levelZeroMaxError = get_estimated_level_zero_geometric_error_for_a_heightmap(
             &ellipsoid,
             self._width,
-            tilingScheme.get_number_of_x_tiles_at_level(0),
+            tiling_scheme.get_number_of_x_tiles_at_level(0),
         );
         let thisLevelMaxError = levelZeroMaxError / (1 << level) as f64;
         let skirtHeight = (thisLevelMaxError * 4.0).min(1000.0);
@@ -310,14 +310,14 @@ fn interpolateMeshHeight(
 
     let mut westInteger = fromWest.round() as u32;
     let mut eastInteger = westInteger + 1;
-    if (eastInteger >= width) {
+    if eastInteger >= width {
         eastInteger = width - 1;
         westInteger = width - 2;
     }
 
     let mut southInteger = fromSouth.round() as u32;
     let mut northInteger = southInteger + 1;
-    if (northInteger >= height) {
+    if northInteger >= height {
         northInteger = height - 1;
         southInteger = height - 2;
     }
@@ -364,7 +364,7 @@ fn triangleInterpolateHeight(
     northeastHeight: f64,
 ) -> f64 {
     // The HeightmapTessellator bisects the quad from southwest to northeast.
-    if (dY < dX) {
+    if dY < dX {
         // Lower right triangle
         return (southwestHeight
             + dX * (southeastHeight - southwestHeight)
@@ -390,7 +390,7 @@ fn setHeight(
     let mut divisor = divisor;
     let index = index * stride;
     let mut j = 0;
-    if (isBigEndian) {
+    if isBigEndian {
         for i in 0..elementsPerHeight - 1 {
             heights[(index + i) as usize] = (height / divisor as f32).round();
             height -= heights[(index + i) as usize] * divisor as f32;
@@ -420,7 +420,7 @@ fn setHeight(
 //     let height = 0;
 //     let i;
 
-//     if (isBigEndian) {
+//     if isBigEndian {
 //       for (i = 0; i < elementsPerHeight; ++i) {
 //         height = height * elementMultiplier + heights[index + i];
 //       }

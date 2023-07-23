@@ -16,7 +16,7 @@ pub fn rayPlane(ray: Ray, plane: Plane) -> Option<DVec3> {
 
     let t = (-plane.distance - normal.dot(origin)) / denominator;
 
-    if (t < 0.) {
+    if t < 0. {
         return None;
     }
 

@@ -25,11 +25,11 @@ impl BoundingSphere {
     //     ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
     //     surfaceHeight = defaultValue(surfaceHeight, 0.0);
 
-    //     if (!defined(result)) {
+    //     if !defined(result) {
     //       result = new BoundingSphere();
     //     }
 
-    //     if (!defined(rectangle)) {
+    //     if !defined(rectangle) {
     //       result.center = DVec3.clone(DVec3.ZERO, result.center);
     //       result.radius = 0.0;
     //       return result;
@@ -52,12 +52,12 @@ impl BoundingSphere {
         let toRightCenter = rightCenter.subtract(leftCenter);
         let centerSeparation = toRightCenter.magnitude();
 
-        if (leftRadius >= centerSeparation + rightRadius) {
+        if leftRadius >= centerSeparation + rightRadius {
             // Left sphere wins.
             return self.clone();
         }
 
-        if (rightRadius >= centerSeparation + leftRadius) {
+        if rightRadius >= centerSeparation + leftRadius {
             // Right sphere wins.
             return right.clone();
         }
@@ -81,11 +81,11 @@ impl BoundingSphere {
         }
 
         let length = boundingSpheres.len();
-        if (length == 1) {
+        if length == 1 {
             return boundingSpheres[0].clone();
         }
 
-        if (length == 2) {
+        if length == 2 {
             return BoundingSphere::union(boundingSpheres[0], boundingSpheres[1]);
         }
 
@@ -110,11 +110,11 @@ impl BoundingSphere {
     }
     pub fn from_ellipsoid(ellipsoid: &Ellipsoid) -> Self {
         let center = DVec3::ZERO;
-        let radius = ellipsoid.maximumRadius;
+        let radius = ellipsoid.maximum_radius;
         Self { center, radius }
     }
     pub fn from_points(positions: &Vec<DVec3>) -> Self {
-        if (positions.len() == 0) {
+        if positions.len() == 0 {
             return Self::default();
         }
         let currentPos = positions[0].clone();
@@ -169,12 +169,12 @@ impl BoundingSphere {
         let mut diameter1 = xMin;
         let mut diameter2 = xMax;
         let mut maxSpan = xSpan;
-        if (ySpan > maxSpan) {
+        if ySpan > maxSpan {
             maxSpan = ySpan;
             diameter1 = yMin;
             diameter2 = yMax;
         }
-        if (zSpan > maxSpan) {
+        if zSpan > maxSpan {
             maxSpan = zSpan;
             diameter1 = zMin;
             diameter2 = zMax;
@@ -271,8 +271,8 @@ impl BoundingSphere {
         return Self::from_points(&positions);
     }
 
-    pub fn from_oriented_bouding_box(orientedBoundingBox: &OrientedBoundingBox) -> Self {
-        let halfAxes = orientedBoundingBox.halfAxes;
+    pub fn from_oriented_bouding_box(oriented_bounding_box: &OrientedBoundingBox) -> Self {
+        let halfAxes = oriented_bounding_box.halfAxes;
         let mut u = halfAxes.get_column(0);
         let v = halfAxes.get_column(1);
         let w = halfAxes.get_column(2);
@@ -280,7 +280,7 @@ impl BoundingSphere {
         u = u + w;
 
         return Self {
-            center: orientedBoundingBox.center.clone(),
+            center: oriented_bounding_box.center.clone(),
             radius: u.magnitude(),
         };
     }
@@ -290,10 +290,10 @@ impl BoundingSphere {
         let normal = plane.normal;
         let distanceToPlane = normal.dot(center) + plane.distance;
 
-        if (distanceToPlane < -radius) {
+        if distanceToPlane < -radius {
             // The center point is negative side of the plane normal
             return Intersect::OUTSIDE;
-        } else if (distanceToPlane < radius) {
+        } else if distanceToPlane < radius {
             // The center point is positive side of the plane, but radius extends beyond it; partial overlap
             return Intersect::INTERSECTING;
         }

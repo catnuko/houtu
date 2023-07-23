@@ -7,17 +7,17 @@ use crate::{Ellipsoid, FOUR_GIGABYTES, SIXTY_FOUR_KILOBYTES};
 #[derive(Debug, Clone)]
 pub struct IndicesAndEdges {
     pub indices: Vec<u32>,
-    pub westIndicesSouthToNorth: Vec<u32>,
-    pub southIndicesEastToWest: Vec<u32>,
-    pub eastIndicesNorthToSouth: Vec<u32>,
-    pub northIndicesWestToEast: Vec<u32>,
-    pub indexCountWithoutSkirts: Option<u32>,
+    pub west_indices_south_to_north: Vec<u32>,
+    pub south_indices_east_to_west: Vec<u32>,
+    pub east_indices_north_to_south: Vec<u32>,
+    pub north_indices_west_to_east: Vec<u32>,
+    pub index_count_without_skirts: Option<u32>,
 }
 pub struct InnerIndicesAndEdges {
-    pub westIndicesSouthToNorth: Vec<u32>,
-    pub southIndicesEastToWest: Vec<u32>,
-    pub eastIndicesNorthToSouth: Vec<u32>,
-    pub northIndicesWestToEast: Vec<u32>,
+    pub west_indices_south_to_north: Vec<u32>,
+    pub south_indices_east_to_west: Vec<u32>,
+    pub east_indices_north_to_south: Vec<u32>,
+    pub north_indices_west_to_east: Vec<u32>,
 }
 const heightmapTerrainQuality: f64 = 0.25;
 // static mut regularGridAndEdgeIndicesCache: Vec<Vec<IndicesAndEdges>> = Vec::new();
@@ -41,7 +41,7 @@ impl IndicesAndEdgesCache {
         format!("{}-{}", width, height)
     }
     pub fn getRegularGridIndices(&mut self, width: u32, height: u32) -> Vec<u32> {
-        if ((width * height) as u64 >= FOUR_GIGABYTES) {
+        if (width * height) as u64 >= FOUR_GIGABYTES {
             panic!(
                 "The total number of vertices (width * height) must be less than 4,294,967,296."
             );
@@ -63,7 +63,7 @@ impl IndicesAndEdgesCache {
         width: u32,
         height: u32,
     ) -> IndicesAndEdges {
-        if ((width * height) as u64 >= FOUR_GIGABYTES) {
+        if (width * height) as u64 >= FOUR_GIGABYTES {
             panic!(
                 "The total number of vertices (width * height) must be less than 4,294,967,296."
             );
@@ -83,29 +83,29 @@ impl IndicesAndEdgesCache {
             let indexCount = gridIndexCount + edgeIndexCount;
 
             let edgeIndices = getEdgeIndices(width, height);
-            let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
-            let southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
-            let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
-            let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+            let west_indices_south_to_north = edgeIndices.west_indices_south_to_north;
+            let south_indices_east_to_west = edgeIndices.south_indices_east_to_west;
+            let east_indices_north_to_south = edgeIndices.east_indices_north_to_south;
+            let north_indices_west_to_east = edgeIndices.north_indices_west_to_east;
 
             let mut indices: Vec<u32> = vec![0; indexCount as usize];
             addRegularGridIndices(width, height, &mut indices, 0);
             gridIndexCount = addSkirtIndices(
-                &westIndicesSouthToNorth,
-                &southIndicesEastToWest,
-                &eastIndicesNorthToSouth,
-                &northIndicesWestToEast,
+                &west_indices_south_to_north,
+                &south_indices_east_to_west,
+                &east_indices_north_to_south,
+                &north_indices_west_to_east,
                 gridVertexCount,
                 &mut indices,
                 gridIndexCount,
             );
             let new_value = IndicesAndEdges {
                 indices: indices,
-                westIndicesSouthToNorth: westIndicesSouthToNorth,
-                southIndicesEastToWest: southIndicesEastToWest,
-                eastIndicesNorthToSouth: eastIndicesNorthToSouth,
-                northIndicesWestToEast: northIndicesWestToEast,
-                indexCountWithoutSkirts: Some(gridIndexCount),
+                west_indices_south_to_north: west_indices_south_to_north,
+                south_indices_east_to_west: south_indices_east_to_west,
+                east_indices_north_to_south: east_indices_north_to_south,
+                north_indices_west_to_east: north_indices_west_to_east,
+                index_count_without_skirts: Some(gridIndexCount),
             };
             self.regularGridAndSkirtAndEdgeIndicesCache
                 .insert(key, new_value.clone());
@@ -119,7 +119,7 @@ impl IndicesAndEdgesCache {
         width: u32,
         height: u32,
     ) -> IndicesAndEdges {
-        if ((width * height) as u64 >= FOUR_GIGABYTES) {
+        if (width * height) as u64 >= FOUR_GIGABYTES {
             panic!(
                 "The total number of vertices (width * height) must be less than 4,294,967,296."
             );
@@ -134,18 +134,18 @@ impl IndicesAndEdgesCache {
             let indices = self.getRegularGridIndices(width, height);
 
             let edgeIndices = getEdgeIndices(width, height);
-            let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
-            let southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
-            let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
-            let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+            let west_indices_south_to_north = edgeIndices.west_indices_south_to_north;
+            let south_indices_east_to_west = edgeIndices.south_indices_east_to_west;
+            let east_indices_north_to_south = edgeIndices.east_indices_north_to_south;
+            let north_indices_west_to_east = edgeIndices.north_indices_west_to_east;
 
             let new_value = IndicesAndEdges {
                 indices: indices,
-                westIndicesSouthToNorth: westIndicesSouthToNorth,
-                southIndicesEastToWest: southIndicesEastToWest,
-                eastIndicesNorthToSouth: eastIndicesNorthToSouth,
-                northIndicesWestToEast: northIndicesWestToEast,
-                indexCountWithoutSkirts: None,
+                west_indices_south_to_north: west_indices_south_to_north,
+                south_indices_east_to_west: south_indices_east_to_west,
+                east_indices_north_to_south: east_indices_north_to_south,
+                north_indices_west_to_east: north_indices_west_to_east,
+                index_count_without_skirts: None,
             };
             self.regularGridAndEdgeIndicesCache
                 .insert(key, new_value.clone());
@@ -154,30 +154,30 @@ impl IndicesAndEdgesCache {
             return value.unwrap();
         }
 
-        pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
+        pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
             ellipsoid: &Ellipsoid,
             tileImageWidth: u32,
-            numberOfTilesAtLevelZero: u32,
+            number_of_tiles_at_level_zero: u32,
         ) -> f64 {
-            return getEstimatedLevelZeroGeometricErrorForAHeightmap(
+            return get_estimated_level_zero_geometric_error_for_a_heightmap(
                 ellipsoid,
                 tileImageWidth,
-                numberOfTilesAtLevelZero,
+                number_of_tiles_at_level_zero,
             );
         }
     }
 }
 
-pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
+pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
     ellipsoid: &Ellipsoid,
     tileImageWidth: u32,
-    numberOfTilesAtLevelZero: u32,
+    number_of_tiles_at_level_zero: u32,
 ) -> f64 {
-    return ((ellipsoid.maximumRadius * 2. * PI * heightmapTerrainQuality)
-        / (tileImageWidth * numberOfTilesAtLevelZero) as f64);
+    return ((ellipsoid.maximum_radius * 2. * PI * heightmapTerrainQuality)
+        / (tileImageWidth * number_of_tiles_at_level_zero) as f64);
 }
 // pub fn getRegularGridIndices(width: u32, height: u32) -> Vec<u32> {
-//     if (width * height >= FOUR_GIGABYTES) {
+//     if width * height >= FOUR_GIGABYTES {
 //         panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
 //     }
 
@@ -210,7 +210,7 @@ pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
 //     return indices;
 // }
 // pub fn getRegularGridAndSkirtIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
-//     if (width * height >= FOUR_GIGABYTES) {
+//     if width * height >= FOUR_GIGABYTES {
 //         panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
 //     }
 //     //>>includeEnd('debug');
@@ -236,29 +236,29 @@ pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
 //             let indexCount = gridIndexCount + edgeIndexCount;
 
 //             let edgeIndices = getEdgeIndices(width, height);
-//             let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
-//             let southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
-//             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
-//             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+//             let west_indices_south_to_north = edgeIndices.west_indices_south_to_north;
+//             let south_indices_east_to_west = edgeIndices.south_indices_east_to_west;
+//             let east_indices_north_to_south = edgeIndices.east_indices_north_to_south;
+//             let north_indices_west_to_east = edgeIndices.north_indices_west_to_east;
 
 //             let indices = Vec::<u32>::new();
 //             addRegularGridIndices(width, height, &mut indices, 0);
 //             addSkirtIndices(
-//                 &westIndicesSouthToNorth,
-//                 &southIndicesEastToWest,
-//                 &eastIndicesNorthToSouth,
-//                 &northIndicesWestToEast,
+//                 &west_indices_south_to_north,
+//                 &south_indices_east_to_west,
+//                 &east_indices_north_to_south,
+//                 &north_indices_west_to_east,
 //                 gridVertexCount,
 //                 &mut indices,
 //                 gridIndexCount,
 //             );
 //             let value = IndicesAndEdges {
 //                 indices: indices,
-//                 westIndicesSouthToNorth: westIndicesSouthToNorth,
-//                 southIndicesEastToWest: southIndicesEastToWest,
-//                 eastIndicesNorthToSouth: eastIndicesNorthToSouth,
-//                 northIndicesWestToEast: northIndicesWestToEast,
-//                 indexCountWithoutSkirts: Some(gridIndexCount),
+//                 west_indices_south_to_north: west_indices_south_to_north,
+//                 south_indices_east_to_west: south_indices_east_to_west,
+//                 east_indices_north_to_south: east_indices_north_to_south,
+//                 north_indices_west_to_east: north_indices_west_to_east,
+//                 index_count_without_skirts: Some(gridIndexCount),
 //             };
 //             byWidth[height as usize] = value;
 //             value
@@ -269,7 +269,7 @@ pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
 //     return indicesAndEdges;
 // }
 // pub fn getRegularGridIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
-//     if (width * height >= FOUR_GIGABYTES) {
+//     if width * height >= FOUR_GIGABYTES {
 //         panic!("The total number of vertices (width * height) must be less than 4,294,967,296.");
 //     }
 //     //>>includeEnd('debug');
@@ -290,18 +290,18 @@ pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
 //             let indices = getRegularGridIndices(width, height);
 
 //             let edgeIndices = getEdgeIndices(width, height);
-//             let westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
-//             let southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
-//             let eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
-//             let northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+//             let west_indices_south_to_north = edgeIndices.west_indices_south_to_north;
+//             let south_indices_east_to_west = edgeIndices.south_indices_east_to_west;
+//             let east_indices_north_to_south = edgeIndices.east_indices_north_to_south;
+//             let north_indices_west_to_east = edgeIndices.north_indices_west_to_east;
 
 //             let value = IndicesAndEdges {
 //                 indices: indices,
-//                 westIndicesSouthToNorth: westIndicesSouthToNorth,
-//                 southIndicesEastToWest: southIndicesEastToWest,
-//                 eastIndicesNorthToSouth: eastIndicesNorthToSouth,
-//                 northIndicesWestToEast: northIndicesWestToEast,
-//                 indexCountWithoutSkirts: None,
+//                 west_indices_south_to_north: west_indices_south_to_north,
+//                 south_indices_east_to_west: south_indices_east_to_west,
+//                 east_indices_north_to_south: east_indices_north_to_south,
+//                 north_indices_west_to_east: north_indices_west_to_east,
+//                 index_count_without_skirts: None,
 //             };
 //             byWidth[height as usize] = value;
 //             value
@@ -313,47 +313,47 @@ pub fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
 // }
 
 pub fn getEdgeIndices(width: u32, height: u32) -> InnerIndicesAndEdges {
-    let mut westIndicesSouthToNorth = vec![0; height as usize];
-    let mut southIndicesEastToWest = vec![0; width as usize];
-    let mut eastIndicesNorthToSouth = vec![0; height as usize];
-    let mut northIndicesWestToEast = vec![0; width as usize];
+    let mut west_indices_south_to_north = vec![0; height as usize];
+    let mut south_indices_east_to_west = vec![0; width as usize];
+    let mut east_indices_north_to_south = vec![0; height as usize];
+    let mut north_indices_west_to_east = vec![0; width as usize];
 
     for i in 0..width {
         let ii = i as usize;
-        northIndicesWestToEast[ii] = i;
-        southIndicesEastToWest[ii] = width * height - 1 - i;
+        north_indices_west_to_east[ii] = i;
+        south_indices_east_to_west[ii] = width * height - 1 - i;
     }
     for i in 0..height {
         let ii = i as usize;
-        eastIndicesNorthToSouth[ii] = (i + 1) * width - 1;
-        westIndicesSouthToNorth[ii] = (height - i - 1) * width;
+        east_indices_north_to_south[ii] = (i + 1) * width - 1;
+        west_indices_south_to_north[ii] = (height - i - 1) * width;
     }
 
     return InnerIndicesAndEdges {
-        westIndicesSouthToNorth,
-        southIndicesEastToWest,
-        eastIndicesNorthToSouth,
-        northIndicesWestToEast,
+        west_indices_south_to_north,
+        south_indices_east_to_west,
+        east_indices_north_to_south,
+        north_indices_west_to_east,
     };
 }
 pub fn addSkirtIndices(
-    westIndicesSouthToNorth: &Vec<u32>,
-    southIndicesEastToWest: &Vec<u32>,
-    eastIndicesNorthToSouth: &Vec<u32>,
-    northIndicesWestToEast: &Vec<u32>,
+    west_indices_south_to_north: &Vec<u32>,
+    south_indices_east_to_west: &Vec<u32>,
+    east_indices_north_to_south: &Vec<u32>,
+    north_indices_west_to_east: &Vec<u32>,
     vertexCount: u32,
     indices: &mut Vec<u32>,
     offset: u32,
 ) -> u32 {
     let mut offset = offset;
     let mut vertexIndex = vertexCount;
-    offset = inner_addSkirtIndices(westIndicesSouthToNorth, vertexIndex, indices, offset);
-    vertexIndex += westIndicesSouthToNorth.len() as u32;
-    offset = inner_addSkirtIndices(southIndicesEastToWest, vertexIndex, indices, offset);
-    vertexIndex += southIndicesEastToWest.len() as u32;
-    offset = inner_addSkirtIndices(eastIndicesNorthToSouth, vertexIndex, indices, offset);
-    vertexIndex += eastIndicesNorthToSouth.len() as u32;
-    return inner_addSkirtIndices(northIndicesWestToEast, vertexIndex, indices, offset);
+    offset = inner_addSkirtIndices(west_indices_south_to_north, vertexIndex, indices, offset);
+    vertexIndex += west_indices_south_to_north.len() as u32;
+    offset = inner_addSkirtIndices(south_indices_east_to_west, vertexIndex, indices, offset);
+    vertexIndex += south_indices_east_to_west.len() as u32;
+    offset = inner_addSkirtIndices(east_indices_north_to_south, vertexIndex, indices, offset);
+    vertexIndex += east_indices_north_to_south.len() as u32;
+    return inner_addSkirtIndices(north_indices_west_to_east, vertexIndex, indices, offset);
 }
 fn inner_addSkirtIndices(
     edgeIndices: &Vec<u32>,

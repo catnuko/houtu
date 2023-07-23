@@ -85,13 +85,13 @@ impl Cartesian3 for DVec3 {
         let mut f = self.normalize();
         f = f.abs();
         let mut result: DVec3;
-        if (f.x <= f.y) {
-            if (f.x <= f.z) {
+        if f.x <= f.y {
+            if f.x <= f.z {
                 result = DVec3::UNIT_X.clone();
             } else {
                 result = DVec3::UNIT_Z.clone();
             }
-        } else if (f.y <= f.z) {
+        } else if f.y <= f.z {
             result = DVec3::UNIT_Y.clone();
         } else {
             result = DVec3::UNIT_Z.clone();
@@ -184,7 +184,7 @@ impl Cartesian3 for DVec3 {
         radii_squared: Option<DVec3>,
     ) -> DVec3 {
         let result = DVec3::ZERO;
-        let radii_squared = radii_squared.unwrap_or(Ellipsoid::WGS84.radiiSquared);
+        let radii_squared = radii_squared.unwrap_or(Ellipsoid::WGS84.radii_squared);
         let height = height.unwrap_or(0.0);
         let mut scratchN = DVec3::ZERO;
         let mut scratchK = DVec3::ZERO;

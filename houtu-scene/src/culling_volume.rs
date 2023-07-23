@@ -17,9 +17,9 @@ impl CullingVolume {
         let mut intersecting = false;
         for plane in self.planes.iter() {
             let result = boundingVolume.intersect_plane(&Plane::from_vec4(&plane));
-            if (result == Intersect::OUTSIDE) {
+            if result == Intersect::OUTSIDE {
                 return Intersect::OUTSIDE;
-            } else if (result == Intersect::INTERSECTING) {
+            } else if result == Intersect::INTERSECTING {
                 intersecting = true;
             }
         }

@@ -24,12 +24,12 @@ use std::{
 };
 pub struct CreateMeshJobOutput {
     pub vertices: Vec<f64>,
-    pub maximumHeight: f64,
-    pub minimumHeight: f64,
+    pub maximum_height: f64,
+    pub minimum_height: f64,
     pub encoding: f64,
-    pub boundingSphere3D: f64,
-    pub orientedBoundingBox: f64,
-    pub occludeePointInScaledSpace: f64,
+    pub bounding_sphere_3d: f64,
+    pub oriented_bounding_box: f64,
+    pub occludee_point_in_scaled_space: f64,
 }
 
 // pub struct CreateMeshJob {
@@ -100,12 +100,12 @@ pub struct CreateVerticeOptions<'a> {
 }
 pub struct CreateVerticeReturn {
     pub vertices: Vec<f32>,
-    pub maximumHeight: f64,
-    pub minimumHeight: f64,
+    pub maximum_height: f64,
+    pub minimum_height: f64,
     pub encoding: TerrainEncoding,
-    pub boundingSphere3D: BoundingSphere,
-    pub orientedBoundingBox: OrientedBoundingBox,
-    pub occludeePointInScaledSpace: Option<DVec3>,
+    pub bounding_sphere_3d: BoundingSphere,
+    pub oriented_bounding_box: OrientedBoundingBox,
+    pub occludee_point_in_scaled_space: Option<DVec3>,
     pub relativeToCenter: Option<DVec3>,
 }
 pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
@@ -118,7 +118,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let isGeographic = options.isGeographic.unwrap_or(true);
     let ellipsoid = options.ellipsoid.unwrap_or(Ellipsoid::WGS84);
 
-    let oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
+    let oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximum_radius;
 
     let nativeRectangle = options.nativeRectangle.clone();
     let rectangleOption = options.rectangle;
@@ -173,35 +173,36 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let elementMultiplier = structore.elementMultiplier;
     let isBigEndian = structore.isBigEndian;
 
-    let mut rectangleWidth = nativeRectangle.computeWidth();
-    let mut rectangleHeight = nativeRectangle.computeHeight();
+    let mut rectangleWidth = nativeRectangle.compute_width();
+    let mut rectangleHeight = nativeRectangle.compute_height();
 
     let granularityX = rectangleWidth / (width as f64 - 1.);
     let granularityY = rectangleHeight / (height as f64 - 1.);
 
-    if (!isGeographic) {
+    if !isGeographic {
         rectangleWidth *= oneOverGlobeSemimajorAxis;
         rectangleHeight *= oneOverGlobeSemimajorAxis;
     }
 
-    let radiiSquared = ellipsoid.radiiSquared;
-    let radiiSquaredX = radiiSquared.x;
-    let radiiSquaredY = radiiSquared.y;
-    let radiiSquaredZ = radiiSquared.z;
+    let radii_squared = ellipsoid.radii_squared;
+    let radiiSquaredX = radii_squared.x;
+    let radiiSquaredY = radii_squared.y;
+    let radiiSquaredZ = radii_squared.z;
 
-    let mut minimumHeight: f64 = 65536.0;
-    let mut maximumHeight: f64 = -65536.0;
+    let mut minimum_height: f64 = 65536.0;
+    let mut maximum_height: f64 = -65536.0;
 
     let fromENU = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
     let toENU = fromENU.inverse_transformation();
     let webMercatorProjection = WebMercatorProjection::default();
-    let mut southMercatorY = 0.;
-    let mut oneOverMercatorHeight = 0.;
-    if (includeWebMercatorT) {
-        southMercatorY = webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicSouth);
-        oneOverMercatorHeight = 1.0
+    let mut south_mercator_y = 0.;
+    let mut one_over_mercator_height = 0.;
+    if includeWebMercatorT {
+        south_mercator_y =
+            webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicSouth);
+        one_over_mercator_height = 1.0
             / (webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicNorth)
-                - southMercatorY);
+                - south_mercator_y);
     }
 
     let mut minimum = DVec3::ZERO;
@@ -256,7 +257,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let mut startCol: i32 = 0;
     let mut endCol: i32 = width as i32;
 
-    if (hasSkirts) {
+    if hasSkirts {
         startRow -= 1;
         endRow += 1;
         startCol -= 1;
@@ -266,16 +267,16 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let skirtOffsetPercentage = 0.00001;
     for rowIndex in startRow..endRow {
         let mut row = rowIndex;
-        if (row < 0) {
+        if row < 0 {
             row = 0;
         }
-        if (row >= height as i32) {
+        if row >= height as i32 {
             row = (height - 1) as i32;
         }
 
         let mut latitude = nativeRectangle.north - granularityY * row as f64;
 
-        if (!isGeographic) {
+        if !isGeographic {
             latitude = piOverTwo - 2.0 * ((-latitude * oneOverGlobeSemimajorAxis).exp()).atan();
         } else {
             latitude = (latitude).to_radians();
@@ -286,10 +287,10 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
         let isNorthEdge = rowIndex == startRow;
         let isSouthEdge = rowIndex == endRow - 1;
-        if (skirtHeight > 0.0) {
-            if (isNorthEdge) {
+        if skirtHeight > 0.0 {
+            if isNorthEdge {
                 latitude += skirtOffsetPercentage * rectangleHeight;
-            } else if (isSouthEdge) {
+            } else if isSouthEdge {
                 latitude -= skirtOffsetPercentage * rectangleHeight;
             }
         }
@@ -298,30 +299,30 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         let nZ = (latitude).sin();
         let kZ = radiiSquaredZ * nZ;
 
-        let mut webMercatorT: f64 = 0.;
-        if (includeWebMercatorT) {
-            webMercatorT = (webMercatorProjection.geodeticLatitude_to_mercator_angle(latitude)
-                - southMercatorY)
-                * oneOverMercatorHeight;
+        let mut web_mercator_t: f64 = 0.;
+        if includeWebMercatorT {
+            web_mercator_t = (webMercatorProjection.geodeticLatitude_to_mercator_angle(latitude)
+                - south_mercator_y)
+                * one_over_mercator_height;
         }
         for colIndex in startCol..endCol {
             let mut col = colIndex;
-            if (col < 0) {
+            if col < 0 {
                 col = 0;
             }
-            if (col >= width as i32) {
+            if col >= width as i32 {
                 col = (width - 1) as i32;
             }
 
             let terrainOffset = (row as u32) * (width * stride) + (col as u32) * stride;
 
             let mut heightSample: f64;
-            if (elementsPerHeight == 1) {
+            if elementsPerHeight == 1 {
                 heightSample = heightmap[terrainOffset as usize] as f64;
             } else {
                 heightSample = 0.;
 
-                if (isBigEndian) {
+                if isBigEndian {
                     for elementOffset in 0..elementsPerHeight {
                         heightSample = heightSample * elementMultiplier as f64
                             + heightmap[(terrainOffset + elementOffset) as usize] as f64;
@@ -337,12 +338,12 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
             heightSample = heightSample * heightScale + heightOffset;
 
-            maximumHeight = maximumHeight.max(heightSample);
-            minimumHeight = minimumHeight.min(heightSample);
+            maximum_height = maximum_height.max(heightSample);
+            minimum_height = minimum_height.min(heightSample);
 
             let mut longitude = nativeRectangle.west + granularityX * (col as f64);
 
-            if (!isGeographic) {
+            if !isGeographic {
                 longitude = longitude * oneOverGlobeSemimajorAxis;
             } else {
                 longitude = (longitude).to_radians();
@@ -353,29 +354,29 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
             let mut index = (row as u32) * width + (col as u32);
 
-            if (skirtHeight > 0.0) {
+            if skirtHeight > 0.0 {
                 let isWestEdge = colIndex == startCol;
                 let isEastEdge = colIndex == endCol - 1;
                 let isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
                 let isCorner = (isNorthEdge || isSouthEdge) && (isWestEdge || isEastEdge);
-                if (isCorner) {
+                if isCorner {
                     // Don't generate skirts on the corners.
                     continue;
-                } else if (isEdge) {
+                } else if isEdge {
                     heightSample -= skirtHeight;
 
-                    if (isWestEdge) {
+                    if isWestEdge {
                         // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
                         index = gridVertexCount + (height - (row as u32) - 1);
                         longitude -= skirtOffsetPercentage * rectangleWidth;
-                    } else if (isSouthEdge) {
+                    } else if isSouthEdge {
                         // Add after west indices. South indices are ordered east to west.
                         index = gridVertexCount + height + (width - (col as u32) - 1);
-                    } else if (isEastEdge) {
+                    } else if isEastEdge {
                         // Add after west and south indices. East indices are ordered north to south. The index is flipped like above.
                         index = gridVertexCount + height + width + (row as u32);
                         longitude += skirtOffsetPercentage * rectangleWidth;
-                    } else if (isNorthEdge) {
+                    } else if isNorthEdge {
                         // Add after west, south, and east indices. North indices are ordered west to east.
                         index = gridVertexCount + height + width + height + (col as u32);
                     }
@@ -409,12 +410,12 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             uvs[index as usize] = DVec2::new(u, v);
             heights[index as usize] = heightSample;
 
-            if (includeWebMercatorT) {
+            if includeWebMercatorT {
                 let mut webMercatorTs = webMercatorTsOption.as_mut().unwrap();
-                webMercatorTs[index as usize] = webMercatorT;
+                webMercatorTs[index as usize] = web_mercator_t;
             }
 
-            if (includeGeodeticSurfaceNormals) {
+            if includeGeodeticSurfaceNormals {
                 let mut geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_mut().unwrap();
                 geodeticSurfaceNormals[index as usize] =
                     ellipsoid.geodeticSurfaceNormal(&position).unwrap();
@@ -422,24 +423,24 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         }
     }
 
-    let boundingSphere3D = BoundingSphere::from_points(&positions);
-    let mut orientedBoundingBox = OrientedBoundingBox::default();
+    let bounding_sphere_3d = BoundingSphere::from_points(&positions);
+    let mut oriented_bounding_box = OrientedBoundingBox::default();
     if let Some(rectangle) = rectangleOption {
-        orientedBoundingBox = OrientedBoundingBox::fromRectangle(
+        oriented_bounding_box = OrientedBoundingBox::fromRectangle(
             &rectangle,
-            Some(minimumHeight),
-            Some(maximumHeight),
+            Some(minimum_height),
+            Some(maximum_height),
             Some(&ellipsoid),
         );
     }
 
-    let mut occludeePointInScaledSpace: Option<DVec3> = None;
-    if (hasRelativeToCenter) {
+    let mut occludee_point_in_scaled_space: Option<DVec3> = None;
+    if hasRelativeToCenter {
         let occluder = EllipsoidalOccluder::new(&ellipsoid);
-        occludeePointInScaledSpace = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
+        occludee_point_in_scaled_space = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
             &relativeToCenter,
             &positions,
-            minimumHeight,
+            minimum_height,
         );
     }
 
@@ -448,7 +449,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         relativeToCenter,
         Some(aaBox),
         Some(hMin),
-        Some(maximumHeight),
+        Some(maximum_height),
         Some(fromENU),
         false,
         Some(includeWebMercatorT),
@@ -492,12 +493,12 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     return CreateVerticeReturn {
         relativeToCenter: options.relativeToCenter,
         vertices: vertices,
-        maximumHeight: maximumHeight,
-        minimumHeight: minimumHeight,
+        maximum_height: maximum_height,
+        minimum_height: minimum_height,
         encoding: encoding,
-        boundingSphere3D: boundingSphere3D,
-        orientedBoundingBox: orientedBoundingBox,
-        occludeePointInScaledSpace: occludeePointInScaledSpace,
+        bounding_sphere_3d: bounding_sphere_3d,
+        oriented_bounding_box: oriented_bounding_box,
+        occludee_point_in_scaled_space: occludee_point_in_scaled_space,
     };
 }
 

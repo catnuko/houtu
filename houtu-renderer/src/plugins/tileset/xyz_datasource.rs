@@ -9,8 +9,8 @@ pub struct XYZDataSource {
     pub tiling_scheme: GeographicTilingScheme,
     pub tile_width: u32,
     pub tile_height: u32,
-    pub minimumLevel: u32,
-    pub maximumLevel: u32,
+    pub minimum_level: u32,
+    pub maximum_level: u32,
 }
 impl Default for XYZDataSource {
     fn default() -> Self {
@@ -20,8 +20,8 @@ impl Default for XYZDataSource {
             tiling_scheme: GeographicTilingScheme::default(),
             tile_height: 256,
             tile_width: 256,
-            minimumLevel: 0,
-            maximumLevel: 31,
+            minimum_level: 0,
+            maximum_level: 31,
         }
     }
 }

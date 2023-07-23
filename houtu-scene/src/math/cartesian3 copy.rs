@@ -206,7 +206,7 @@ impl Cartesian3 {
         radii_squared: Option<Cartesian3>,
     ) -> Cartesian3 {
         let result = Cartesian3::ZERO;
-        let radii_squared = radii_squared.unwrap_or(Ellipsoid::WGS84.radiiSquared);
+        let radii_squared = radii_squared.unwrap_or(Ellipsoid::WGS84.radii_squared);
         let height = height.unwrap_or(0.0);
         let mut scratchN = Cartesian3::ZERO;
         let mut scratchK = Cartesian3::ZERO;

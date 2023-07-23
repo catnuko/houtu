@@ -87,37 +87,37 @@ impl TilingScheme for GeographicTilingScheme {
         let xTiles = self.get_number_of_x_tiles_at_level(level);
         let yTiles = self.get_number_of_y_tiles_at_level(level);
 
-        let xTileWidth = rectangle.computeWidth() / xTiles as f64;
+        let xTileWidth = rectangle.compute_width() / xTiles as f64;
         let west = (x as f64) * xTileWidth + rectangle.west;
         let east = ((x + 1) as f64) * xTileWidth + rectangle.west;
 
-        let yTileHeight = rectangle.computeHeight() / yTiles as f64;
+        let yTileHeight = rectangle.compute_height() / yTiles as f64;
         let north = rectangle.north - y as f64 * yTileHeight;
         let south = rectangle.north - (y + 1) as f64 * yTileHeight;
         return Rectangle::new(west, south, east, north);
     }
     fn position_to_tile_x_y(&self, coord: &Cartographic, level: u32) -> Option<UVec2> {
         let rectangle = self.rectangle;
-        if (!rectangle.contains(coord)) {
+        if !rectangle.contains(coord) {
             // outside the bounds of the tiling scheme
             return None;
         }
         let xTiles = self.get_number_of_x_tiles_at_level(level);
         let yTiles = self.get_number_of_y_tiles_at_level(level);
 
-        let xTileWidth = rectangle.computeWidth() / xTiles as f64;
-        let yTileHeight = rectangle.computeHeight() / yTiles as f64;
+        let xTileWidth = rectangle.compute_width() / xTiles as f64;
+        let yTileHeight = rectangle.compute_height() / yTiles as f64;
 
         let longitude = coord.longitude;
         let latitude = coord.latitude;
 
         let mut xTileCoordinate: u32 = ((longitude - rectangle.west) / xTileWidth).floor() as u32;
-        if (xTileCoordinate >= xTiles) {
+        if xTileCoordinate >= xTiles {
             xTileCoordinate = xTiles - 1;
         }
 
         let mut yTileCoordinate: u32 = ((rectangle.north - latitude) / yTileHeight).floor() as u32;
-        if (yTileCoordinate >= yTiles) {
+        if yTileCoordinate >= yTiles {
             yTileCoordinate = yTiles - 1;
         }
 

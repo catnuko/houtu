@@ -24,14 +24,14 @@ impl IntersectionTests {
         let normal = plane.normal;
         let denominator = normal.dot(direction);
 
-        if (denominator.abs() < EPSILON15) {
+        if denominator.abs() < EPSILON15 {
             // Ray is parallel to plane.  The ray may be in the polygon's plane.
             return None;
         }
 
         let t = (-plane.distance - normal.dot(origin)) / denominator;
 
-        if (t < 0.) {
+        if t < 0. {
             return None;
         }
 
@@ -52,9 +52,9 @@ impl IntersectionTests {
         let mut discriminant;
         let mut temp;
 
-        if (q2 > 1.0) {
+        if q2 > 1.0 {
             // Outside ellipsoid.
-            if (qw >= 0.0) {
+            if qw >= 0.0 {
                 // Looking outward or tangent (0 intersections).
                 return None;
             }
@@ -65,16 +65,16 @@ impl IntersectionTests {
             w2 = w.magnitude_squared();
             product = w2 * difference;
 
-            if (qw2 < product) {
+            if qw2 < product {
                 // Imaginary roots (0 intersections).
                 return None;
-            } else if (qw2 > product) {
+            } else if qw2 > product {
                 // Distinct roots (2 intersections).
                 discriminant = qw * qw - product;
                 temp = -qw + discriminant.sqrt(); // Avoid cancellation.
                 let root0 = temp / w2;
                 let root1 = difference / temp;
-                if (root0 < root1) {
+                if root0 < root1 {
                     return Some(Interval::new(root0, root1));
                 }
                 return Some(Interval::new(root1, root0));
@@ -82,7 +82,7 @@ impl IntersectionTests {
             // qw2 == product.  Repeated roots (2 intersections).
             let root = (difference / w2).sqrt();
             return Some(Interval::new(root, root));
-        } else if (q2 < 1.0) {
+        } else if q2 < 1.0 {
             // Inside ellipsoid (2 intersections).
             difference = q2 - 1.0; // Negatively valued.
             w2 = w.magnitude_squared();
@@ -93,7 +93,7 @@ impl IntersectionTests {
             return Some(Interval::new(0.0, temp / w2));
         }
         // q2 == 1.0. On ellipsoid.
-        if (qw < 0.0) {
+        if qw < 0.0 {
             // Looking inward.
             w2 = w.magnitude_squared();
             return Some(Interval::new(0.0, -qw / w2));
@@ -107,9 +107,9 @@ impl IntersectionTests {
         let position = ray.origin;
         let direction = ray.direction;
 
-        if (!position.equals(DVec3::ZERO)) {
+        if !position.equals(DVec3::ZERO) {
             let normal = ellipsoid.geodeticSurfaceNormal(&position).unwrap();
-            if (direction.dot(normal) >= 0.0) {
+            if direction.dot(normal) >= 0.0 {
                 // The location provided is the closest point in altitude
                 return Some(position);
             }
@@ -164,7 +164,7 @@ impl IntersectionTests {
         let mut s;
         let mut altitude;
         let length = solutions.len();
-        if (length > 0) {
+        if length > 0 {
             let mut closest = DVec3::ZERO.clone();
             let mut maximumValue = NEG_INFINITY;
             for i in 0..length {
@@ -172,7 +172,7 @@ impl IntersectionTests {
                 let v = (s.subtract(position)).normalize();
                 let dotProduct = v.dot(direction);
 
-                if (dotProduct > maximumValue) {
+                if dotProduct > maximumValue {
                     maximumValue = dotProduct;
                     closest = s.clone();
                 }
@@ -193,8 +193,8 @@ impl IntersectionTests {
 }
 fn addWithCancellationCheck(left: f64, right: f64, tolerance: f64) -> f64 {
     let difference = left + right;
-    if (left.signum() != right.signum()
-        && (difference / left.abs().max(right.abs())).abs() < tolerance)
+    if left.signum() != right.signum()
+        && (difference / left.abs().max(right.abs())).abs() < tolerance
     {
         return 0.0;
     }
@@ -222,9 +222,9 @@ fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Ve
 
     let cosines;
     let mut solutions = vec![];
-    if (r0 == 0.0 && r1 == 0.0) {
+    if r0 == 0.0 && r1 == 0.0 {
         cosines = QuadraticRealPolynomial::computeRealRoots(l2, l1, l0).unwrap();
-        if (cosines.len() == 0) {
+        if cosines.len() == 0 {
             return solutions;
         }
 
@@ -233,7 +233,7 @@ fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Ve
         solutions.push(DVec3::new(x, w * cosine0, w * -sine0));
         solutions.push(DVec3::new(x, w * cosine0, w * sine0));
 
-        if (cosines.len() == 2) {
+        if cosines.len() == 2 {
             let cosine1 = cosines[1];
             let sine1 = ((1.0 - cosine1 * cosine1).max(0.0)).sqrt();
             solutions.push(DVec3::new(x, w * cosine1, w * -sine1));
@@ -254,13 +254,13 @@ fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Ve
     let c1 = 2.0 * (l0 * l1 - r0r1);
     let c0 = l0 * l0 - r0Squared;
 
-    if (c4 == 0.0 && c3 == 0.0 && c2 == 0.0 && c1 == 0.0) {
+    if c4 == 0.0 && c3 == 0.0 && c2 == 0.0 && c1 == 0.0 {
         return solutions;
     }
 
     cosines = QuarticRealPolynomial::computeRealRoots(c4, c3, c2, c1, c0).unwrap();
     let length = cosines.len();
-    if (length == 0) {
+    if length == 0 {
         return solutions;
     }
     for i in 0..length {
@@ -271,9 +271,9 @@ fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Ve
 
         //let left = l2 * cosineSquared + l1 * cosine + l0;
         let left;
-        if (l2.signum() == l0.signum()) {
+        if l2.signum() == l0.signum() {
             left = addWithCancellationCheck(l2 * cosineSquared + l0, l1 * cosine, EPSILON12);
-        } else if (l0.signum() == (l1 * cosine).signum()) {
+        } else if l0.signum() == (l1 * cosine).signum() {
             left = addWithCancellationCheck(l2 * cosineSquared, l1 * cosine + l0, EPSILON12);
         } else {
             left = addWithCancellationCheck(l2 * cosineSquared + l1 * cosine, l0, EPSILON12);
@@ -282,11 +282,11 @@ fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Ve
         let right = addWithCancellationCheck(r1 * cosine, r0, EPSILON15);
         let product = left * right;
 
-        if (product < 0.0) {
+        if product < 0.0 {
             solutions.push(DVec3::new(x, w * cosine, w * sine));
-        } else if (product > 0.0) {
+        } else if product > 0.0 {
             solutions.push(DVec3::new(x, w * cosine, w * -sine));
-        } else if (sine != 0.0) {
+        } else if sine != 0.0 {
             solutions.push(DVec3::new(x, w * cosine, w * -sine));
             solutions.push(DVec3::new(x, w * cosine, w * sine));
             // i += 1;

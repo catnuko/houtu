@@ -8,7 +8,8 @@ const { Cartesian2, Cartesian3, Cartographic, Camera, Scene, defaultValue, Geogr
 const CesiumMath = Cesium.Math
 onMounted(() => {
   window.viewer = new Cesium.Viewer("map")
-
+console.log(viewer)
+viewer.scene.globe._surface._debug.enableDebugOutput=true
   let p_wc = new Cartesian3(
     0, 0, 17020972.5
   );

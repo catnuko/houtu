@@ -119,17 +119,17 @@ pub fn pan_orbit_camera(
                     // || !defined(globe_camera_control._globe)
                     // look-at mode
                     {
-                        if (distance > 0.0 && (distanceMeasure - minHeight).abs() < 1.0) {
+                        if distance > 0.0 && (distanceMeasure - minHeight).abs() < 1.0 {
                             continue;
                         }
 
-                        if (distance < 0.0 && (distanceMeasure - maxHeight).abs() < 1.0) {
+                        if distance < 0.0 && (distanceMeasure - maxHeight).abs() < 1.0 {
                             continue;
                         }
 
-                        if (distanceMeasure - distance < minHeight) {
+                        if distanceMeasure - distance < minHeight {
                             distance = distanceMeasure - minHeight - 1.0;
-                        } else if (distanceMeasure - distance > maxHeight) {
+                        } else if distanceMeasure - distance > maxHeight {
                             distance = distanceMeasure - maxHeight;
                         }
                     }
@@ -148,11 +148,11 @@ pub fn pan_orbit_camera(
                     let mut rotatingZoom = globe_camera_control._rotatingZoom;
                     let pickedPosition;
 
-                    if (!sameStartPosition) {
+                    if !sameStartPosition {
                         pickedPosition = globe_camera.pickEllipsoid(&startPosition, &window_size);
 
                         globe_camera_control._zoomMouseStart = startPosition.clone();
-                        if (pickedPosition.is_some()) {
+                        if pickedPosition.is_some() {
                             globe_camera_control._useZoomWorldPosition = true;
                             globe_camera_control._zoomWorldPosition =
                                 pickedPosition.unwrap().clone();
@@ -168,7 +168,7 @@ pub fn pan_orbit_camera(
                             globe_camera_control._cameraUnderground;
                     }
                     //用startPosition在球面上拾取不到坐标时,放大一些距离
-                    if (!globe_camera_control._useZoomWorldPosition) {
+                    if !globe_camera_control._useZoomWorldPosition {
                         globe_camera.zoom_in(Some(distance));
                         globe_camera.update_camera_matrix(&mut transform);
                         return;
@@ -178,11 +178,11 @@ pub fn pan_orbit_camera(
                     let mut zoomOnVector = false;
 
                     //相机高度小于两百万米时，开启rotatingZoom
-                    if (globe_camera.get_position_cartographic().height < 2000000.) {
+                    if globe_camera.get_position_cartographic().height < 2000000. {
                         rotatingZoom = true;
                     }
 
-                    if (!sameStartPosition || rotatingZoom) {
+                    if !sameStartPosition || rotatingZoom {
                         let cameraPositionNormal = globe_camera.position.normalize();
                         if (globe_camera_control._cameraUnderground
                             || globe_camera_control._zoomingUnderground
@@ -199,15 +199,15 @@ pub fn pan_orbit_camera(
                                 globe_camera.pickEllipsoid(&centerPixel, &window_size);
                             // If centerPosition is not defined, it means the globe does not cover the center position of screen
                             // 如果centerPosition没定义，意味着屏幕的中心点处没有地球，开启zoomOnVector
-                            if (centerPosition.is_none()) {
+                            if centerPosition.is_none() {
                                 zoomOnVector = true;
-                            } else if (globe_camera.get_position_cartographic().height < 1000000.) {
+                            } else if globe_camera.get_position_cartographic().height < 1000000. {
                                 // The math in the else block assumes the camera
                                 // points toward the earth surface, so we check it here.
                                 // Theoretically, we should check for 90 degree, but it doesn't behave well when parallel
                                 // to the earth surface
                                 // 相机方向向量和相机位置向量的夹角在0-120°之间，开启zoomOnVector
-                                if (globe_camera.direction.dot(cameraPositionNormal) >= -0.5) {
+                                if globe_camera.direction.dot(cameraPositionNormal) >= -0.5 {
                                     zoomOnVector = true;
                                 } else {
                                     let mut cameraPosition = globe_camera.position.clone();
@@ -217,7 +217,7 @@ pub fn pan_orbit_camera(
 
                                     targetNormal = target.normalize();
 
-                                    if (targetNormal.dot(cameraPositionNormal) < 0.0) {
+                                    if targetNormal.dot(cameraPositionNormal) < 0.0 {
                                         globe_camera.update_camera_matrix(&mut transform);
                                         return;
                                     }
@@ -234,7 +234,7 @@ pub fn pan_orbit_camera(
                                     positionToTargetNormal = positionToTarget.normalize();
 
                                     let alphaDot = cameraPositionNormal.dot(positionToTargetNormal);
-                                    if (alphaDot >= 0.0) {
+                                    if alphaDot >= 0.0 {
                                         // We zoomed past the target, and this zoom is not valid anymore.
                                         // This line causes the next zoom movement to pick a new starting point.
                                         globe_camera_control._zoomMouseStart.x = -1.0;
@@ -323,7 +323,7 @@ pub fn pan_orbit_camera(
                                 let dotProduct = pickedNormal.dot(positionNormal);
 
                                 //夹角在0-90度之间
-                                if (dotProduct > 0.0 && dotProduct < 1.0) {
+                                if dotProduct > 0.0 && dotProduct < 1.0 {
                                     let angle = acos_clamped(dotProduct);
                                     let axis = pickedNormal.cross(positionNormal);
 
@@ -346,7 +346,7 @@ pub fn pan_orbit_camera(
                         globe_camera_control._rotatingZoom = !zoomOnVector;
                     }
 
-                    if ((!sameStartPosition && zoomOnVector) || zoomingOnVector) {
+                    if (!sameStartPosition && zoomOnVector) || zoomingOnVector {
                         let ray;
                         let zoomMouseStart = SceneTransforms::wgs84ToWindowCoordinates(
                             &globe_camera_control._zoomWorldPosition,
@@ -354,8 +354,8 @@ pub fn pan_orbit_camera(
                             &to_mat4_64(&global_transform.compute_matrix()),
                             &to_mat4_64(&projection.get_projection_matrix()),
                         );
-                        if (startPosition.eq(&globe_camera_control._zoomMouseStart)
-                            && zoomMouseStart.is_some())
+                        if startPosition.eq(&globe_camera_control._zoomMouseStart)
+                            && zoomMouseStart.is_some()
                         {
                             let v = zoomMouseStart.unwrap();
                             ray = globe_camera.getPickRay(&v, &window_size)
@@ -372,7 +372,7 @@ pub fn pan_orbit_camera(
                         globe_camera.zoom_in(Some(distance));
                     }
 
-                    if (!globe_camera_control._cameraUnderground) {
+                    if !globe_camera_control._cameraUnderground {
                         globe_camera.set_view(
                             None,
                             Some(SetViewOrientation::HeadingPitchRoll(hpr)),
@@ -431,8 +431,7 @@ fn tilt3DOnEllipsoid(
         .cartesianToCartographic(&camera.get_position_wc())
         .unwrap()
         .height;
-    if (height - minHeight - 1.0 < EPSILON3
-        && movement.endPosition.y - movement.startPosition.y < 0.)
+    if height - minHeight - 1.0 < EPSILON3 && movement.endPosition.y - movement.startPosition.y < 0.
     {
         return;
     }
@@ -444,10 +443,10 @@ fn tilt3DOnEllipsoid(
 
     let center;
     let intersection = IntersectionTests::rayEllipsoid(&ray, Some(&ellipsoid));
-    if (intersection.is_some()) {
+    if intersection.is_some() {
         let intersection = intersection.unwrap();
         center = Ray::getPoint(&ray, intersection.start);
-    } else if (height > controller._minimumTrackBallHeight) {
+    } else if height > controller._minimumTrackBallHeight {
         let grazingAltitudeLocation =
             IntersectionTests::grazingAltitudeLocation(&ray, Some(&ellipsoid));
         if grazingAltitudeLocation.is_none() {
@@ -491,7 +490,7 @@ fn tilt3DOnEllipsoid(
     camera._setTransform(&oldTransform);
     controller._ellipsoid = oldEllipsoid;
 
-    let radius = oldEllipsoid.maximumRadius;
+    let radius = oldEllipsoid.maximum_radius;
     controller._rotateFactor = 1.0 / radius;
     controller._rotateRateRangeAdjustment = radius;
 }
@@ -502,7 +501,7 @@ fn tilt3D(
     movement: &MovementState,
     window_size: &DVec2,
 ) {
-    if (!(camera.get_transform() == DMat4::IDENTITY)) {
+    if !(camera.get_transform() == DMat4::IDENTITY) {
         return;
     }
 
@@ -510,12 +509,12 @@ fn tilt3D(
     //     movement = movement.angleAndHeight;
     // }
 
-    if (!startPosition.eq(&controller._tiltCenterMousePosition)) {
+    if !startPosition.eq(&controller._tiltCenterMousePosition) {
         controller._tiltOnEllipsoid = false;
         controller._looking = false;
     }
 
-    if (controller._looking) {
+    if controller._looking {
         let up = Ellipsoid::WGS84.geodeticSurfaceNormal(&camera.position);
         look3D(controller, camera, startPosition, movement, up, window_size);
         return;
@@ -524,8 +523,8 @@ fn tilt3D(
         .cartesianToCartographic(&camera.position)
         .unwrap();
 
-    if (controller._tiltOnEllipsoid
-        || cartographic.height > controller._minimumCollisionTerrainHeight)
+    if controller._tiltOnEllipsoid
+        || cartographic.height > controller._minimumCollisionTerrainHeight
     {
         controller._tiltOnEllipsoid = true;
         tilt3DOnEllipsoid(controller, camera, startPosition, movement, window_size);
@@ -546,7 +545,7 @@ fn spin3D(
     let cameraUnderground = controller._cameraUnderground;
     let mut ellipsoid = Ellipsoid::WGS84;
 
-    if (!camera.get_transform().eq(&DMat4::IDENTITY)) {
+    if !camera.get_transform().eq(&DMat4::IDENTITY) {
         rotate3D(
             controller,
             camera,
@@ -565,10 +564,10 @@ fn spin3D(
 
     let up = ellipsoid.geodeticSurfaceNormal(&camera.position);
 
-    if (startPosition.eq(&controller._rotateMousePosition)) {
-        if (controller._looking) {
+    if startPosition.eq(&controller._rotateMousePosition) {
+        if controller._looking {
             look3D(controller, camera, startPosition, movement, up, window_size);
-        } else if (controller._rotating) {
+        } else if controller._rotating {
             rotate3D(
                 controller,
                 camera,
@@ -579,10 +578,10 @@ fn spin3D(
                 None,
                 None,
             );
-        } else if (controller._strafing) {
+        } else if controller._strafing {
             continueStrafing(controller, camera, movement, window_size);
         } else {
-            if (camera.position.magnitude() < controller._rotateStartPosition.length()) {
+            if camera.position.magnitude() < controller._rotateStartPosition.length() {
                 // Pan action is no longer valid if camera moves below the pan ellipsoid
                 return;
             }
@@ -605,7 +604,7 @@ fn spin3D(
         .height;
     let globe = false;
     let spin3DPick = camera.pickEllipsoid(&movement.startPosition, window_size);
-    if (spin3DPick.is_some()) {
+    if spin3DPick.is_some() {
         pan3D(controller, camera, startPosition, movement, window_size);
         controller._rotateStartPosition = spin3DPick.unwrap();
     } else if height > controller._minimumTrackBallHeight {
@@ -647,18 +646,18 @@ fn rotate3D(
     let rotateOnlyHorizontal = rotateOnlyHorizontal.unwrap_or(false);
 
     let oldAxis = camera.constrainedAxis;
-    if (constrainedAxis.is_some()) {
+    if constrainedAxis.is_some() {
         camera.constrainedAxis = constrainedAxis;
     }
 
     let rho = camera.position.magnitude();
     let mut rotateRate = controller._rotateFactor * (rho - controller._rotateRateRangeAdjustment);
 
-    if (rotateRate > controller._maximumRotateRate) {
+    if rotateRate > controller._maximumRotateRate {
         rotateRate = controller._maximumRotateRate;
     }
 
-    if (rotateRate < controller._minimumRotateRate) {
+    if rotateRate < controller._minimumRotateRate {
         rotateRate = controller._minimumRotateRate;
     }
 
@@ -672,11 +671,11 @@ fn rotate3D(
     let deltaPhi = rotateRate * phiWindowRatio * PI * 2.0;
     let deltaTheta = rotateRate * thetaWindowRatio * PI;
 
-    if (!rotateOnlyVertical) {
+    if !rotateOnlyVertical {
         camera.rotate_right(Some(deltaPhi));
     }
 
-    if (!rotateOnlyHorizontal) {
+    if !rotateOnlyHorizontal {
         camera.rotate_up(Some(deltaTheta));
     }
 
@@ -696,7 +695,7 @@ fn pan3D(
     let p0 = camera.pickEllipsoid(&startMousePosition, window_size);
     let p1 = camera.pickEllipsoid(&endMousePosition, window_size);
 
-    if (p0.is_none() || p1.is_none()) {
+    if p0.is_none() || p1.is_none() {
         controller._rotating = true;
         rotate3D(
             controller,
@@ -722,7 +721,7 @@ fn pan3D(
         let dot = p0.dot(p1);
         let axis = p0.cross(p1);
 
-        if (dot < 1.0 && !axis.equals_epsilon(DVec3::ZERO, Some(EPSILON14), None)) {
+        if dot < 1.0 && !axis.equals_epsilon(DVec3::ZERO, Some(EPSILON14), None) {
             // dot is in [0, 1]
             let angle = dot.acos();
             camera.rotate(axis, Some(angle));
@@ -747,19 +746,19 @@ fn pan3D(
         endRej = p1.subtract(endRej).normalize();
 
         let mut startPhi = (startRej.dot(basis1)).acos();
-        if (startRej.dot(basis2) < 0.) {
+        if startRej.dot(basis2) < 0. {
             startPhi = TAU - startPhi;
         }
 
         let mut endPhi = (endRej.dot(basis1)).acos();
-        if (endRej.dot(basis2) < 0.) {
+        if endRej.dot(basis2) < 0. {
             endPhi = TAU - endPhi;
         }
 
         let deltaPhi = startPhi - endPhi;
 
         let east;
-        if (basis0.equals_epsilon(camera.position, Some(EPSILON2), None)) {
+        if basis0.equals_epsilon(camera.position, Some(EPSILON2), None) {
             east = camera.right;
         } else {
             east = basis0.cross(camera.position);
@@ -770,10 +769,10 @@ fn pan3D(
         let side1 = planeNormal.dot(p1.subtract(basis0));
 
         let deltaTheta;
-        if (side0 > 0. && side1 > 0.) {
+        if side0 > 0. && side1 > 0. {
             deltaTheta = endTheta - startTheta;
-        } else if (side0 > 0. && side1 <= 0.) {
-            if (camera.position.dot(basis0) > 0.) {
+        } else if side0 > 0. && side1 <= 0. {
+            if camera.position.dot(basis0) > 0. {
                 deltaTheta = -startTheta - endTheta;
             } else {
                 deltaTheta = startTheta + endTheta;
@@ -811,7 +810,7 @@ fn look3D(
     end = endRay.direction;
 
     let mut dot = start.dot(end);
-    if (dot < 1.0) {
+    if dot < 1.0 {
         // dot is in [0, 1]
         angle = dot.acos();
     }
@@ -822,9 +821,9 @@ fn look3D(
     };
 
     let horizontalRotationAxis = controller._horizontalRotationAxis;
-    if (rotationAxis.is_some()) {
+    if rotationAxis.is_some() {
         camera.look(&rotationAxis.unwrap(), Some(-angle));
-    } else if (horizontalRotationAxis.is_some()) {
+    } else if horizontalRotationAxis.is_some() {
         camera.look(&horizontalRotationAxis.unwrap(), Some(-angle));
     } else {
         camera.look_left(Some(angle));
@@ -843,7 +842,7 @@ fn look3D(
     end = endRay.direction;
 
     dot = start.dot(end);
-    if (dot < 1.0) {
+    if dot < 1.0 {
         // dot is in [0, 1]
         angle = dot.acos();
     }
@@ -854,27 +853,27 @@ fn look3D(
     };
 
     let rotationAxis = rotationAxis.unwrap_or(horizontalRotationAxis.unwrap_or(DVec3::ZERO));
-    if (rotationAxis != DVec3::ZERO) {
+    if rotationAxis != DVec3::ZERO {
         let direction = camera.direction;
         let negativeRotationAxis = rotationAxis.neg();
         let northParallel = direction.equals_epsilon(rotationAxis, Some(EPSILON2), None);
         let southParallel = direction.equals_epsilon(negativeRotationAxis, Some(EPSILON2), None);
-        if (!northParallel && !southParallel) {
+        if !northParallel && !southParallel {
             dot = direction.dot(rotationAxis);
             let mut angleToAxis = acos_clamped(dot);
-            if (angle > 0. && angle > angleToAxis) {
+            if angle > 0. && angle > angleToAxis {
                 angle = angleToAxis - EPSILON4;
             }
 
             dot = direction.dot(negativeRotationAxis);
             angleToAxis = acos_clamped(dot);
-            if (angle < 0. && -angle > angleToAxis) {
+            if angle < 0. && -angle > angleToAxis {
                 angle = -angleToAxis + EPSILON4;
             }
 
             let tangent = rotationAxis.cross(direction);
             camera.look(&tangent, Some(angle));
-        } else if ((northParallel && angle < 0.) || (southParallel && angle > 0.)) {
+        } else if (northParallel && angle < 0.) || (southParallel && angle > 0.) {
             camera.look(&camera.right.clone(), Some(-angle));
         }
     } else {
@@ -916,7 +915,7 @@ fn strafe(
     let mut direction = camera.direction.clone();
     let plane = Plane::fromPointNormal(&strafeStartPosition, &direction);
     let intersection = IntersectionTests::rayPlane(&ray, &plane);
-    if (intersection.is_none()) {
+    if intersection.is_none() {
         return;
     }
     let intersection = intersection.unwrap();

@@ -181,7 +181,7 @@ impl GlobeCameraControl {
         } else {
             self._ellipsoid = Ellipsoid::WGS84;
         }
-        self._rotateFactor = 1.0 / self._ellipsoid.maximumRadius;
-        self._rotateRateRangeAdjustment = self._ellipsoid.maximumRadius;
+        self._rotateFactor = 1.0 / self._ellipsoid.maximum_radius;
+        self._rotateRateRangeAdjustment = self._ellipsoid.maximum_radius;
     }
 }

@@ -46,11 +46,11 @@ impl SceneTransforms {
         // let camera = scene.camera;
         let cameraCentered = false;
         let mut result = DVec2::ZERO;
-        if (cameraCentered) {
+        if cameraCentered {
             // View-projection matrix to transform from world coordinates to clip coordinates
             let positionCC =
                 worldToClip(&actualPosition, eyeOffset, view_matrix, projection_matrix);
-            if (positionCC.z < 0.) {
+            if positionCC.z < 0. {
                 return None;
             }
 

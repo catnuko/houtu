@@ -59,7 +59,7 @@ impl WebMercatorTilingScheme {
             rectangleNortheastInMeters = options.rectangleNortheastInMeters.unwrap().clone();
             rectangleSouthwestInMeters = options.rectangleSouthwestInMeters.unwrap().clone();
         } else {
-            let semimajorAxisTimesPi = options.ellipsoid.maximumRadius * PI;
+            let semimajorAxisTimesPi = options.ellipsoid.maximum_radius * PI;
             rectangleSouthwestInMeters = DVec2::new(-semimajorAxisTimesPi, -semimajorAxisTimesPi);
             rectangleNortheastInMeters = DVec2::new(semimajorAxisTimesPi, semimajorAxisTimesPi);
         }
@@ -131,7 +131,7 @@ impl TilingScheme for WebMercatorTilingScheme {
     }
     fn position_to_tile_x_y(&self, coord: &Cartographic, level: u32) -> Option<UVec2> {
         let rectangle = self.rectangle;
-        if (!rectangle.contains(coord)) {
+        if !rectangle.contains(coord) {
             // outside the bounds of the tiling scheme
             return None;
         }
@@ -148,12 +148,12 @@ impl TilingScheme for WebMercatorTilingScheme {
         let distanceFromNorth = self.rectangleNortheastInMeters.y - webMercatorPosition.y;
 
         let mut xTileCoordinate: u32 = (distanceFromWest / xTileWidth).floor() as u32;
-        if (xTileCoordinate >= xTiles) {
+        if xTileCoordinate >= xTiles {
             xTileCoordinate = xTiles - 1;
         }
 
         let mut yTileCoordinate: u32 = (distanceFromNorth / yTileHeight).floor() as u32;
-        if (yTileCoordinate >= yTiles) {
+        if yTileCoordinate >= yTiles {
             yTileCoordinate = yTiles - 1;
         }
 
@@ -181,41 +181,41 @@ mod tests {
 
     #[test]
     fn test_tileXYToRectangle() {
-        let tilingScheme = WebMercatorTilingScheme::default();
-        let rectangle = tilingScheme.tile_x_y_to_rectange(0, 0, 0);
-        let tilingSchemeRectangle = tilingScheme.rectangle;
+        let tiling_scheme = WebMercatorTilingScheme::default();
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(0, 0, 0);
+        let tiling_scheme_rectangle = tiling_scheme.rectangle;
         assert!(equals_epsilon(
             rectangle.west,
-            tilingSchemeRectangle.west,
+            tiling_scheme_rectangle.west,
             Some(EPSILON10),
             None
         ));
         assert!(equals_epsilon(
             rectangle.south,
-            tilingSchemeRectangle.south,
+            tiling_scheme_rectangle.south,
             Some(EPSILON10),
             None
         ));
         assert!(equals_epsilon(
             rectangle.east,
-            tilingSchemeRectangle.east,
+            tiling_scheme_rectangle.east,
             Some(EPSILON10),
             None
         ));
         assert!(equals_epsilon(
             rectangle.north,
-            tilingSchemeRectangle.north,
+            tiling_scheme_rectangle.north,
             Some(EPSILON10),
             None
         ));
     }
     #[test]
     fn test_tiles_northwest_corner() {
-        let tilingScheme = WebMercatorTilingScheme::default();
-        let northwest = tilingScheme.tile_x_y_to_rectange(0, 0, 1);
-        let northeast = tilingScheme.tile_x_y_to_rectange(1, 0, 1);
-        let southeast = tilingScheme.tile_x_y_to_rectange(1, 1, 1);
-        let southwest = tilingScheme.tile_x_y_to_rectange(0, 1, 1);
+        let tiling_scheme = WebMercatorTilingScheme::default();
+        let northwest = tiling_scheme.tile_x_y_to_rectange(0, 0, 1);
+        let northeast = tiling_scheme.tile_x_y_to_rectange(1, 0, 1);
+        let southeast = tiling_scheme.tile_x_y_to_rectange(1, 1, 1);
+        let southwest = tiling_scheme.tile_x_y_to_rectange(0, 1, 1);
         assert!(northeast.north == northwest.north);
         assert!(northeast.south == northwest.south);
         assert!(southeast.north == southwest.north);
@@ -237,11 +237,11 @@ mod tests {
     }
     #[test]
     fn test_return_correct_tile() {
-        let tilingScheme = WebMercatorTilingScheme::default();
+        let tiling_scheme = WebMercatorTilingScheme::default();
 
         let centerOfSouthwesternChild = Cartographic::new(-PI / 2.0, -PI / 4.0, 0.);
         assert!(
-            tilingScheme
+            tiling_scheme
                 .position_to_tile_x_y(&centerOfSouthwesternChild, 1)
                 .unwrap()
                 == UVec2::new(0, 1)
@@ -249,7 +249,7 @@ mod tests {
 
         let centerOfNortheasternChild = Cartographic::new(PI / 2.0, PI / 4.0, 0.);
         assert!(
-            tilingScheme
+            tiling_scheme
                 .position_to_tile_x_y(&centerOfNortheasternChild, 1)
                 .unwrap()
                 == UVec2::new(1, 0)

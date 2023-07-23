@@ -31,13 +31,13 @@ pub fn eastNorthUpToFixedFrame(origin: &DVec3, ellipsoid: Option<Ellipsoid>) -> 
     let mut scratchCalculateCartesian_south = DVec3::default();
     let mut scratchCalculateCartesian_down = DVec3::default();
 
-    if (origin.equals_epsilon(DVec3::ZERO, Some(EPSILON14), None)) {
+    if origin.equals_epsilon(DVec3::ZERO, Some(EPSILON14), None) {
         // If x, y, and z are zero, use the degenerate local frame, which is a special case
         scratchFirstCartesian = DVec3::from_array([0., 1., 0.]);
         scratchSecondCartesian = DVec3::from_array([-1., 0., 0.]);
         scratchThirdCartesian = DVec3::from_array([0., 0., 1.]);
-    } else if (equals_epsilon(origin.x, 0.0, Some(EPSILON14), None)
-        && equals_epsilon(origin.y, 0.0, Some(EPSILON14), None))
+    } else if equals_epsilon(origin.x, 0.0, Some(EPSILON14), None)
+        && equals_epsilon(origin.y, 0.0, Some(EPSILON14), None)
     {
         // If x and y are zero, assume origin is at a pole, which is a special case.
         scratchFirstCartesian = DVec3::from_array([0., 1., 0.]);

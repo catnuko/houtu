@@ -15,7 +15,7 @@ use super::TileKey;
 
 pub struct CreateTileJob {
     pub terrain_data: Arc<Mutex<HeightmapTerrainData>>,
-    pub indicesAndEdgesCache: Arc<Mutex<IndicesAndEdgesCache>>,
+    pub indices_and_edges_cache: Arc<Mutex<IndicesAndEdgesCache>>,
     pub tiling_scheme: GeographicTilingScheme,
     pub key: TileKey,
     pub entity: Entity,
@@ -49,7 +49,7 @@ impl Job for CreateTileJob {
                         self.key.level,
                         None,
                         None,
-                        self.indicesAndEdgesCache,
+                        self.indices_and_edges_cache,
                     )
                     .await;
                 Ok(CreateTileJobOutcome {

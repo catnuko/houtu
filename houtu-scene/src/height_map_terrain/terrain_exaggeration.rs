@@ -25,7 +25,7 @@ impl TerrainExaggeration {
             cartographic.longitude,
             cartographic.latitude,
             Some(newHeight),
-            Some(ellipsoid.radiiSquared),
+            Some(ellipsoid.radii_squared),
         );
     }
 }

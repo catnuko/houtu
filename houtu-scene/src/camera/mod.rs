@@ -105,7 +105,7 @@ impl Camera {
     //         self._oldPositionWC = Cartesian3.clone(self.positionWC, self._oldPositionWC);
 
     //         // Update move timers
-    //         if (self.positionWCDeltaMagnitude > 0.0) {
+    //         if self.positionWCDeltaMagnitude > 0.0 {
     //             self.timeSinceMoved = 0.0;
     //             self._lastMovedTimestamp = getTimestamp();
     //         } else {

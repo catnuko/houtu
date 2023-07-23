@@ -49,20 +49,20 @@ pub fn mercatorAngleToGeodeticLatitude(mercatorAngle: f64) -> f64 {
     return FRAC_PI_2 - 2.0 * (-mercatorAngle).exp().atan();
 }
 pub fn geodeticLatitudeToMercatorAngle(latitude: f64) -> f64 {
-    let sinLatitude = latitude.sin();
-    return 0.5 * ((1.0 + sinLatitude) / (1.0 - sinLatitude)).ln();
+    let sin_latitude = latitude.sin();
+    return 0.5 * ((1.0 + sin_latitude) / (1.0 - sin_latitude)).ln();
 }
 impl WebMercatorProjection {
     const MaximumLatitude: f64 = 1.4844222297453322;
     pub fn geodeticLatitude_to_mercator_angle(&self, latitude: f64) -> f64 {
         let mut latitude = latitude;
         // Clamp the latitude coordinate to the valid Mercator bounds.
-        if (latitude > WebMercatorProjection::MaximumLatitude) {
+        if latitude > WebMercatorProjection::MaximumLatitude {
             latitude = WebMercatorProjection::MaximumLatitude;
-        } else if (latitude < -WebMercatorProjection::MaximumLatitude) {
+        } else if latitude < -WebMercatorProjection::MaximumLatitude {
             latitude = -WebMercatorProjection::MaximumLatitude;
         }
-        let sinLatitude = latitude.sin();
-        return 0.5 * (1.0 + sinLatitude) / (1.0 - sinLatitude).ln();
+        let sin_latitude = latitude.sin();
+        return 0.5 * (1.0 + sin_latitude) / (1.0 - sin_latitude).ln();
     }
 }

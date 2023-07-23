@@ -109,8 +109,8 @@ impl Clone for ReprojectTextureTask {
 }
 #[derive(Copy, Clone, Debug, Default, ShaderType)]
 pub struct ParamsUniforms {
-    pub viewportOrthographic: Mat4,
-    pub textureDimensions: UVec2,
+    pub viewport_orthographic: Mat4,
+    pub texture_dimensions: UVec2,
 }
 pub(crate) const UNIFORM_BUFFER_SIZE: BufferAddress =
     mem::size_of::<ParamsUniforms>() as BufferAddress;

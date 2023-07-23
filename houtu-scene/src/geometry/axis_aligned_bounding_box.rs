@@ -75,11 +75,11 @@ impl AxisAlignedBoundingBox {
         let e = h.x * normal.x.abs() + h.y * normal.y.abs() + h.z * normal.z.abs();
         let s = self.center.dot(normal) + plane.distance; //signed distance from center
 
-        if (s - e > 0.) {
+        if s - e > 0. {
             return Intersect::INSIDE;
         }
 
-        if (s + e < 0.) {
+        if s + e < 0. {
             //Not in front because normals point inward
             return Intersect::OUTSIDE;
         }

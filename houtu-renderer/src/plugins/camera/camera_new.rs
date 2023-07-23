@@ -74,7 +74,7 @@ impl Default for GlobeCameraFrustum {
     }
 }
 impl GlobeCameraFrustum {
-    pub fn sseDenominator(&self) -> f64 {
+    pub fn sse_denominator(&self) -> f64 {
         self._sseDenominator
     }
 
@@ -393,7 +393,7 @@ impl GlobeCamera {
 
         self.right = self.direction.cross(DVec3::UNIT_Z);
 
-        if (self.right.magnitude_squared() < EPSILON10) {
+        if self.right.magnitude_squared() < EPSILON10 {
             self.right = DVec3::UNIT_X.clone();
         }
 
@@ -439,7 +439,7 @@ impl GlobeCamera {
         endTransform: Option<DMat4>,
         convert: Option<bool>,
     ) {
-        if (endTransform.is_some()) {
+        if endTransform.is_some() {
             self._setTransform(&endTransform.unwrap());
         }
         let convert = convert.unwrap_or(true);
@@ -529,28 +529,28 @@ impl GlobeCamera {
     fn updateMembers(&mut self) {
         // let mode = self._mode;
 
-        let heightChanged = false;
+        let height_changed = false;
         let height = 0.0;
 
-        let positionChanged = !self._position.equals(self.position) || heightChanged;
-        if (positionChanged) {
+        let positionChanged = !self._position.equals(self.position) || height_changed;
+        if positionChanged {
             self._position = self.position.clone();
         }
 
         let directionChanged = !self._direction.equals(self.direction);
-        if (directionChanged) {
+        if directionChanged {
             self.direction = self.direction.normalize();
             self._direction = self.direction.clone();
         }
 
         let upChanged = !self._up.equals(self.up);
-        if (upChanged) {
+        if upChanged {
             self.up = self.up.normalize();
             self._up = self.up.clone();
         }
 
         let rightChanged = !self._right.equals(self.right);
-        if (rightChanged) {
+        if rightChanged {
             self.right = self.right.normalize();
             self._right = self.right.clone();
         }
@@ -558,7 +558,7 @@ impl GlobeCamera {
         let transformChanged = self._transformChanged;
         self._transformChanged = false;
 
-        if (transformChanged) {
+        if transformChanged {
             self._invTransform = self._transform.inverse_transformation();
 
             self._actualTransform = self._transform.clone();
@@ -568,7 +568,7 @@ impl GlobeCamera {
 
         let transform = self._actualTransform;
 
-        if (positionChanged || transformChanged) {
+        if positionChanged || transformChanged {
             self._positionWC = transform.multiply_by_point(&self._position);
 
             // Compute the Cartographic position of the self.
@@ -578,9 +578,9 @@ impl GlobeCamera {
                 .unwrap_or(Cartographic::default());
         }
 
-        if (directionChanged || upChanged || rightChanged) {
+        if directionChanged || upChanged || rightChanged {
             let det = self._direction.dot(self._up.cross(self._right));
-            if ((1.0 - det).abs() > EPSILON2) {
+            if (1.0 - det).abs() > EPSILON2 {
                 //orthonormalize axes
                 let invUpMag = 1.0 / self._up.magnitude_squared();
                 let scalar = self._up.dot(self._direction) * invUpMag;
@@ -593,23 +593,23 @@ impl GlobeCamera {
             }
         }
 
-        if (directionChanged || transformChanged) {
+        if directionChanged || transformChanged {
             self._directionWC = transform
                 .multiply_by_point_as_vector(&self._direction)
                 .normalize();
         }
 
-        if (upChanged || transformChanged) {
+        if upChanged || transformChanged {
             self._upWC = transform.multiply_by_point_as_vector(&self._up).normalize();
         }
 
-        if (rightChanged || transformChanged) {
+        if rightChanged || transformChanged {
             self._rightWC = transform
                 .multiply_by_point_as_vector(&self._right)
                 .normalize();
         }
 
-        if (positionChanged || directionChanged || upChanged || rightChanged || transformChanged) {
+        if positionChanged || directionChanged || upChanged || rightChanged || transformChanged {
             self.updateViewMatrix();
         }
     }
@@ -626,7 +626,7 @@ impl GlobeCamera {
         self.position = self.position + moveScratch;
     }
     pub fn rotate_horizotal(&mut self, angle: f64) {
-        if (self.constrainedAxis.is_some()) {
+        if self.constrainedAxis.is_some() {
             self.rotate(self.constrainedAxis.unwrap(), Some(angle));
         } else {
             self.rotate(self.up, Some(angle));
@@ -644,24 +644,24 @@ impl GlobeCamera {
             let p = position.normalize();
             let northParallel = p.equals_epsilon(constrainedAxis, Some(EPSILON2), None);
             let southParallel = p.equals_epsilon(constrainedAxis.negate(), Some(EPSILON2), None);
-            if (!northParallel && !southParallel) {
+            if !northParallel && !southParallel {
                 let constrainedAxis = constrainedAxis.normalize();
 
                 let mut dot = p.dot(constrainedAxis);
                 let mut angleToAxis = acos_clamped(dot);
-                if (angle > 0. && angle > angleToAxis) {
+                if angle > 0. && angle > angleToAxis {
                     angle = angleToAxis - EPSILON4;
                 }
 
                 dot = p.dot(constrainedAxis.negate());
                 angleToAxis = acos_clamped(dot);
-                if (angle < 0. && -angle > angleToAxis) {
+                if angle < 0. && -angle > angleToAxis {
                     angle = -angleToAxis + EPSILON4;
                 }
 
                 let tangent = constrainedAxis.cross(p);
                 self.rotate(tangent, Some(angle));
-            } else if ((northParallel && angle < 0.) || (southParallel && angle > 0.)) {
+            } else if (northParallel && angle < 0.) || (southParallel && angle > 0.) {
                 self.rotate(self.right, Some(angle));
             }
         } else {
@@ -760,7 +760,7 @@ impl GlobeCamera {
         let west = rectangle.west;
 
         // If we go across the International Date Line
-        if (west > east) {
+        if west > east {
             east += TAU;
         }
 
@@ -776,7 +776,7 @@ impl GlobeCamera {
         // rectangle that spans 178+ of the 180 degrees of latitude.
         let longitude = (west + east) * 0.5;
         let latitude;
-        if (south < -FRAC_PI_2 + RADIANS_PER_DEGREE && north > FRAC_PI_2 - RADIANS_PER_DEGREE) {
+        if south < -FRAC_PI_2 + RADIANS_PER_DEGREE && north > FRAC_PI_2 - RADIANS_PER_DEGREE {
             latitude = 0.0;
         } else {
             let northCartographic = Cartographic::from_radians(longitude, north, 0.);
@@ -849,7 +849,7 @@ impl GlobeCamera {
 
         // If the rectangle crosses the equator, compute D at the equator, too, because that's the
         // widest part of the rectangle when projected onto the globe.
-        if (south < 0. && north > 0.) {
+        if south < 0. && north > 0. {
             let mut equatorCartographic = Cartographic::from_radians(west, 0.0, 0.0);
             let mut equatorPosition = ellipsoid.cartographicToCartesian(&equatorCartographic);
             equatorPosition = equatorPosition.subtract(center);
@@ -881,7 +881,7 @@ fn computeD(direction: &DVec3, upOrRight: &DVec3, corner: &DVec3, tanThetaOrPhi:
 }
 fn getHeading(direction: &DVec3, up: &DVec3) -> f64 {
     let heading;
-    if (!equals_epsilon(direction.z.abs(), 1.0, Some(EPSILON3), None)) {
+    if !equals_epsilon(direction.z.abs(), 1.0, Some(EPSILON3), None) {
         heading = direction.y.atan2(direction.x) - FRAC_PI_2;
     } else {
         heading = up.y.atan2(up.x) - FRAC_PI_2;
@@ -896,7 +896,7 @@ fn getPitch(direction: &DVec3) -> f64 {
 
 fn getRoll(direction: &DVec3, up: &DVec3, right: &DVec3) -> f64 {
     let mut roll = 0.0;
-    if (!equals_epsilon(direction.z.abs(), 1.0, Some(EPSILON3), None)) {
+    if !equals_epsilon(direction.z.abs(), 1.0, Some(EPSILON3), None) {
         roll = (-right.z).atan2(up.z);
         roll = zero_to_two_pi(roll + TAU);
     }
@@ -1184,7 +1184,7 @@ mod tests {
     fn pick_ellipsoid() {
         let mut camera = get_camera();
         let ellipsoid = Ellipsoid::WGS84;
-        let maxRadii = ellipsoid.maximumRadius;
+        let maxRadii = ellipsoid.maximum_radius;
 
         camera.position = DVec3::UNIT_X.multiply_by_scalar(2.0 * maxRadii);
         camera.direction = camera.position.negate().normalize();

@@ -8,37 +8,37 @@ use crate::IntersectionTests;
 #[derive(Default, Clone, Debug)]
 pub struct TileBoundingRegion {
     pub rectangle: Rectangle,
-    pub minimumHeight: f64,
-    pub maximumHeight: f64,
+    pub minimum_height: f64,
+    pub maximum_height: f64,
     pub southwestCornerCartesian: DVec3,
     pub northeastCornerCartesian: DVec3,
     pub westNormal: DVec3,
     pub southNormal: DVec3,
     pub eastNormal: DVec3,
     pub northNormal: DVec3,
-    pub orientedBoundingBox: Option<OrientedBoundingBox>,
+    pub oriented_bounding_box: Option<OrientedBoundingBox>,
     pub boundingSphere: Option<BoundingSphere>,
 }
 impl TileBoundingRegion {
     pub fn new(
         rectangle: &Rectangle,
-        minimumHeight: Option<f64>,
-        maximumHeight: Option<f64>,
+        minimum_height: Option<f64>,
+        maximum_height: Option<f64>,
         ellipsoid: Option<&Ellipsoid>,
         computeBoundingVolumes: Option<bool>,
     ) -> Self {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let mut me = Self {
             rectangle: rectangle.clone(),
-            minimumHeight: minimumHeight.unwrap_or(0.0),
-            maximumHeight: maximumHeight.unwrap_or(0.0),
+            minimum_height: minimum_height.unwrap_or(0.0),
+            maximum_height: maximum_height.unwrap_or(0.0),
             southwestCornerCartesian: DVec3::ZERO,
             northeastCornerCartesian: DVec3::ZERO,
             westNormal: DVec3::ZERO,
             southNormal: DVec3::ZERO,
             eastNormal: DVec3::ZERO,
             northNormal: DVec3::ZERO,
-            orientedBoundingBox: None,
+            oriented_bounding_box: None,
             boundingSphere: None,
         };
         me.computeBox(&rectangle, &ellipsoid);
@@ -57,7 +57,7 @@ impl TileBoundingRegion {
     ) -> f64 {
         let regionResult =
             self.distanceToCameraRegion(positionWC, positionCartographic, projection);
-        if let Some(v) = &self.orientedBoundingBox {
+        if let Some(v) = &self.oriented_bounding_box {
             let obbResult = v.distanceSquaredTo(&positionWC).sqrt();
             return regionResult.max(obbResult);
         }
@@ -70,7 +70,7 @@ impl TileBoundingRegion {
         projection: &P,
     ) -> f64 {
         let mut result = 0.0;
-        if (!self.rectangle.contains(positionCartographic)) {
+        if !self.rectangle.contains(positionCartographic) {
             let southwestCornerCartesian = self.southwestCornerCartesian;
             let northeastCornerCartesian = self.northeastCornerCartesian;
             let westNormal = self.westNormal;
@@ -85,39 +85,39 @@ impl TileBoundingRegion {
             let distanceToEastPlane = vectorFromNortheastCorner.dot(eastNormal);
             let distanceToNorthPlane = vectorFromNortheastCorner.dot(northNormal);
 
-            if (distanceToWestPlane > 0.0) {
+            if distanceToWestPlane > 0.0 {
                 result += distanceToWestPlane * distanceToWestPlane;
-            } else if (distanceToEastPlane > 0.0) {
+            } else if distanceToEastPlane > 0.0 {
                 result += distanceToEastPlane * distanceToEastPlane;
             }
 
-            if (distanceToSouthPlane > 0.0) {
+            if distanceToSouthPlane > 0.0 {
                 result += distanceToSouthPlane * distanceToSouthPlane;
-            } else if (distanceToNorthPlane > 0.0) {
+            } else if distanceToNorthPlane > 0.0 {
                 result += distanceToNorthPlane * distanceToNorthPlane;
             }
         }
 
         let cameraHeight;
-        let minimumHeight;
-        let maximumHeight;
+        let minimum_height;
+        let maximum_height;
 
         cameraHeight = positionCartographic.height;
-        minimumHeight = self.minimumHeight;
-        maximumHeight = self.maximumHeight;
+        minimum_height = self.minimum_height;
+        maximum_height = self.maximum_height;
 
-        if (cameraHeight > maximumHeight) {
-            let distanceAboveTop = cameraHeight - maximumHeight;
+        if cameraHeight > maximum_height {
+            let distanceAboveTop = cameraHeight - maximum_height;
             result += distanceAboveTop * distanceAboveTop;
-        } else if (cameraHeight < minimumHeight) {
-            let distanceBelowBottom = minimumHeight - cameraHeight;
+        } else if cameraHeight < minimum_height {
+            let distanceBelowBottom = minimum_height - cameraHeight;
             result += distanceBelowBottom * distanceBelowBottom;
         }
 
         return result.sqrt();
     }
     pub fn get_bounding_volume(&self) -> Option<&OrientedBoundingBox> {
-        self.orientedBoundingBox.as_ref()
+        self.oriented_bounding_box.as_ref()
     }
     pub fn get_bounding_sphere(&self) -> Option<&BoundingSphere> {
         self.boundingSphere.as_ref()
@@ -125,12 +125,12 @@ impl TileBoundingRegion {
     pub fn computeBoundingVolumes(&mut self, ellipsoid: &Ellipsoid) {
         let obb = OrientedBoundingBox::fromRectangle(
             &self.rectangle,
-            Some(self.minimumHeight),
-            Some(self.maximumHeight),
+            Some(self.minimum_height),
+            Some(self.maximum_height),
             Some(ellipsoid),
         );
         self.boundingSphere = Some(BoundingSphere::from_oriented_bouding_box(&obb));
-        self.orientedBoundingBox = Some(obb);
+        self.oriented_bounding_box = Some(obb);
     }
     pub fn computeBox(&mut self, rectangle: &Rectangle, ellipsoid: &Ellipsoid) {
         self.southwestCornerCartesian = ellipsoid.cartographicToCartesian(&rectangle.south_west());
@@ -156,7 +156,7 @@ impl TileBoundingRegion {
 
         let mut westVector = westernMidpointCartesian.subtract(easternMidpointCartesian);
 
-        if (westVector.magnitude() == 0.0) {
+        if westVector.magnitude() == 0.0 {
             westVector = westNormal.clone();
         }
 
@@ -167,7 +167,7 @@ impl TileBoundingRegion {
         let south = rectangle.south;
         let southSurfaceNormal;
 
-        if (south > 0.0) {
+        if south > 0.0 {
             // Compute a plane that doesn't cut through the tile.
             cartographicScratch.longitude = (rectangle.west + rectangle.east) * 0.5;
             cartographicScratch.latitude = south;
@@ -193,7 +193,7 @@ impl TileBoundingRegion {
         let north = rectangle.north;
         let northSurfaceNormal;
 
-        if (north < 0.0) {
+        if north < 0.0 {
             // Compute a plane that doesn't cut through the tile.
             cartographicScratch.longitude = (rectangle.west + rectangle.east) * 0.5;
             cartographicScratch.latitude = north;

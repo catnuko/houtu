@@ -26,7 +26,7 @@ impl Plane {
         let distance = coefficients.w;
 
         //>>includeStart('debug', pragmas.debug);
-        if (!equals_epsilon(normal.length(), 1.0, Some(EPSILON6), None)) {
+        if !equals_epsilon(normal.length(), 1.0, Some(EPSILON6), None) {
             panic!("normal must be normalized.");
         }
         //>>includeEnd('debug');

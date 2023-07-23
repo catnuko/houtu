@@ -452,7 +452,7 @@ fn maintain_inertia(
     let now = time.elapsed_seconds_f64();
     let fromNow = (now - tr);
     //如果按键释放事件和点击事件之间的时间差在0.4秒内才会保持惯性，滚轮缩放时，阈值=0，所以会保持惯性，而spin和tilt大于0.4，一般不会保持惯性，除非很快的拉动地球才会。
-    if (threshold < inertiaMaxClickTimeThreshold) {
+    if threshold < inertiaMaxClickTimeThreshold {
         //随时间增加，从1无限接近于0
         let d = decay(fromNow, inertiaConstant);
 
@@ -495,7 +495,7 @@ fn maintain_inertia(
             return false;
         }
 
-        if (is_down_wrap.get(typeName).is_none()) {
+        if is_down_wrap.get(typeName).is_none() {
             //可以保持惯性，更新相机
             return true;
         }
@@ -590,7 +590,7 @@ impl Default for ScreenSpaceEventHandler {
 }
 
 fn decay(time: f64, coefficient: f64) -> f64 {
-    if (time < 0.) {
+    if time < 0. {
         return 0.0;
     }
 

@@ -18,6 +18,7 @@ mod tile_replacement_queue;
 mod tile_selection_result;
 mod traversal_details;
 mod upsample_job;
+mod visit_visible_children_near_to_far;
 mod xyz_datasource;
 pub use tile_key::TileKey;
 

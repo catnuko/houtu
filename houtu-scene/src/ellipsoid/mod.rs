@@ -10,12 +10,12 @@ use bevy::render::mesh::Indices;
 #[derive(Debug, Clone, Copy, PartialEq, Resource)]
 pub struct Ellipsoid {
     pub radii: DVec3,
-    pub radiiSquared: DVec3,
+    pub radii_squared: DVec3,
     pub radiiToTheFourth: DVec3,
     pub oneOverRadii: DVec3,
     pub oneOverRadiiSquared: DVec3,
     pub minimumRadius: f64,
-    pub maximumRadius: f64,
+    pub maximum_radius: f64,
     pub centerToleranceSquared: f64,
     pub squaredXOverSquaredZ: f64,
 }
@@ -31,25 +31,25 @@ impl Ellipsoid {
     }
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         let radii = DVec3::new(x, y, z);
-        let radiiSquared = DVec3::new(x * x, y * y, z * z);
+        let radii_squared = DVec3::new(x * x, y * y, z * z);
         let radiiToTheFourth = DVec3::new(x * x * x * x, y * y * y * y, z * z * z * z);
         let oneOverRadii = DVec3::new(1.0 / x, 1.0 / y, 1.0 / z);
         let oneOverRadiiSquared = DVec3::new(1.0 / (x * x), 1.0 / (y * y), 1.0 / (z * z));
         let minimumRadius = x.min(y).min(z);
-        let maximumRadius = x.max(y).max(z);
+        let maximum_radius = x.max(y).max(z);
         let centerToleranceSquared = EPSILON1;
         let mut squaredXOverSquaredZ = 0.0;
-        if radiiSquared.z != 0. {
-            squaredXOverSquaredZ = radiiSquared.x / radiiSquared.z;
+        if radii_squared.z != 0. {
+            squaredXOverSquaredZ = radii_squared.x / radii_squared.z;
         }
         Ellipsoid {
             radii,
-            radiiSquared,
+            radii_squared,
             radiiToTheFourth,
             oneOverRadii,
             oneOverRadiiSquared,
             minimumRadius,
-            maximumRadius,
+            maximum_radius,
             centerToleranceSquared,
             squaredXOverSquaredZ,
         }
@@ -60,7 +60,7 @@ impl Ellipsoid {
             y: 6378137.0,
             z: 6356752.3142451793,
         },
-        radiiSquared: DVec3 {
+        radii_squared: DVec3 {
             x: 40680631590769.0,
             y: 40680631590769.0,
             z: 40408299984661.445,
@@ -81,7 +81,7 @@ impl Ellipsoid {
             z: 2.4747391015697002e-14,
         },
         minimumRadius: 6356752.3142451793,
-        maximumRadius: 6378137.0,
+        maximum_radius: 6378137.0,
         centerToleranceSquared: 0.1,
         squaredXOverSquaredZ: 1.0067394967422765,
     };
@@ -91,7 +91,7 @@ impl Ellipsoid {
             y: 1.0,
             z: 1.0,
         },
-        radiiSquared: DVec3 {
+        radii_squared: DVec3 {
             x: 1.0,
             y: 1.0,
             z: 1.0,
@@ -112,7 +112,7 @@ impl Ellipsoid {
             z: 1.0,
         },
         minimumRadius: 1.0,
-        maximumRadius: 1.0,
+        maximum_radius: 1.0,
         centerToleranceSquared: 0.1,
         squaredXOverSquaredZ: 1.0,
     };
@@ -122,7 +122,7 @@ impl Ellipsoid {
             y: 1737400.0,
             z: 1737400.0,
         },
-        radiiSquared: DVec3 {
+        radii_squared: DVec3 {
             x: 3018558760000.,
             y: 3018558760000.,
             z: 3018558760000.,
@@ -143,7 +143,7 @@ impl Ellipsoid {
             z: 3.3128392703543064e-13,
         },
         minimumRadius: 1737400.0,
-        maximumRadius: 1737400.0,
+        maximum_radius: 1737400.0,
         centerToleranceSquared: 0.1,
         squaredXOverSquaredZ: 1.0,
     };
@@ -197,7 +197,7 @@ impl Ellipsoid {
         // As an initial approximation, assume that the radial intersection is the projection point.
         let intersection = cartesian.multiply_by_scalar(ratio);
         // If the position is near the center, the iteration will not converge.
-        if (squaredNorm < centerToleranceSquared) {
+        if squaredNorm < centerToleranceSquared {
             if !ratio.is_finite() {
                 return None;
             } else {
@@ -272,7 +272,7 @@ impl Ellipsoid {
         let mut n = DVec3::ZERO;
         let mut k = DVec3::ZERO;
         n = self.geodeticSurfaceNormalCartographic(cartographic);
-        k = self.radiiSquared * n;
+        k = self.radii_squared * n;
         let gamma = n.dot(k).sqrt();
         k = k / gamma;
         n = n * cartographic.height;

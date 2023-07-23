@@ -60,31 +60,31 @@ impl TerrainDataSourceData {
     pub fn has_terrain_data(&self) -> bool {
         return self.terrain_data.is_some();
     }
-    pub fn wasCreatedByUpsampling(&self) -> bool {
+    pub fn was_created_by_upsampling(&self) -> bool {
         return self
             .terrain_data
             .as_ref()
             .expect("globe_surface_tile.terrainData")
             .lock()
             .expect("globe_surface_tile.terrainData.lock")
-            .wasCreatedByUpsampling();
+            .was_created_by_upsampling();
     }
-    pub fn isChildAvailable(&self, parentKey: &TileKey, key: &TileKey) -> bool {
+    pub fn is_child_available(&self, parent_key: &TileKey, key: &TileKey) -> bool {
         self.terrain_data
             .as_ref()
             .unwrap()
             .lock()
             .unwrap()
-            .isChildAvailable(parentKey.x, parentKey.y, key.x, key.y)
+            .is_child_available(parent_key.x, parent_key.y, key.x, key.y)
     }
-    pub fn canUpsample(&self) -> bool {
+    pub fn can_upsample(&self) -> bool {
         return self
             .terrain_data
             .as_ref()
             .unwrap()
             .lock()
             .unwrap()
-            .canUpsample();
+            .can_upsample();
     }
     pub fn get_mesh(&self) -> Option<Mesh> {
         if let Some(terrain_data) = self.terrain_data.as_ref() {
@@ -110,7 +110,7 @@ impl TerrainDataSourceData {
 }
 fn update_system(
     mut terrain_datasource: ResMut<TerrainDataSource>,
-    indicesAndEdgesCache: Res<IndicesAndEdgesCacheArc>,
+    indices_and_edges_cache: Res<IndicesAndEdgesCacheArc>,
     mut job_spawner: JobSpawner,
     mut finished_jobs: FinishedJobs,
     mut query: Query<(
@@ -136,8 +136,8 @@ fn update_system(
         if data.state == TerrainDataSourceState::UNLOADED {
             data.state = TerrainDataSourceState::RECEIVING;
             let value = terrain_datasource
-                .requestTileGeometry()
-                .expect("terrain_datasource.requestTileGeometry");
+                .request_tile_geometry()
+                .expect("terrain_datasource.request_tile_geometry");
             data.set_terrain_data(value);
         }
         if data.state == TerrainDataSourceState::RECEIVING {}
@@ -146,7 +146,7 @@ fn update_system(
                 terrain_data: data.get_cloned_terrain_data(),
                 key: key.clone(),
                 tiling_scheme: terrain_datasource.tiling_scheme.clone(),
-                indicesAndEdgesCache: indicesAndEdgesCache.get_cloned_cache(),
+                indices_and_edges_cache: indices_and_edges_cache.get_cloned_cache(),
                 entity: entity,
             });
             data.state = TerrainDataSourceState::TRANSFORMING;
@@ -205,41 +205,42 @@ fn update_system(
 #[derive(Resource)]
 pub struct TerrainDataSource {
     pub tiling_scheme: GeographicTilingScheme,
-    _levelZeroMaximumGeometricError: f64,
+    _level_zero_maximum_geometric_error: f64,
     pub ready: bool,
     pub rectangle: Rectangle,
 }
 impl TerrainDataSource {
     pub fn new() -> Self {
         let tiling_scheme = GeographicTilingScheme::default();
-        let _levelZeroMaximumGeometricError = get_levelZeroMaximumGeometricError(&tiling_scheme);
+        let _level_zero_maximum_geometric_error =
+            get_level_zero_maximum_geometric_error(&tiling_scheme);
 
         Self {
             tiling_scheme: tiling_scheme,
-            _levelZeroMaximumGeometricError: _levelZeroMaximumGeometricError,
+            _level_zero_maximum_geometric_error: _level_zero_maximum_geometric_error,
             ready: true,
             rectangle: Rectangle::MAX_VALUE.clone(),
         }
     }
-    pub fn getTileDataAvailable(&self, key: &TileKey) -> Option<bool> {
+    pub fn get_tile_data_available(&self, key: &TileKey) -> Option<bool> {
         return None;
     }
-    pub fn loadTileDataAvailability(&self, key: &TileKey) -> Option<bool> {
+    pub fn load_tile_data_availability(&self, key: &TileKey) -> Option<bool> {
         return None;
     }
-    pub fn getLevelMaximumGeometricError(&self, level: u32) -> f64 {
-        return self._levelZeroMaximumGeometricError / (1 << level) as f64;
+    pub fn get_level_maximum_geometric_error(&self, level: u32) -> f64 {
+        return self._level_zero_maximum_geometric_error / (1 << level) as f64;
     }
-    pub fn canRefine(&self, globe_surface_tile: &TerrainDataSourceData, key: &TileKey) -> bool {
+    pub fn can_refine(&self, globe_surface_tile: &TerrainDataSourceData, key: &TileKey) -> bool {
         if globe_surface_tile.terrain_data.is_some() {
             return true;
         }
         let new_key = TileKey::new(key.x * 2, key.y * 2, key.level + 1);
-        let childAvailable = self.getTileDataAvailable(&new_key);
-        return childAvailable != None;
+        let child_available = self.get_tile_data_available(&new_key);
+        return child_available != None;
     }
 
-    pub fn requestTileGeometry(&self) -> Option<HeightmapTerrainData> {
+    pub fn request_tile_geometry(&self) -> Option<HeightmapTerrainData> {
         let width = 16;
         let height = 16;
         return Some(HeightmapTerrainData::new(
@@ -256,18 +257,18 @@ impl TerrainDataSource {
         ));
     }
 }
-fn get_levelZeroMaximumGeometricError(tiling_scheme: &GeographicTilingScheme) -> f64 {
-    return getEstimatedLevelZeroGeometricErrorForAHeightmap(
+fn get_level_zero_maximum_geometric_error(tiling_scheme: &GeographicTilingScheme) -> f64 {
+    return get_estimated_level_zero_geometric_error_for_a_heightmap(
         &tiling_scheme.ellipsoid,
         64,
         tiling_scheme.get_number_of_tiles_at_level(0),
     );
 }
-fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
+fn get_estimated_level_zero_geometric_error_for_a_heightmap(
     ellipsoid: &Ellipsoid,
     tile_image_width: u32,
-    numberOfTilesAtLevelZero: u32,
+    number_of_tiles_at_level_zero: u32,
 ) -> f64 {
-    return ((ellipsoid.maximumRadius * 2. * PI * 0.25)
-        / (tile_image_width as f64 * numberOfTilesAtLevelZero as f64));
+    return ((ellipsoid.maximum_radius * 2. * PI * 0.25)
+        / (tile_image_width as f64 * number_of_tiles_at_level_zero as f64));
 }

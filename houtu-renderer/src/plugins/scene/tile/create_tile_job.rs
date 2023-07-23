@@ -55,7 +55,7 @@ impl Job for CreateTileJob {
                     None,
                     None,
                 );
-                let mut indicesAndEdgesCache = IndicesAndEdgesCache::new();
+                let mut indices_and_edges_cache = IndicesAndEdgesCache::new();
                 let result = height_data.create_vertice(
                     &tiling_scheme,
                     self.x,
@@ -63,7 +63,7 @@ impl Job for CreateTileJob {
                     self.level,
                     None,
                     None,
-                    &mut indicesAndEdgesCache,
+                    &mut indices_and_edges_cache,
                 );
                 Ok(CreateTileJobOutcome {
                     result: result,
@@ -88,7 +88,7 @@ impl Job for CreateTileJob {
 }
 pub fn handle_created_tile_system(
     mut finished_jobs: FinishedJobs,
-    mut indicesAndEdgesCache: ResMut<IndicesAndEdgesCache>,
+    mut indices_and_edges_cache: ResMut<IndicesAndEdgesCache>,
     // mut tile_layer: ResMut<TileLayer>,
     // world: &mut World,
     mut commands: Commands,
@@ -99,7 +99,7 @@ pub fn handle_created_tile_system(
                 let x = outcome.job.x;
                 let y = outcome.job.y;
                 let level = outcome.job.level;
-                let terrain_mesh = create_terrain_mesh(outcome, &mut indicesAndEdgesCache);
+                let terrain_mesh = create_terrain_mesh(outcome, &mut indices_and_edges_cache);
 
                 // if let Some(entity) = tile_layer.get_tile_entity(x, y, level) {
                 //     let cloned_entity = entity.clone();
@@ -123,34 +123,34 @@ pub fn handle_created_tile_system(
 }
 pub fn create_terrain_mesh(
     ouotcome: CreateTileJobOutcome,
-    indicesAndEdgesCache: &mut ResMut<IndicesAndEdgesCache>,
+    indices_and_edges_cache: &mut ResMut<IndicesAndEdgesCache>,
 ) -> TerrainMesh {
     let indicesAndEdges;
-    if (ouotcome.height_data._skirtHeight.unwrap() > 0.0) {
-        indicesAndEdges = indicesAndEdgesCache
+    if ouotcome.height_data._skirtHeight.unwrap() > 0.0 {
+        indicesAndEdges = indices_and_edges_cache
             .getRegularGridAndSkirtIndicesAndEdgeIndices(ouotcome.job.width, ouotcome.job.height);
     } else {
-        indicesAndEdges = indicesAndEdgesCache
+        indicesAndEdges = indices_and_edges_cache
             .getRegularGridIndicesAndEdgeIndices(ouotcome.job.width, ouotcome.job.height);
     }
 
-    let vertexCountWithoutSkirts = 0;
+    let vertex_count_without_skirts = 0;
     return TerrainMesh::new(
         ouotcome.result.relativeToCenter.unwrap(),
         ouotcome.result.vertices,
         indicesAndEdges.indices,
-        indicesAndEdges.indexCountWithoutSkirts,
-        vertexCountWithoutSkirts,
-        ouotcome.result.minimumHeight,
-        ouotcome.result.maximumHeight,
-        ouotcome.result.boundingSphere3D,
-        ouotcome.result.occludeePointInScaledSpace,
+        indicesAndEdges.index_count_without_skirts,
+        vertex_count_without_skirts,
+        ouotcome.result.minimum_height,
+        ouotcome.result.maximum_height,
+        ouotcome.result.bounding_sphere_3d,
+        ouotcome.result.occludee_point_in_scaled_space,
         ouotcome.result.encoding.stride,
-        ouotcome.result.orientedBoundingBox,
+        ouotcome.result.oriented_bounding_box,
         ouotcome.result.encoding,
-        indicesAndEdges.westIndicesSouthToNorth,
-        indicesAndEdges.southIndicesEastToWest,
-        indicesAndEdges.eastIndicesNorthToSouth,
-        indicesAndEdges.northIndicesWestToEast,
+        indicesAndEdges.west_indices_south_to_north,
+        indicesAndEdges.south_indices_east_to_west,
+        indicesAndEdges.east_indices_north_to_south,
+        indicesAndEdges.north_indices_west_to_east,
     );
 }

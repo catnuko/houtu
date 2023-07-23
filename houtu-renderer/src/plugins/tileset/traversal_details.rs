@@ -1,4 +1,6 @@
-use bevy::prelude::Resource;
+use bevy::prelude::{ResMut, Resource};
+
+use super::{quadtree_tile::Quadrant, TileKey};
 
 #[derive(Resource)]
 pub struct AllTraversalQuadDetails(pub [TraversalQuadDetails; 31]);
@@ -77,4 +79,18 @@ impl Default for TraversalDetails {
             not_yet_renderable_count: 0,
         }
     }
+}
+pub fn get_traversal_details<'a>(
+    all_traversal_quad_details: &'a mut ResMut<AllTraversalQuadDetails>,
+    root_traversal_details: &'a mut ResMut<RootTraversalDetails>,
+    location: &Quadrant,
+    key: &TileKey,
+) -> &'a mut TraversalDetails {
+    return match location {
+        Quadrant::Southwest => &mut all_traversal_quad_details.get_mut(key.level).southwest,
+        Quadrant::Southeast => &mut all_traversal_quad_details.get_mut(key.level).southeast,
+        Quadrant::Northwest => &mut all_traversal_quad_details.get_mut(key.level).northwest,
+        Quadrant::Northeast => &mut all_traversal_quad_details.get_mut(key.level).northeast,
+        Quadrant::Root(i) => root_traversal_details.0.get_mut(*i).unwrap(),
+    };
 }

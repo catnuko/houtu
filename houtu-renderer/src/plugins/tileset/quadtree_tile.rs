@@ -124,9 +124,9 @@ pub struct QuadtreeTileOtherState {
     pub _distance: f64,
     pub _loadPriority: f64,
     pub renderable: bool,
-    pub upsampledFromParent: bool,
-    pub _lastSelectionResult: TileSelectionResult,
-    pub _lastSelectionResultFrame: Option<u32>,
+    pub upsampled_from_parent: bool,
+    pub last_selection_result: TileSelectionResult,
+    pub last_selection_result_frame: Option<u32>,
 }
 impl Default for QuadtreeTileOtherState {
     fn default() -> Self {
@@ -134,9 +134,9 @@ impl Default for QuadtreeTileOtherState {
             _distance: 0.0,
             _loadPriority: 0.0,
             renderable: false,
-            upsampledFromParent: false,
-            _lastSelectionResultFrame: None,
-            _lastSelectionResult: TileSelectionResult::NONE,
+            upsampled_from_parent: false,
+            last_selection_result_frame: None,
+            last_selection_result: TileSelectionResult::NONE,
         }
     }
 }
@@ -192,6 +192,8 @@ pub struct TileLoadMedium;
 #[derive(Component, Reflect)]
 pub struct TileLoadLow;
 #[derive(Component, Reflect)]
-pub struct TileToLoad;
+pub struct TileToLoad; //GlobeSurfaceTileProvider.loadTile
 #[derive(Component, Reflect)]
-pub struct TileRendered;
+pub struct TileRendered(pub Entity);
+#[derive(Component, Reflect)]
+pub struct TileRenderedToDestroy;

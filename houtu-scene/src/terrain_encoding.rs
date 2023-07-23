@@ -10,8 +10,8 @@ use crate::{
 #[derive(Default, Clone, Debug, Copy)]
 pub struct TerrainEncoding {
     pub quantization: TerrainQuantization,
-    pub minimumHeight: f64,
-    pub maximumHeight: f64,
+    pub minimum_height: f64,
+    pub maximum_height: f64,
     pub center: DVec3,
     pub toScaledENU: DMat4,
     pub fromScaledENU: DMat4,
@@ -42,8 +42,8 @@ impl TerrainEncoding {
         let mut toENU = DMat4::default();
         let mut matrix = DMat4::default();
         let mut axisAlignedBoundingBox: AxisAlignedBoundingBox = AxisAlignedBoundingBox::default();
-        let mut minimumHeight = 0.;
-        let mut maximumHeight = 0.;
+        let mut minimum_height = 0.;
+        let mut maximum_height = 0.;
         let mut fromENU = DMat4::default();
 
         if (axisAlignedBoundingBoxOption.is_some()
@@ -52,17 +52,17 @@ impl TerrainEncoding {
             && fromENUOption.is_some())
         {
             axisAlignedBoundingBox = axisAlignedBoundingBoxOption.unwrap();
-            minimumHeight = minimumHeightOption.unwrap();
-            maximumHeight = maximumHeightOption.unwrap();
+            minimum_height = minimumHeightOption.unwrap();
+            maximum_height = maximumHeightOption.unwrap();
             fromENU = fromENUOption.unwrap();
             let minimum = axisAlignedBoundingBox.minimum;
             let maximum = axisAlignedBoundingBox.maximum;
 
             let dimensions = maximum - minimum;
-            let hDim = maximumHeight - minimumHeight;
+            let hDim = maximum_height - minimum_height;
             let maxDim = dimensions.maximum_component().max(hDim);
 
-            if (maxDim < SHIFT_LEFT_12 - 1.0) {
+            if maxDim < SHIFT_LEFT_12 - 1.0 {
                 quantization = TerrainQuantization::BITS12;
             } else {
                 quantization = TerrainQuantization::NONE;
@@ -93,8 +93,8 @@ impl TerrainEncoding {
         }
         let mut encoding = Self {
             quantization,
-            minimumHeight: minimumHeight,
-            maximumHeight: maximumHeight,
+            minimum_height: minimum_height,
+            maximum_height: maximum_height,
             center,
             toScaledENU: toENU,
             fromScaledENU: fromENU,
@@ -112,29 +112,29 @@ impl TerrainEncoding {
         return encoding;
     }
     pub fn _calculateStrideAndOffsets(&mut self) {
-        let mut vertexStride = 0;
+        let mut vertex_stride = 0;
 
         match self.quantization {
             TerrainQuantization::BITS12 => {
-                vertexStride += 3;
+                vertex_stride += 3;
             }
             _ => {
-                vertexStride += 6;
+                vertex_stride += 6;
             }
         }
-        if (self.hasWebMercatorT) {
-            vertexStride += 1;
+        if self.hasWebMercatorT {
+            vertex_stride += 1;
         }
-        if (self.hasVertexNormals) {
-            self._offsetVertexNormal = vertexStride as f64;
-            vertexStride += 1;
+        if self.hasVertexNormals {
+            self._offsetVertexNormal = vertex_stride as f64;
+            vertex_stride += 1;
         }
-        if (self.hasGeodeticSurfaceNormals) {
-            self._offsetGeodeticSurfaceNormal = vertexStride as f64;
-            vertexStride += 3;
+        if self.hasGeodeticSurfaceNormals {
+            self._offsetGeodeticSurfaceNormal = vertex_stride as f64;
+            vertex_stride += 3;
         }
 
-        self.stride = vertexStride;
+        self.stride = vertex_stride;
     }
     pub fn encode(
         &self,
@@ -144,22 +144,22 @@ impl TerrainEncoding {
         uv: &DVec2,
         height: f64,
         normalToPack: Option<DVec2>,
-        webMercatorT: Option<f64>,
+        web_mercator_t: Option<f64>,
         geodeticSurfaceNormal: Option<&DVec3>,
     ) -> i64 {
         let u = uv.x;
         let v = uv.y;
         let mut new_bufferIndex = bufferIndex as usize;
 
-        if (self.quantization == TerrainQuantization::BITS12) {
+        if self.quantization == TerrainQuantization::BITS12 {
             *position = self.toScaledENU.multiply_by_point(&position);
 
             position.x = position.x.clamp(0.0, 1.0);
             position.y = position.y.clamp(0.0, 1.0);
             position.z = position.z.clamp(0.0, 1.0);
 
-            let hDim = self.maximumHeight - self.minimumHeight;
-            let h = ((height - self.minimumHeight) / hDim).clamp(0.0, 1.0);
+            let hDim = self.maximum_height - self.minimum_height;
+            let h = ((height - self.minimum_height) / hDim).clamp(0.0, 1.0);
 
             let mut cartesian2Scratch = DVec2::new(position.x, position.y);
             let compressed0 = compressTextureCoordinates(&cartesian2Scratch) as f32;
@@ -177,8 +177,8 @@ impl TerrainEncoding {
             vertexBuffer[new_bufferIndex] = compressed2;
             new_bufferIndex += 1;
 
-            if (self.hasWebMercatorT) {
-                let cartesian2Scratch = DVec2::new(webMercatorT.unwrap(), 0.0);
+            if self.hasWebMercatorT {
+                let cartesian2Scratch = DVec2::new(web_mercator_t.unwrap(), 0.0);
                 let compressed3 = compressTextureCoordinates(&cartesian2Scratch) as f32;
                 vertexBuffer[new_bufferIndex] = compressed3;
                 new_bufferIndex += 1;
@@ -200,18 +200,18 @@ impl TerrainEncoding {
             vertexBuffer[new_bufferIndex] = v as f32;
             new_bufferIndex += 1;
 
-            if (self.hasWebMercatorT) {
-                vertexBuffer[new_bufferIndex] = webMercatorT.unwrap() as f32;
+            if self.hasWebMercatorT {
+                vertexBuffer[new_bufferIndex] = web_mercator_t.unwrap() as f32;
                 new_bufferIndex += 1;
             }
         }
 
-        if (self.hasVertexNormals) {
+        if self.hasVertexNormals {
             vertexBuffer[new_bufferIndex] = octPackFloat(&normalToPack.unwrap()) as f32;
             new_bufferIndex += 1;
         }
 
-        if (self.hasGeodeticSurfaceNormals) {
+        if self.hasGeodeticSurfaceNormals {
             let new_geodeticSurfaceNormal = geodeticSurfaceNormal.unwrap();
             vertexBuffer[new_bufferIndex] = new_geodeticSurfaceNormal.x as f32;
             new_bufferIndex += 1;

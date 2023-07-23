@@ -5,12 +5,12 @@ impl CubicRealPolynomial {
     pub fn computeRealRoots(a: f64, b: f64, c: f64, d: f64) -> Option<Vec<f64>> {
         let roots;
         let ratio;
-        if (a == 0.0) {
+        if a == 0.0 {
             // Quadratic function: b * x^2 + c * x + d = 0.
             return QuadraticRealPolynomial::computeRealRoots(b, c, d);
-        } else if (b == 0.0) {
-            if (c == 0.0) {
-                if (d == 0.0) {
+        } else if b == 0.0 {
+            if c == 0.0 {
+                if d == 0.0 {
                     // 3rd order monomial: a * x^3 = 0.
                     return Some(vec![0.0, 0.0, 0.0]);
                 }
@@ -23,7 +23,7 @@ impl CubicRealPolynomial {
                     ratio.powf(1.0 / 3.0)
                 };
                 return Some(vec![root, root, root]);
-            } else if (d == 0.0) {
+            } else if d == 0.0 {
                 // x * (a * x^2 + c) = 0.
                 roots = QuadraticRealPolynomial::computeRealRoots(a, 0., c);
 
@@ -42,27 +42,27 @@ impl CubicRealPolynomial {
 
             // Deflated cubic polynomial: a * x^3 + c * x + d= 0.
             return computeRealRoots(a, 0., c, d);
-        } else if (c == 0.0) {
-            if (d == 0.0) {
+        } else if c == 0.0 {
+            if d == 0.0 {
                 // x^2 * (a * x + b) = 0.
                 ratio = -b / a;
-                if (ratio < 0.0) {
+                if ratio < 0.0 {
                     return Some(vec![ratio, 0.0, 0.0]);
                 }
                 return Some(vec![0.0, 0.0, ratio]);
             }
             // a * x^3 + b * x^2 + d = 0.
             return computeRealRoots(a, b, 0., d);
-        } else if (d == 0.0) {
+        } else if d == 0.0 {
             // x * (a * x^2 + b * x + c) = 0
             roots = QuadraticRealPolynomial::computeRealRoots(a, b, c);
             if roots.is_some() {
                 let roots = roots.unwrap();
-                if (roots.len() == 0) {
+                if roots.len() == 0 {
                     return Some(vec![0.0]);
-                } else if (roots[1] <= 0.0) {
+                } else if roots[1] <= 0.0 {
                     return Some(vec![roots[0], roots[1], 0.0]);
-                } else if (roots[0] >= 0.0) {
+                } else if roots[0] >= 0.0 {
                     return Some(vec![0.0, roots[0], roots[1]]);
                 }
                 return Some(vec![roots[0], 0.0, roots[1]]);
@@ -93,12 +93,12 @@ fn computeRealRoots(a: f64, b: f64, c: f64, d: f64) -> Option<Vec<f64>> {
     let mut temp;
     let mut temp1;
 
-    if (discriminant < 0.0) {
+    if discriminant < 0.0 {
         let ABar;
         let CBar;
         let DBar;
 
-        if (B2 * BD >= AC * C2) {
+        if B2 * BD >= AC * C2 {
             ABar = A;
             CBar = delta1;
             DBar = -2.0 * B * delta1 + A * delta2;
@@ -126,7 +126,7 @@ fn computeRealRoots(a: f64, b: f64, c: f64, d: f64) -> Option<Vec<f64>> {
             -DBar / (p * p + q * q + CBar)
         };
 
-        if (B2 * BD >= AC * C2) {
+        if B2 * BD >= AC * C2 {
             return Some(vec![(temp - B) / A]);
         }
 
@@ -178,19 +178,19 @@ fn computeRealRoots(a: f64, b: f64, c: f64, d: f64) -> Option<Vec<f64>> {
 
     let root2 = (C * F - B * G) / (-B * F + C * E);
 
-    if (root1 <= root2) {
-        if (root1 <= root3) {
-            if (root2 <= root3) {
+    if root1 <= root2 {
+        if root1 <= root3 {
+            if root2 <= root3 {
                 return Some(vec![root1, root2, root3]);
             }
             return Some(vec![root1, root3, root2]);
         }
         return Some(vec![root3, root1, root2]);
     }
-    if (root1 <= root3) {
+    if root1 <= root3 {
         return Some(vec![root2, root1, root3]);
     }
-    if (root2 <= root3) {
+    if root2 <= root3 {
         return Some(vec![root2, root3, root1]);
     }
     return Some(vec![root3, root2, root1]);

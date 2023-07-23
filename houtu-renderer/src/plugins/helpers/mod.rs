@@ -15,7 +15,7 @@ impl bevy::app::Plugin for Plugin {
     }
 }
 fn setup(mut commands: Commands, mut lines: ResMut<DebugLines>) {
-    let length = (Ellipsoid::WGS84.maximumRadius as f32) + 10000000.0;
+    let length = (Ellipsoid::WGS84.maximum_radius as f32) + 10000000.0;
     // A line that stays on screen 9 seconds
     lines.line_colored(
         Vec3::ZERO,

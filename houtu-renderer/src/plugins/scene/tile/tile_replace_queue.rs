@@ -6,7 +6,7 @@ pub struct TileReplacementQueue {
     pub queue: VecDeque<Tile>,
 }
 impl TileReplacementQueue {
-    pub fn markTileRendered(&mut self, tile: &mut Tile) {
+    pub fn mark_tile_rendered(&mut self, tile: &mut Tile) {
         // self.queue.
     }
 }

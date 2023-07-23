@@ -38,9 +38,9 @@ var TDTURL_CONFIG={
         format:  "tiles",
         tileMatrixSetID: "c",
         subdomains:["t0","t1","t2","t3","t4","t5","t6","t7"],
-        tilingScheme:new Cesium.GeographicTilingScheme(),
+        tiling_scheme:new Cesium.GeographicTilingScheme(),
        	tileMatrixLabels:["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19"],
-      	maximumLevel:18,
+      	maximum_level:18,
         show: false
     });
     var layers = viewer.imageryLayers;
@@ -65,7 +65,7 @@ var TDTURL_CONFIG={
           width: width,
           height: height,
         })
-        heigmapTerrainData._createMeshSync({tilingScheme:tiling_scheme,x,y,level})
+        heigmapTerrainData._createMeshSync({tiling_scheme:tiling_scheme,x,y,level})
       }
     }
 
@@ -74,7 +74,7 @@ var TDTURL_CONFIG={
 
     viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
       url:"https://maps.omniscale.net/v2/houtu-b8084b0b/style.default/{z}/{x}/{y}.png",
-      tilingScheme:new Cesium.WebMercatorTilingScheme(),
+      tiling_scheme:new Cesium.WebMercatorTilingScheme(),
   }))
   
 
@@ -91,7 +91,7 @@ var TDTURL_CONFIG={
         width: width,
         height: height,
       })
-      heigmapTerrainData._createMeshSync({tilingScheme:tiling_scheme,x,y,level})
+      heigmapTerrainData._createMeshSync({tiling_scheme:tiling_scheme,x,y,level})
     }
   }
   viewer.entities.add({

@@ -57,7 +57,7 @@ impl BoundingRectangle {
     pub fn fromPoints(positions: &Vec<DVec2>) -> Self {
         let mut result = BoundingRectangle::new();
 
-        if (positions.len() == 0) {
+        if positions.len() == 0 {
             return result;
         }
 

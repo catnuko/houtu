@@ -45,7 +45,7 @@ pub struct Tile {
     pub terrain_mesh: Option<TerrainMesh>,
     pub renderable: bool,
     pub tileBoundingRegion: TileBoundingRegion,
-    pub occludeePointInScaledSpace: Option<DVec3>,
+    pub occludee_point_in_scaled_space: Option<DVec3>,
     pub boundingVolumeIsFromMesh: bool,
     pub _distance: f64, //到相机的距离
     pub clippedByBoundaries: bool,

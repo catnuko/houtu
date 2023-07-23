@@ -102,12 +102,12 @@ impl OrientedBoundingBox {
     }
     pub fn fromRectangle(
         rectangle: &Rectangle,
-        minimumHeight: Option<f64>,
-        maximumHeight: Option<f64>,
+        minimum_height: Option<f64>,
+        maximum_height: Option<f64>,
         ellipsoid: Option<&Ellipsoid>,
     ) -> Self {
-        let minimumHeight = minimumHeight.unwrap_or(0.0);
-        let maximumHeight = maximumHeight.unwrap_or(0.0);
+        let minimum_height = minimum_height.unwrap_or(0.0);
+        let maximum_height = maximum_height.unwrap_or(0.0);
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
 
         let mut minX: f64;
@@ -118,7 +118,7 @@ impl OrientedBoundingBox {
         let mut maxZ: f64;
         let mut plane;
 
-        if rectangle.computeWidth() <= PI {
+        if rectangle.compute_width() <= PI {
             // The bounding box will be aligned with the tangent plane at the center of the rectangle.
             let tangentPointCartographic = rectangle.center();
 
@@ -137,15 +137,15 @@ impl OrientedBoundingBox {
             };
             // Compute XY extents using the rectangle at maximum height
             let mut perimeterCartographicNC =
-                Cartographic::from_radians(lonCenter, rectangle.north, maximumHeight);
+                Cartographic::from_radians(lonCenter, rectangle.north, maximum_height);
             let mut perimeterCartographicNW =
-                Cartographic::from_radians(rectangle.west, rectangle.north, maximumHeight);
+                Cartographic::from_radians(rectangle.west, rectangle.north, maximum_height);
             let mut perimeterCartographicCW =
-                Cartographic::from_radians(rectangle.west, latCenter, maximumHeight);
+                Cartographic::from_radians(rectangle.west, latCenter, maximum_height);
             let mut perimeterCartographicSW =
-                Cartographic::from_radians(rectangle.west, rectangle.south, maximumHeight);
+                Cartographic::from_radians(rectangle.west, rectangle.south, maximum_height);
             let mut perimeterCartographicSC =
-                Cartographic::from_radians(lonCenter, rectangle.south, maximumHeight);
+                Cartographic::from_radians(lonCenter, rectangle.south, maximum_height);
 
             let mut perimeterCartesianNC =
                 ellipsoid.cartographicToCartesian(&perimeterCartographicNC);
@@ -179,15 +179,15 @@ impl OrientedBoundingBox {
             minY = perimeterProjectedSW.y.min(perimeterProjectedSC.y);
 
             // Compute minimum Z using the rectangle at minimum height, since it will be deeper than the maximum height
-            perimeterCartographicNW.height = minimumHeight;
-            perimeterCartographicSW.height = minimumHeight;
+            perimeterCartographicNW.height = minimum_height;
+            perimeterCartographicSW.height = minimum_height;
             perimeterCartesianNW = ellipsoid.cartographicToCartesian(&perimeterCartographicNW);
             perimeterCartesianSW = ellipsoid.cartographicToCartesian(&perimeterCartographicSW);
 
             minZ = plane
                 .getPointDistance(perimeterCartesianNW)
                 .min(plane.getPointDistance(perimeterCartesianSW));
-            maxZ = maximumHeight; // Since the tangent plane touches the surface at height = 0, this is okay
+            maxZ = maximum_height; // Since the tangent plane touches the surface at height = 0, this is okay
 
             return fromPlaneExtents(
                 tangentPlane.origin,
@@ -222,8 +222,8 @@ impl OrientedBoundingBox {
         let mut planeOrigin = DVec3::from_radians(
             centerLongitude,
             latitudeNearestToEquator,
-            Some(maximumHeight),
-            Some(ellipsoid.radiiSquared),
+            Some(maximum_height),
+            Some(ellipsoid.radii_squared),
         );
         planeOrigin.z = 0.0; // center the plane on the equator to simpify plane normal calculation
         let isPole = planeOrigin.x.abs() < EPSILON10 && planeOrigin.y.abs() < EPSILON10;
@@ -243,8 +243,8 @@ impl OrientedBoundingBox {
         let horizonCartesian = DVec3::from_radians(
             centerLongitude + FRAC_2_PI,
             latitudeNearestToEquator,
-            Some(maximumHeight),
-            Some(ellipsoid.radiiSquared),
+            Some(maximum_height),
+            Some(ellipsoid.radii_squared),
         );
         maxX = plane
             .projectPointOntoPlane(horizonCartesian)
@@ -257,12 +257,12 @@ impl OrientedBoundingBox {
             rectangle.north,
             {
                 if fullyBelowEquator {
-                    Some(minimumHeight)
+                    Some(minimum_height)
                 } else {
-                    Some(maximumHeight)
+                    Some(maximum_height)
                 }
             },
-            Some(ellipsoid.radiiSquared),
+            Some(ellipsoid.radii_squared),
         )
         .z;
         minY = DVec3::from_radians(
@@ -270,20 +270,20 @@ impl OrientedBoundingBox {
             rectangle.south,
             {
                 if fullyAboveEquator {
-                    Some(minimumHeight)
+                    Some(minimum_height)
                 } else {
-                    Some(maximumHeight)
+                    Some(maximum_height)
                 }
             },
-            Some(ellipsoid.radiiSquared),
+            Some(ellipsoid.radii_squared),
         )
         .z;
 
         let farZ = DVec3::from_radians(
             rectangle.east,
             latitudeNearestToEquator,
-            Some(maximumHeight),
-            Some(ellipsoid.radiiSquared),
+            Some(maximum_height),
+            Some(ellipsoid.radii_squared),
         );
         minZ = plane.getPointDistance(farZ);
         maxZ = 0.0; // plane origin starts at maxZ already
@@ -318,19 +318,19 @@ impl OrientedBoundingBox {
         let mut vValid = true;
         let mut wValid = true;
 
-        if (uHalf > 0.) {
+        if uHalf > 0. {
             u = u.divide_by_scalar(uHalf);
         } else {
             uValid = false;
         }
 
-        if (vHalf > 0.) {
+        if vHalf > 0. {
             v = v.divide_by_scalar(vHalf);
         } else {
             vValid = false;
         }
 
-        if (wHalf > 0.) {
+        if wHalf > 0. {
             w = w.divide_by_scalar(wHalf);
         } else {
             wValid = false;
@@ -341,37 +341,37 @@ impl OrientedBoundingBox {
         let mut validAxis2;
         let mut validAxis3;
 
-        if (numberOfDegenerateAxes == 1) {
+        if numberOfDegenerateAxes == 1 {
             let mut degenerateAxis = u;
             validAxis1 = v;
             validAxis2 = w;
-            if (!vValid) {
+            if !vValid {
                 degenerateAxis = v;
                 validAxis1 = u;
-            } else if (!wValid) {
+            } else if !wValid {
                 degenerateAxis = w;
                 validAxis2 = u;
             }
 
             validAxis3 = validAxis1.cross(validAxis2);
 
-            if (degenerateAxis == u) {
+            if degenerateAxis == u {
                 u = validAxis3;
-            } else if (degenerateAxis == v) {
+            } else if degenerateAxis == v {
                 v = validAxis3;
-            } else if (degenerateAxis == w) {
+            } else if degenerateAxis == w {
                 w = validAxis3;
             }
-        } else if (numberOfDegenerateAxes == 2) {
+        } else if numberOfDegenerateAxes == 2 {
             validAxis1 = u;
-            if (vValid) {
+            if vValid {
                 validAxis1 = v;
-            } else if (wValid) {
+            } else if wValid {
                 validAxis1 = w;
             }
 
             let mut crossVector = DVec3::UNIT_Y;
-            if (crossVector.equals_epsilon(validAxis1, Some(EPSILON3), None)) {
+            if crossVector.equals_epsilon(validAxis1, Some(EPSILON3), None) {
                 crossVector = DVec3::UNIT_X;
             }
 
@@ -380,17 +380,17 @@ impl OrientedBoundingBox {
             validAxis3 = validAxis1.cross(validAxis2);
             validAxis3.normalize();
 
-            if (validAxis1 == u) {
+            if validAxis1 == u {
                 v = validAxis2;
                 w = validAxis3;
-            } else if (validAxis1 == v) {
+            } else if validAxis1 == v {
                 w = validAxis2;
                 u = validAxis3;
-            } else if (validAxis1 == w) {
+            } else if validAxis1 == w {
                 u = validAxis2;
                 v = validAxis3;
             }
-        } else if (numberOfDegenerateAxes == 3) {
+        } else if numberOfDegenerateAxes == 3 {
             u = DVec3::UNIT_X;
             v = DVec3::UNIT_Y;
             w = DVec3::UNIT_Z;
@@ -404,26 +404,26 @@ impl OrientedBoundingBox {
         let mut distanceSquared = 0.0;
         let mut d;
 
-        if (pPrime.x < -uHalf) {
+        if pPrime.x < -uHalf {
             d = pPrime.x + uHalf;
             distanceSquared += d * d;
-        } else if (pPrime.x > uHalf) {
+        } else if pPrime.x > uHalf {
             d = pPrime.x - uHalf;
             distanceSquared += d * d;
         }
 
-        if (pPrime.y < -vHalf) {
+        if pPrime.y < -vHalf {
             d = pPrime.y + vHalf;
             distanceSquared += d * d;
-        } else if (pPrime.y > vHalf) {
+        } else if pPrime.y > vHalf {
             d = pPrime.y - vHalf;
             distanceSquared += d * d;
         }
 
-        if (pPrime.z < -wHalf) {
+        if pPrime.z < -wHalf {
             d = pPrime.z + wHalf;
             distanceSquared += d * d;
-        } else if (pPrime.z > wHalf) {
+        } else if pPrime.z > wHalf {
             d = pPrime.z - wHalf;
             distanceSquared += d * d;
         }
@@ -453,10 +453,10 @@ impl OrientedBoundingBox {
                 .abs();
         let distanceToPlane = normal.dot(center) + plane.distance;
 
-        if (distanceToPlane <= -radEffective) {
+        if distanceToPlane <= -radEffective {
             // The entire box is on the negative side of the plane normal
             return Intersect::OUTSIDE;
-        } else if (distanceToPlane >= radEffective) {
+        } else if distanceToPlane >= radEffective {
             // The entire box is on the positive side of the plane normal
             return Intersect::INSIDE;
         }

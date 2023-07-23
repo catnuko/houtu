@@ -141,7 +141,7 @@ impl EllipsoidGeodesic {
         //>>includeEnd('debug');
 
         self.vincentyInverseFormula(
-            self.ellipsoid.maximumRadius,
+            self.ellipsoid.maximum_radius,
             self.ellipsoid.minimumRadius,
             start.longitude,
             start.latitude,
@@ -205,7 +205,7 @@ impl EllipsoidGeodesic {
 
             let sineAlpha;
 
-            if (sineSigma == 0.0) {
+            if sineSigma == 0.0 {
                 sineAlpha = 0.0;
                 cosineSquaredAlpha = 1.0;
             } else {
@@ -217,7 +217,7 @@ impl EllipsoidGeodesic {
 
             cosineTwiceSigmaMidpoint = cosineSigma - (2.0 * ss) / cosineSquaredAlpha;
 
-            if (!cosineTwiceSigmaMidpoint.is_finite()) {
+            if !cosineTwiceSigmaMidpoint.is_finite() {
                 cosineTwiceSigmaMidpoint = 0.0;
             }
 
@@ -265,7 +265,7 @@ impl EllipsoidGeodesic {
     }
     fn setConstants(&mut self) {
         let uSquared = self.uSquared;
-        let a = self.ellipsoid.maximumRadius;
+        let a = self.ellipsoid.maximum_radius;
         let b = self.ellipsoid.minimumRadius;
         let f = (a - b) / a;
 

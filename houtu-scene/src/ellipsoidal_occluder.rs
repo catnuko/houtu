@@ -70,18 +70,18 @@ impl EllipsoidalOccluder {
     pub fn isScaledSpacePointVisiblePossiblyUnderEllipsoid(
         &self,
         occludeeScaledSpacePosition: &DVec3,
-        minimumHeight: Option<f64>,
+        minimum_height: Option<f64>,
     ) -> bool {
         let ellipsoid = self.ellipsoid;
         let vhMagnitudeSquared;
         let mut cv;
-        if let Some(minimumHeight) = minimumHeight {
-            if minimumHeight < 0.0 && ellipsoid.minimumRadius > -minimumHeight {
+        if let Some(minimum_height) = minimum_height {
+            if minimum_height < 0.0 && ellipsoid.minimumRadius > -minimum_height {
                 // This code is similar to the cameraPosition setter, but unrolled for performance because it will be called a lot.
                 cv = DVec3::ZERO;
-                cv.x = self.cameraPosition.x / (ellipsoid.radii.x + minimumHeight);
-                cv.y = self.cameraPosition.y / (ellipsoid.radii.y + minimumHeight);
-                cv.z = self.cameraPosition.z / (ellipsoid.radii.z + minimumHeight);
+                cv.x = self.cameraPosition.x / (ellipsoid.radii.x + minimum_height);
+                cv.y = self.cameraPosition.y / (ellipsoid.radii.y + minimum_height);
+                cv.z = self.cameraPosition.z / (ellipsoid.radii.z + minimum_height);
                 vhMagnitudeSquared = cv.x * cv.x + cv.y * cv.y + cv.z * cv.z - 1.0;
             } else {
                 cv = self.cameraPositionInScaledSpace;
@@ -101,10 +101,10 @@ impl EllipsoidalOccluder {
         &self,
         directionToPoint: &DVec3,
         positions: &Vec<DVec3>,
-        minimumHeight: f64,
+        minimum_height: f64,
     ) -> Option<DVec3> {
         let possiblyShrunkEllipsoid =
-            getPossiblyShrunkEllipsoid(&self.ellipsoid, Some(minimumHeight));
+            getPossiblyShrunkEllipsoid(&self.ellipsoid, Some(minimum_height));
         return computeHorizonCullingPointFromPositions(
             &possiblyShrunkEllipsoid,
             directionToPoint,
@@ -123,13 +123,13 @@ impl EllipsoidalOccluder {
         );
     }
 }
-pub fn getPossiblyShrunkEllipsoid(ellipsoid: &Ellipsoid, minimumHeight: Option<f64>) -> Ellipsoid {
-    if let Some(minimumHeight) = minimumHeight {
-        if minimumHeight < 0.0 && ellipsoid.minimumRadius > -minimumHeight {
+pub fn getPossiblyShrunkEllipsoid(ellipsoid: &Ellipsoid, minimum_height: Option<f64>) -> Ellipsoid {
+    if let Some(minimum_height) = minimum_height {
+        if minimum_height < 0.0 && ellipsoid.minimumRadius > -minimum_height {
             let ellipsoidShrunkRadii = DVec3::from_elements(
-                ellipsoid.radii.x + minimumHeight,
-                ellipsoid.radii.y + minimumHeight,
-                ellipsoid.radii.z + minimumHeight,
+                ellipsoid.radii.x + minimum_height,
+                ellipsoid.radii.y + minimum_height,
+                ellipsoid.radii.z + minimum_height,
             );
             return Ellipsoid::from_vec3(ellipsoidShrunkRadii);
         } else {

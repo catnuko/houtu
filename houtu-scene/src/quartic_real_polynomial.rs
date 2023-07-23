@@ -25,7 +25,7 @@ impl QuarticRealPolynomial {
     //     return discriminant;
     // }
     pub fn computeRealRoots(a: f64, b: f64, c: f64, d: f64, e: f64) -> Option<Vec<f64>> {
-        if (a.abs() < EPSILON15) {
+        if a.abs() < EPSILON15 {
             return CubicRealPolynomial::computeRealRoots(b, c, d, e);
         }
         let a3 = b / a;
@@ -71,36 +71,36 @@ fn original(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
     let cubicRoots =
         CubicRealPolynomial::computeRealRoots(1.0, 2.0 * p, p * p - 4.0 * r, -q * q).unwrap();
 
-    if (cubicRoots.len() > 0) {
+    if cubicRoots.len() > 0 {
         let temp = -a3 / 4.0;
 
         // Use the largest positive root.
         let hSquared = cubicRoots[cubicRoots.len() - 1];
 
-        if (hSquared.abs() < EPSILON14) {
+        if hSquared.abs() < EPSILON14 {
             // y^4 + p y^2 + r = 0.
             let roots = QuadraticRealPolynomial::computeRealRoots(1.0, p, r).unwrap();
 
-            if (roots.len() == 2) {
+            if roots.len() == 2 {
                 let root0 = roots[0];
                 let root1 = roots[1];
 
                 let y;
-                if (root0 >= 0.0 && root1 >= 0.0) {
+                if root0 >= 0.0 && root1 >= 0.0 {
                     let y0 = root0.sqrt();
                     let y1 = root1.sqrt();
 
                     return vec![temp - y1, temp - y0, temp + y0, temp + y1];
-                } else if (root0 >= 0.0 && root1 < 0.0) {
+                } else if root0 >= 0.0 && root1 < 0.0 {
                     y = root0.sqrt();
                     return vec![temp - y, temp + y];
-                } else if (root0 < 0.0 && root1 >= 0.0) {
+                } else if root0 < 0.0 && root1 >= 0.0 {
                     y = root1.sqrt();
                     return vec![temp - y, temp + y];
                 }
             }
             return vec![];
-        } else if (hSquared > 0.0) {
+        } else if hSquared > 0.0 {
             let h = hSquared.sqrt();
 
             let m = (p + hSquared - q / h) / 2.0;
@@ -110,23 +110,23 @@ fn original(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
             let mut roots1 = QuadraticRealPolynomial::computeRealRoots(1.0, h, m).unwrap();
             let mut roots2 = QuadraticRealPolynomial::computeRealRoots(1.0, -h, n).unwrap();
 
-            if (roots1.len() != 0) {
+            if roots1.len() != 0 {
                 roots1[0] += temp;
                 roots1[1] += temp;
 
-                if (roots2.len() != 0) {
+                if roots2.len() != 0 {
                     roots2[0] += temp;
                     roots2[1] += temp;
 
-                    if (roots1[1] <= roots2[0]) {
+                    if roots1[1] <= roots2[0] {
                         return vec![roots1[0], roots1[1], roots2[0], roots2[1]];
-                    } else if (roots2[1] <= roots1[0]) {
+                    } else if roots2[1] <= roots1[0] {
                         return vec![roots2[0], roots2[1], roots1[0], roots1[1]];
-                    } else if (roots1[0] >= roots2[0] && roots1[1] <= roots2[1]) {
+                    } else if roots1[0] >= roots2[0] && roots1[1] <= roots2[1] {
                         return vec![roots2[0], roots1[0], roots1[1], roots2[1]];
-                    } else if (roots2[0] >= roots1[0] && roots2[1] <= roots1[1]) {
+                    } else if roots2[0] >= roots1[0] && roots2[1] <= roots1[1] {
                         return vec![roots1[0], roots2[0], roots2[1], roots1[1]];
-                    } else if (roots1[0] > roots2[0] && roots1[0] < roots2[1]) {
+                    } else if roots1[0] > roots2[0] && roots1[0] < roots2[1] {
                         return vec![roots2[0], roots1[0], roots2[1], roots1[1]];
                     }
                     return vec![roots1[0], roots2[0], roots1[1], roots2[1]];
@@ -134,7 +134,7 @@ fn original(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
                 return roots1;
             }
 
-            if (roots2.len() != 0) {
+            if roots2.len() != 0 {
                 roots2[0] += temp;
                 roots2[1] += temp;
 
@@ -157,7 +157,7 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
 
     let cubicRoots = CubicRealPolynomial::computeRealRoots(1.0, p, q, r).unwrap();
 
-    if (cubicRoots.len() > 0) {
+    if cubicRoots.len() > 0 {
         // Use the most positive root
         let y = cubicRoots[0];
 
@@ -176,7 +176,7 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
         let mut g2;
         let mut h2;
 
-        if (y < 0.0 || m * nError < n * mError) {
+        if y < 0.0 || m * nError < n * mError {
             let squareRootOfN = n.sqrt();
             g2 = squareRootOfN / 2.0;
             h2 = if squareRootOfN == 0.0 {
@@ -196,10 +196,10 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
 
         let mut G;
         let mut g;
-        if (g1 == 0.0 && g2 == 0.0) {
+        if g1 == 0.0 && g2 == 0.0 {
             G = 0.0;
             g = 0.0;
-        } else if (g1.signum() == g2.signum()) {
+        } else if g1.signum() == g2.signum() {
             G = g1 + g2;
             g = y / G;
         } else {
@@ -209,10 +209,10 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
 
         let mut H;
         let mut h;
-        if (h1 == 0.0 && h2 == 0.0) {
+        if h1 == 0.0 && h2 == 0.0 {
             H = 0.0;
             h = 0.0;
-        } else if (h1.signum() == h2.signum()) {
+        } else if h1.signum() == h2.signum() {
             H = h1 + h2;
             h = a0 / H;
         } else {
@@ -224,24 +224,24 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
         let roots1 = QuadraticRealPolynomial::computeRealRoots(1.0, G, H).unwrap();
         let roots2 = QuadraticRealPolynomial::computeRealRoots(1.0, g, h).unwrap();
 
-        if (roots1.len() != 0) {
-            if (roots2.len() != 0) {
-                if (roots1[1] <= roots2[0]) {
+        if roots1.len() != 0 {
+            if roots2.len() != 0 {
+                if roots1[1] <= roots2[0] {
                     return vec![roots1[0], roots1[1], roots2[0], roots2[1]];
-                } else if (roots2[1] <= roots1[0]) {
+                } else if roots2[1] <= roots1[0] {
                     return vec![roots2[0], roots2[1], roots1[0], roots1[1]];
-                } else if (roots1[0] >= roots2[0] && roots1[1] <= roots2[1]) {
+                } else if roots1[0] >= roots2[0] && roots1[1] <= roots2[1] {
                     return vec![roots2[0], roots1[0], roots1[1], roots2[1]];
-                } else if (roots2[0] >= roots1[0] && roots2[1] <= roots1[1]) {
+                } else if roots2[0] >= roots1[0] && roots2[1] <= roots1[1] {
                     return vec![roots1[0], roots2[0], roots2[1], roots1[1]];
-                } else if (roots1[0] > roots2[0] && roots1[0] < roots2[1]) {
+                } else if roots1[0] > roots2[0] && roots1[0] < roots2[1] {
                     return vec![roots2[0], roots1[0], roots2[1], roots1[1]];
                 }
                 return vec![roots1[0], roots2[0], roots1[1], roots2[1]];
             }
             return roots1;
         }
-        if (roots2.len() != 0) {
+        if roots2.len() != 0 {
             return roots2;
         }
     }

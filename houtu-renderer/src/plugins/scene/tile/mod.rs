@@ -94,7 +94,7 @@ fn layer_system(
             if !tile.renderable {
                 queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::High);
             } else {
-                visitIfVisible(
+                visit_if_visible(
                     &mut *tile_layer,
                     &mut *tile,
                     &occluders.unwrap(),
@@ -108,7 +108,7 @@ fn layer_system(
     }
     tile_layer._lastSelectionFrameNumber = frame_count.0;
 }
-fn visitIfVisible<P: Projection>(
+fn visit_if_visible<P: Projection>(
     tile_layer: &mut QuadTreeTileLayer,
     tile: &mut QuadtreeTile,
     occluders: &EllipsoidalOccluder,
@@ -131,33 +131,33 @@ fn visitIfVisible<P: Projection>(
     {
         // return visitTile();
     }
-    if containsNeededPosition(&tile.rectangle, Some(position_cartographic)) {
+    if contains_needed_position(&tile.rectangle, Some(position_cartographic)) {
         if tile.terrain_mesh.is_none() {
             queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Medium);
         }
         let lastFrame = tile_layer._lastSelectionFrameNumber;
         let lastFrameSelectionResult = {
-            if tile._lastSelectionResultFrame == lastFrame {
-                tile._lastSelectionResult
+            if tile.last_selection_result_frame == lastFrame {
+                tile.last_selection_result
             } else {
                 TileSelectionResult::NONE
             }
         };
-        if (lastFrameSelectionResult != TileSelectionResult::CullButNeeded
-            && lastFrameSelectionResult != TileSelectionResult::RENDERED)
+        if lastFrameSelectionResult != TileSelectionResult::CullButNeeded
+            && lastFrameSelectionResult != TileSelectionResult::RENDERED
         {
             // tile_layer._tileToUpdateHeights.push(tile);
             tile.to_update_heights = true
         }
-        tile._lastSelectionResult = TileSelectionResult::CullButNeeded;
+        tile.last_selection_result = TileSelectionResult::CullButNeeded;
     } else if tile_layer.preloadSiblings && tile.level == 0 {
         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Low);
 
-        tile._lastSelectionResult = TileSelectionResult::CULLED;
+        tile.last_selection_result = TileSelectionResult::CULLED;
     } else {
-        tile._lastSelectionResult = TileSelectionResult::CULLED;
+        tile.last_selection_result = TileSelectionResult::CULLED;
     }
-    tile._lastSelectionResultFrame = frame_count.0;
+    tile.last_selection_result_frame = frame_count.0;
 }
 fn queueTileLoad(
     tile: &QuadtreeTile,
@@ -181,7 +181,7 @@ fn queueTileLoad(
 // ) {
 
 //       let meetsSse =
-//       screenSpaceError(datasource,tile  ,globe_camera_control) <
+//       screen_space_error(datasource,tile  ,globe_camera_control) <
 //       tile_layer.maximumScreenSpaceError;
 
 //     let southwestChild = tile.southwestChild;
@@ -191,8 +191,8 @@ fn queueTileLoad(
 
 //     let lastFrame = tile_layer._lastSelectionFrameNumber;
 //     let lastFrameSelectionResult ={
-//         if tile._lastSelectionResultFrame == lastFrame{
-//             tile._lastSelectionResult
+//         if tile.last_selection_result_frame == lastFrame{
+//             tile.last_selection_result
 //         }else{
 //             TileSelectionResult::NONE
 //         }
@@ -200,7 +200,7 @@ fn queueTileLoad(
 
 //     let datasource = tile_layer.datasource;
 
-//     if (meetsSse || ancestorMeetsSse) {
+//     if meetsSse || ancestorMeetsSse {
 //       // This tile (or an ancestor) is the one we want to render this frame, but we'll do different things depending
 //       // on the state of this tile and on what we did _last_ frame.
 
@@ -217,27 +217,27 @@ fn queueTileLoad(
 //       //
 //       // Note that even if we decide to render a tile here, it may later get "kicked" in favor of an ancestor.
 
-//       let oneRenderedLastFrame =
+//       let one_rendered_last_frame =
 //         TileSelectionResult::originalResult(lastFrameSelectionResult) ==
 //         TileSelectionResult::RENDERED;
-//       let twoCulledOrNotVisited =
+//       let two_culled_or_not_visited =
 //         TileSelectionResult::originalResult(lastFrameSelectionResult) ==
 //           TileSelectionResult::CULLED ||
 //         lastFrameSelectionResult == TileSelectionResult::NONE;
-//       let threeCompletelyLoaded = tile.state == QuadtreeTileLoadState::DONE;
+//       let three_completely_loaded = tile.state == QuadtreeTileLoadState::DONE;
 
 //       let renderable =
-//         oneRenderedLastFrame || twoCulledOrNotVisited || threeCompletelyLoaded;
+//         one_rendered_last_frame || two_culled_or_not_visited || three_completely_loaded;
 
-//       if (!renderable) {
+//       if !renderable {
 //         // Check the more expensive condition 4 above. This requires details of the thing
 //         // we're rendering (e.g. the globe surface), so delegate it to the tile provider.
 //           renderable = datasource.canRenderWithoutLosingDetail(tile);
 //       }
 
-//       if (renderable) {
+//       if renderable {
 //         // Only load this tile if it (not just an ancestor) meets the SSE.
-//         if (meetsSse) {
+//         if meetsSse {
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Medium);
 
 //         }
@@ -254,10 +254,10 @@ fn queueTileLoad(
 //           }
 //         } ;
 
-//         tile._lastSelectionResultFrame = frame_count.0;
-//         tile._lastSelectionResult = TileSelectionResult::RENDERED;
+//         tile.last_selection_result_frame = frame_count.0;
+//         tile.last_selection_result = TileSelectionResult::RENDERED;
 
-//         if (!traversalDetails.any_were_rendered_last_frame) {
+//         if !traversalDetails.any_were_rendered_last_frame {
 //           // Tile is newly-rendered this frame, so update its heights.
 //           tile_layer._tileToUpdateHeights.push(tile);
 //         }
@@ -274,20 +274,20 @@ fn queueTileLoad(
 //       ancestorMeetsSse = true;
 
 //       // Load this blocker tile with high priority, but only if this tile (not just an ancestor) meets the SSE.
-//       if (meetsSse) {
+//       if meetsSse {
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::High);
 
 //       }
 //     }
 
-//     if (datasource.canRefine(tile)) {
-//       let allAreUpsampled =
-//         southwestChild.upsampledFromParent &&
-//         southeastChild.upsampledFromParent &&
-//         northwestChild.upsampledFromParent &&
-//         northeastChild.upsampledFromParent;
+//     if datasource.can_refine(tile) {
+//       let all_are_upsampled =
+//         southwestChild.upsampled_from_parent &&
+//         southeastChild.upsampled_from_parent &&
+//         northwestChild.upsampled_from_parent &&
+//         northeastChild.upsampled_from_parent;
 
-//       if (allAreUpsampled) {
+//       if all_are_upsampled {
 //         // No point in rendering the children because they're all upsampled.  Render this tile instead.
 //         tile_layer._tilesToRender.push(tile);
 
@@ -295,10 +295,10 @@ fn queueTileLoad(
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Medium);
 
 //         // Make sure we don't unload the children and forget they're upsampled.
-//         tile_layer._tileReplacementQueue.markTileRendered(southwestChild);
-//         tile_layer._tileReplacementQueue.markTileRendered(southeastChild);
-//         tile_layer._tileReplacementQueue.markTileRendered(northwestChild);
-//         tile_layer._tileReplacementQueue.markTileRendered(northeastChild);
+//         tile_layer._tileReplacementQueue.mark_tile_rendered(southwestChild);
+//         tile_layer._tileReplacementQueue.mark_tile_rendered(southeastChild);
+//         tile_layer._tileReplacementQueue.mark_tile_rendered(northwestChild);
+//         tile_layer._tileReplacementQueue.mark_tile_rendered(northeastChild);
 
 //         traversalDetails.all_are_renderable = tile.renderable;
 //         traversalDetails.any_were_rendered_last_frame =
@@ -311,10 +311,10 @@ fn queueTileLoad(
 //           }
 //         } ;
 
-//         tile._lastSelectionResultFrame = frame_count.0;
-//         tile._lastSelectionResult = TileSelectionResult::RENDERED;
+//         tile.last_selection_result_frame = frame_count.0;
+//         tile.last_selection_result = TileSelectionResult::RENDERED;
 
-//         if (!traversalDetails.any_were_rendered_last_frame) {
+//         if !traversalDetails.any_were_rendered_last_frame {
 //           // Tile is newly-rendered this frame, so update its heights.
 //           tile_layer._tileToUpdateHeights.push(tile);
 //         }
@@ -323,17 +323,17 @@ fn queueTileLoad(
 //       }
 
 //       // SSE is not good enough, so refine.
-//       tile._lastSelectionResultFrame = frame_count.0;
-//       tile._lastSelectionResult = TileSelectionResult::REFINED;
+//       tile.last_selection_result_frame = frame_count.0;
+//       tile.last_selection_result = TileSelectionResult::REFINED;
 
-//       let firstRenderedDescendantIndex = tile_layer._tilesToRender.length;
-//       let loadIndexLow = tile_layer._tileLoadQueueLow.length;
-//       let loadIndexMedium = tile_layer._tileLoadQueueMedium.length;
-//       let loadIndexHigh = tile_layer._tileLoadQueueHigh.length;
-//       let tilesToUpdateHeightsIndex = tile_layer._tileToUpdateHeights.length;
+//       let first_rendered_descendant_index = tile_layer._tilesToRender.length;
+//       let load_index_low = tile_layer._tileLoadQueueLow.length;
+//       let load_index_medium = tile_layer._tileLoadQueueMedium.length;
+//       let load_index_high = tile_layer._tileLoadQueueHigh.length;
+//       let tiles_to_update_heights_index = tile_layer._tileToUpdateHeights.length;
 
 //       // No need to add the children to the load queue because they'll be added (if necessary) when they're visited.
-//       visitVisibleChildrenNearToFar(
+//       visit_visible_children_near_to_far(
 //         tile_layer,
 //         southwestChild,
 //         southeastChild,
@@ -347,7 +347,7 @@ fn queueTileLoad(
 //       // If no descendant tiles were added to the render list by the function above, it means they were all
 //       // culled even though this tile was deemed visible. That's pretty common.
 
-//       if (firstRenderedDescendantIndex != tile_layer._tilesToRender.length) {
+//       if first_rendered_descendant_index != tile_layer._tilesToRender.length {
 //         // At least one descendant tile was added to the render list.
 //         // The traversalDetails tell us what happened while visiting the children.
 
@@ -355,49 +355,49 @@ fn queueTileLoad(
 //         let any_were_rendered_last_frame =
 //           traversalDetails.any_were_rendered_last_frame;
 //         let not_yet_renderable_count = traversalDetails.not_yet_renderable_count;
-//         let queuedForLoad = false;
+//         let queued_for_load = false;
 
-//         if (!all_are_renderable && !any_were_rendered_last_frame) {
+//         if !all_are_renderable && !any_were_rendered_last_frame {
 //           // Some of our descendants aren't ready to render yet, and none were rendered last frame,
 //           // so kick them all out of the render list and render this tile instead. Continue to load them though!
 
 //           // Mark the rendered descendants and their ancestors - up to this tile - as kicked.
 //           let renderList = tile_layer._tilesToRender;
-//           for i in firstRenderedDescendantIndex..renderList(){
+//           for i in first_rendered_descendant_index..renderList(){
 
 //             let workTile = renderList[i];
 //             while (
 //               workTile != undefined &&
-//               workTile._lastSelectionResult != TileSelectionResult::KICKED &&
+//               workTile.last_selection_result != TileSelectionResult::KICKED &&
 //               workTile != tile
 //             ) {
-//               workTile._lastSelectionResult = TileSelectionResult::kick(
-//                 workTile._lastSelectionResult
+//               workTile.last_selection_result = TileSelectionResult::kick(
+//                 workTile.last_selection_result
 //               );
 //               workTile = workTile.parent;
 //             }
 //           }
 
 //           // Remove all descendants from the render list and add this tile.
-//           tile_layer._tilesToRender.length = firstRenderedDescendantIndex;
-//           tile_layer._tileToUpdateHeights.length = tilesToUpdateHeightsIndex;
+//           tile_layer._tilesToRender.length = first_rendered_descendant_index;
+//           tile_layer._tileToUpdateHeights.length = tiles_to_update_heights_index;
 //                   tile_layer._tilesToRender.push(tile);
 
-//           tile._lastSelectionResult = TileSelectionResult::RENDERED;
+//           tile.last_selection_result = TileSelectionResult::RENDERED;
 
 //           // If we're waiting on heaps of descendants, the above will take too long. So in that case,
 //           // load this tile INSTEAD of loading any of the descendants, and tell the up-level we're only waiting
 //           // on this tile. Keep doing this until we actually manage to render this tile.
-//           let wasRenderedLastFrame =
+//           let was_rendered_last_frame =
 //             lastFrameSelectionResult == TileSelectionResult::RENDERED;
 //           if (
-//             !wasRenderedLastFrame &&
+//             !was_rendered_last_frame &&
 //             not_yet_renderable_count > tile_layer.loadingDescendantLimit
 //           ) {
 //             // Remove all descendants from the load queues.
-//             tile_layer._tileLoadQueueLow.length = loadIndexLow;
-//             tile_layer._tileLoadQueueMedium.length = loadIndexMedium;
-//             tile_layer._tileLoadQueueHigh.length = loadIndexHigh;
+//             tile_layer._tileLoadQueueLow.length = load_index_low;
+//             tile_layer._tileLoadQueueMedium.length = load_index_medium;
+//             tile_layer._tileLoadQueueHigh.length = load_index_high;
 //         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueMedium, tile, globe_camera_control,&mut enqueue_evt);
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Medium);
 
@@ -408,13 +408,13 @@ fn queueTileLoad(
 //                 1
 //               }
 //             } ;
-//             queuedForLoad = true;
+//             queued_for_load = true;
 //           }
 
 //           traversalDetails.all_are_renderable = tile.renderable;
-//           traversalDetails.any_were_rendered_last_frame = wasRenderedLastFrame;
+//           traversalDetails.any_were_rendered_last_frame = was_rendered_last_frame;
 
-//           if (!wasRenderedLastFrame) {
+//           if !was_rendered_last_frame {
 //             // Tile is newly-rendered this frame, so update its heights.
 //             tile_layer._tileToUpdateHeights.push(tile);
 //           }
@@ -422,7 +422,7 @@ fn queueTileLoad(
 //           ++debug.tilesWaitingForChildren;
 //         }
 
-//         if (tile_layer.preloadAncestors && !queuedForLoad) {
+//         if tile_layer.preloadAncestors && !queued_for_load {
 //         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueLow, tile, globe_camera_control,&mut enqueue_evt);
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Low);
 
@@ -432,8 +432,8 @@ fn queueTileLoad(
 //       return;
 //     }
 
-//     *tile._lastSelectionResultFrame = frame_count.0;
-//     *tile._lastSelectionResult = TileSelectionResult::RENDERED;
+//     *tile.last_selection_result_frame = frame_count.0;
+//     *tile.last_selection_result = TileSelectionResult::RENDERED;
 
 //     // We'd like to refine but can't because we have no availability data for this tile's children,
 //     // so we have no idea if refinining would involve a load or an upsample. We'll have to finish
@@ -455,24 +455,24 @@ fn queueTileLoad(
 //     } ;
 // }
 
-fn screenSpaceError(
+fn screen_space_error(
     datasource: &dyn DataSource,
     tile: &QuadtreeTileValue,
     globe_camera_control: &GlobeCameraControl,
 ) {
-    let maxGeometricError = datasource.getLevelMaximumGeometricError(tile.level);
+    let max_geometric_error = datasource.getLevelMaximumGeometricError(tile.level);
 
     let distance = tile._distance;
     let height = globe_camera_control.drawingBufferHeight;
-    let sseDenominator = globe_camera_control.sseDenominator;
+    let sse_denominator = globe_camera_control.sse_denominator;
 
-    let error = (maxGeometricError * height) / (distance * sseDenominator);
+    let error = (max_geometric_error * height) / (distance * sse_denominator);
 
     error /= globe_camera_control.pixelRatio;
 
     return error;
 }
-fn containsNeededPosition(
+fn contains_needed_position(
     rectangle: &Rectangle,
     cameraPositionCartographic: Option<&Cartographic>,
 ) -> bool {
@@ -547,55 +547,55 @@ fn containsNeededPosition(
 //     return alon * alon + alat * alat - (blon * blon + blat * blat);
 // }
 pub fn get_zoom_level(h: f64) -> u32 {
-    if (h <= 100.) {
+    if h <= 100. {
         //0.01
         return 19;
-    } else if (h <= 300.) {
+    } else if h <= 300. {
         //0.02
         return 18;
-    } else if (h <= 660.) {
+    } else if h <= 660. {
         //0.05
         return 17;
-    } else if (h <= 1300.) {
+    } else if h <= 1300. {
         //0.1
         return 16;
-    } else if (h <= 2600.) {
+    } else if h <= 2600. {
         //0.2
         return 15;
-    } else if (h <= 6400.) {
+    } else if h <= 6400. {
         //0.5
         return 14;
-    } else if (h <= 13200.) {
+    } else if h <= 13200. {
         //1
         return 13;
-    } else if (h <= 26000.) {
+    } else if h <= 26000. {
         //2
         return 12;
-    } else if (h <= 67985.) {
+    } else if h <= 67985. {
         //5
         return 11;
-    } else if (h <= 139780.) {
+    } else if h <= 139780. {
         //10
         return 10;
-    } else if (h <= 250600.) {
+    } else if h <= 250600. {
         //20
         return 9;
-    } else if (h <= 380000.) {
+    } else if h <= 380000. {
         //30
         return 8;
-    } else if (h <= 640000.) {
+    } else if h <= 640000. {
         //50
         return 7;
-    } else if (h <= 1280000.) {
+    } else if h <= 1280000. {
         //100
         return 6;
-    } else if (h <= 2600000.) {
+    } else if h <= 2600000. {
         //200
         return 5;
-    } else if (h <= 6100000.) {
+    } else if h <= 6100000. {
         //500
         return 4;
-    } else if (h <= 11900000.) {
+    } else if h <= 11900000. {
         //1000
         return 3;
     } else {
@@ -647,7 +647,7 @@ impl TraversalQuadDetails {
 lazy_static! {
     static ref traversalQuadsByLevel: Vec<TraversalDetails> = vec![TraversalDetails::default(); 31];
 }
-// fn visitVisibleChildrenNearToFar<P: Projection>(
+// fn visit_visible_children_near_to_far<P: Projection>(
 //     southwest: &QuadtreeTile,
 //     southeast: &QuadtreeTile,
 //     northwest: &QuadtreeTile,
@@ -663,10 +663,10 @@ lazy_static! {
 //     let northwestDetails = quadDetails.northwest;
 //     let northeastDetails = quadDetails.northeast;
 
-//     if (cameraPosition.longitude < southwest.rectangle.east) {
-//         if (cameraPosition.latitude < southwest.rectangle.north) {
+//     if cameraPosition.longitude < southwest.rectangle.east {
+//         if cameraPosition.latitude < southwest.rectangle.north {
 //             // Camera in southwest quadrant
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 southwest,
 //                 tileProvider,
@@ -675,7 +675,7 @@ lazy_static! {
 //                 ancestorMeetsSse,
 //                 southwestDetails,
 //             );
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 southeast,
 //                 tileProvider,
@@ -684,7 +684,7 @@ lazy_static! {
 //                 ancestorMeetsSse,
 //                 southeastDetails,
 //             );
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 northwest,
 //                 tileProvider,
@@ -693,7 +693,7 @@ lazy_static! {
 //                 ancestorMeetsSse,
 //                 northwestDetails,
 //             );
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 northeast,
 //                 tileProvider,
@@ -704,7 +704,7 @@ lazy_static! {
 //             );
 //         } else {
 //             // Camera in northwest quadrant
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 northwest,
 //                 tileProvider,
@@ -713,7 +713,7 @@ lazy_static! {
 //                 ancestorMeetsSse,
 //                 northwestDetails,
 //             );
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 southwest,
 //                 tileProvider,
@@ -722,7 +722,7 @@ lazy_static! {
 //                 ancestorMeetsSse,
 //                 southwestDetails,
 //             );
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 northeast,
 //                 tileProvider,
@@ -731,7 +731,7 @@ lazy_static! {
 //                 ancestorMeetsSse,
 //                 northeastDetails,
 //             );
-//             visitIfVisible(
+//             visit_if_visible(
 //                 primitive,
 //                 southeast,
 //                 tileProvider,
@@ -741,9 +741,9 @@ lazy_static! {
 //                 southeastDetails,
 //             );
 //         }
-//     } else if (cameraPosition.latitude < southwest.rectangle.north) {
+//     } else if cameraPosition.latitude < southwest.rectangle.north {
 //         // Camera southeast quadrant
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             southeast,
 //             tileProvider,
@@ -752,7 +752,7 @@ lazy_static! {
 //             ancestorMeetsSse,
 //             southeastDetails,
 //         );
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             southwest,
 //             tileProvider,
@@ -761,7 +761,7 @@ lazy_static! {
 //             ancestorMeetsSse,
 //             southwestDetails,
 //         );
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             northeast,
 //             tileProvider,
@@ -770,7 +770,7 @@ lazy_static! {
 //             ancestorMeetsSse,
 //             northeastDetails,
 //         );
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             northwest,
 //             tileProvider,
@@ -781,7 +781,7 @@ lazy_static! {
 //         );
 //     } else {
 //         // Camera in northeast quadrant
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             northeast,
 //             tileProvider,
@@ -790,7 +790,7 @@ lazy_static! {
 //             ancestorMeetsSse,
 //             northeastDetails,
 //         );
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             northwest,
 //             tileProvider,
@@ -799,7 +799,7 @@ lazy_static! {
 //             ancestorMeetsSse,
 //             northwestDetails,
 //         );
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             southeast,
 //             tileProvider,
@@ -808,7 +808,7 @@ lazy_static! {
 //             ancestorMeetsSse,
 //             southeastDetails,
 //         );
-//         visitIfVisible(
+//         visit_if_visible(
 //             primitive,
 //             southwest,
 //             tileProvider,

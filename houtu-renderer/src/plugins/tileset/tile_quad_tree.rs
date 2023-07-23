@@ -29,14 +29,19 @@ use super::reproject_texture::{self, ReprojectTextureTaskQueue};
 use super::terrain_datasource::{self, TerrainDataSource, TerrainDataSourceData};
 use super::terrian_material::TerrainMeshMaterial;
 use super::tile_selection_result::TileSelectionResult;
-use super::traversal_details::{AllTraversalQuadDetails, RootTraversalDetails, TraversalDetails};
+use super::traversal_details::{
+    get_traversal_details, AllTraversalQuadDetails, RootTraversalDetails, TraversalDetails,
+};
+use super::visit_visible_children_near_to_far::{
+    self, make_new_quadtree_tile, subdivide, visit_if_visible, visit_visible_children_near_to_far,
+};
 use super::xyz_datasource::XYZDataSource;
 use super::TileKey;
 
 use super::quadtree_tile::{
     NodeChildren, Quadrant, QuadtreeTile, QuadtreeTileData, QuadtreeTileLoadState,
     QuadtreeTileMark, QuadtreeTileOtherState, QuadtreeTileParent, TileLoadHigh, TileLoadLow,
-    TileLoadMedium, TileNode, TileToLoad, TileToRender, TileToUpdateHeight,
+    TileLoadMedium, TileNode, TileRenderedToDestroy, TileToLoad, TileToRender, TileToUpdateHeight,
 };
 use super::tile_replacement_queue::{TileReplacementQueue, TileReplacementState};
 pub struct Plugin;
@@ -64,13 +69,9 @@ impl bevy::prelude::Plugin for Plugin {
         app.add_event::<TileLoadEvent>();
         app.add_system(begin_frame.before(render).before(end_frame));
         app.add_system(render.before(end_frame));
-        app.add_system(end_frame.before(updateTileLoadProgress_system));
-        app.add_system(updateTileLoadProgress_system);
-        app.add_systems((
-            quad_tile_state_init_system,
-            terrain_state_machine_system,
-            quad_tile_state_end_system,
-        ));
+        app.add_system(end_frame.before(update_tile_load_progress_system));
+        app.add_system(update_tile_load_progress_system);
+        app.add_systems((quad_tile_state_init_system, quad_tile_state_end_system));
         app.add_system(ImageryLayer::finish_reproject_texture_system);
         app.add_system(quadtree_tile_load_state_done_system);
     }
@@ -78,92 +79,92 @@ impl bevy::prelude::Plugin for Plugin {
 
 #[derive(Resource)]
 pub struct TileQuadTree {
-    tileCacheSize: u32,
-    maximumScreenSpaceError: f64,
-    _loadQueueTimeSlice: u32,
-    loadingDescendantLimit: u32,
-    preloadAncestors: bool,
-    preloadSiblings: bool,
-    _tilesInvalidated: bool,
-    _lastTileLoadQueueLength: u32,
-    _lastSelectionFrameNumber: Option<u32>,
-    _occluders: EllipsoidalOccluder,
-    _cameraPositionCartographic: Option<Cartographic>,
-    _cameraReferenceFrameOriginCartographic: Option<Cartographic>,
-    replacement_queue: TileReplacementQueue,
-    debug: TileQuadTreeDebug,
+    pub tile_cache_size: u32,
+    pub maximum_screen_space_error: f64,
+    pub load_queue_time_slice: u32,
+    pub loading_descendant_limit: u32,
+    pub preload_ancestors: bool,
+    pub preload_siblings: bool,
+    pub tiles_invalidated: bool,
+    pub last_tile_load_queue_length: u32,
+    pub last_selection_frame_number: Option<u32>,
+    pub occluders: EllipsoidalOccluder,
+    pub camera_position_cartographic: Option<Cartographic>,
+    pub camera_reference_frame_origin_cartographic: Option<Cartographic>,
+    pub replacement_queue: TileReplacementQueue,
+    pub debug: TileQuadTreeDebug,
 }
 
 impl TileQuadTree {
     pub fn new() -> Self {
         Self {
-            tileCacheSize: 100,
-            loadingDescendantLimit: 20,
-            preloadAncestors: true,
-            _loadQueueTimeSlice: 5,
-            _tilesInvalidated: false,
-            maximumScreenSpaceError: 2.0,
-            preloadSiblings: false,
-            _lastTileLoadQueueLength: 0,
-            _lastSelectionFrameNumber: None,
-            _occluders: EllipsoidalOccluder::default(),
-            _cameraPositionCartographic: None,
-            _cameraReferenceFrameOriginCartographic: None,
+            tile_cache_size: 100,
+            loading_descendant_limit: 20,
+            preload_ancestors: true,
+            load_queue_time_slice: 5,
+            tiles_invalidated: false,
+            maximum_screen_space_error: 2.0,
+            preload_siblings: false,
+            last_tile_load_queue_length: 0,
+            last_selection_frame_number: None,
+            occluders: EllipsoidalOccluder::default(),
+            camera_position_cartographic: None,
+            camera_reference_frame_origin_cartographic: None,
             replacement_queue: TileReplacementQueue::new(),
             debug: TileQuadTreeDebug::new(),
         }
     }
     /// 调用后将清空所有瓦片重新创建
-    pub fn invalidateAllTiles(&mut self) {
-        self._tilesInvalidated = true;
+    pub fn invalidate_all_tiles(&mut self) {
+        self.tiles_invalidated = true;
     }
     pub fn real_invalidateAllTiles(&mut self) {}
 }
 pub struct TileQuadTreeDebug {
-    enableDebugOutput: bool,
+    pub enable_debug_output: bool,
 
-    maxDepth: u32,
-    maxDepthVisited: u32,
-    tilesVisited: u32,
-    tilesCulled: u32,
-    tilesRendered: u32,
-    tilesWaitingForChildren: u32,
+    pub max_depth: u32,
+    pub max_depth_visited: u32,
+    pub tiles_visited: u32,
+    pub tiles_culled: u32,
+    pub tiles_rendered: u32,
+    pub tiles_waiting_for_children: u32,
 
-    lastMaxDepth: u32,
-    lastMaxDepthVisited: u32,
-    lastTilesVisited: u32,
-    lastTilesCulled: u32,
-    lastTilesRendered: u32,
-    lastTilesWaitingForChildren: u32,
+    pub last_max_depth: u32,
+    pub last_max_depth_visited: u32,
+    pub last_tiles_visited: u32,
+    pub last_tiles_culled: u32,
+    pub last_tiles_rendered: u32,
+    pub last_tiles_waiting_for_children: u32,
 
-    suspendLodUpdate: bool,
+    pub suspend_lod_update: bool,
 }
 impl TileQuadTreeDebug {
     pub fn new() -> Self {
         Self {
-            enableDebugOutput: true,
-            maxDepth: 0,
-            maxDepthVisited: 0,
-            tilesVisited: 0,
-            tilesCulled: 0,
-            tilesRendered: 0,
-            tilesWaitingForChildren: 0,
-            lastMaxDepth: 0,
-            lastMaxDepthVisited: 0,
-            lastTilesVisited: 0,
-            lastTilesCulled: 0,
-            lastTilesRendered: 0,
-            lastTilesWaitingForChildren: 0,
-            suspendLodUpdate: false,
+            enable_debug_output: true,
+            max_depth: 0,
+            max_depth_visited: 0,
+            tiles_visited: 0,
+            tiles_culled: 0,
+            tiles_rendered: 0,
+            tiles_waiting_for_children: 0,
+            last_max_depth: 0,
+            last_max_depth_visited: 0,
+            last_tiles_visited: 0,
+            last_tiles_culled: 0,
+            last_tiles_rendered: 0,
+            last_tiles_waiting_for_children: 0,
+            suspend_lod_update: false,
         }
     }
     pub fn reset(&mut self) {
-        self.maxDepth = 0;
-        self.maxDepthVisited = 0;
-        self.tilesVisited = 0;
-        self.tilesCulled = 0;
-        self.tilesRendered = 0;
-        self.tilesWaitingForChildren = 0;
+        self.max_depth = 0;
+        self.max_depth_visited = 0;
+        self.tiles_visited = 0;
+        self.tiles_culled = 0;
+        self.tiles_rendered = 0;
+        self.tiles_waiting_for_children = 0;
     }
 }
 fn begin_frame(
@@ -175,9 +176,9 @@ fn begin_frame(
     render_queue_query: Query<Entity, With<TileToRender>>,
 ) {
     // 帧开始
-    if (tile_quad_tree._tilesInvalidated) {
+    if tile_quad_tree.tiles_invalidated {
         tile_quad_tree.real_invalidateAllTiles();
-        tile_quad_tree._tilesInvalidated = false;
+        tile_quad_tree.tiles_invalidated = false;
     }
     // TODO 初始化tileProvider
 
@@ -198,7 +199,7 @@ fn begin_frame(
         }
     });
     tile_quad_tree.debug.reset();
-    if tile_quad_tree.debug.suspendLodUpdate {
+    if tile_quad_tree.debug.suspend_lod_update {
         return;
     }
     tile_quad_tree.replacement_queue.markStartOfRenderFrame();
@@ -208,10 +209,11 @@ fn render(
     mut commands: Commands,
     mut tile_quad_tree: ResMut<TileQuadTree>,
     render_queue_query: Query<Entity, With<TileToRender>>,
+    rendered_query: Query<(Entity, &mut TileRendered)>,
     mut terrain_datasource: ResMut<TerrainDataSource>,
     mut quadtree_tile_query: Query<GlobeSurfaceTileQuery>,
     mut globe_camera_query: Query<(&mut GlobeCamera)>,
-    ellipsoidalOccluder: Res<EllipsoidalOccluder>,
+    ellipsoidal_occluder: Res<EllipsoidalOccluder>,
     mut root_traversal_details: ResMut<RootTraversalDetails>,
     frame_count: Res<FrameCount>,
     primary_query: Query<&Window, With<PrimaryWindow>>,
@@ -228,7 +230,7 @@ fn render(
         return;
     };
     //selectTilesForRendering
-    if tile_quad_tree.debug.suspendLodUpdate {
+    if tile_quad_tree.debug.suspend_lod_update {
         return;
     }
     //清空渲染列表
@@ -253,15 +255,15 @@ fn render(
     if root_count == 0 {
         // let (ready, tiling_scheme_wrap) = terrain_datasource;
         if terrain_datasource.ready {
-            let numberOfLevelZeroTilesX = terrain_datasource
+            let number_of_level_zero_tiles_x = terrain_datasource
                 .tiling_scheme
                 .get_number_of_x_tiles_at_level(0);
-            let numberOfLevelZeroTilesY = terrain_datasource
+            let number_of_level_zero_tiles_y = terrain_datasource
                 .tiling_scheme
                 .get_number_of_y_tiles_at_level(0);
             let mut i = 0;
-            for y in 0..numberOfLevelZeroTilesY {
-                for x in 0..numberOfLevelZeroTilesX {
+            for y in 0..number_of_level_zero_tiles_y {
+                for x in 0..number_of_level_zero_tiles_x {
                     let r = terrain_datasource
                         .tiling_scheme
                         .tile_x_y_to_rectange(x, y, 0);
@@ -315,34 +317,34 @@ fn render(
         };
     });
     //设置当前位置
-    let cameraFrameOrigin = globe_camera.get_transform().get_translation();
-    tile_quad_tree._cameraPositionCartographic = Some(p.clone());
-    tile_quad_tree._cameraReferenceFrameOriginCartographic =
-        Ellipsoid::WGS84.cartesianToCartographic(&cameraFrameOrigin);
+    let camera_frame_origin = globe_camera.get_transform().get_translation();
+    tile_quad_tree.camera_position_cartographic = Some(p.clone());
+    tile_quad_tree.camera_reference_frame_origin_cartographic =
+        Ellipsoid::WGS84.cartesianToCartographic(&camera_frame_origin);
     tt.iter().enumerate().for_each(|(_, x)| {
         let (entity, _) = x;
         tile_quad_tree
             .replacement_queue
-            .markTileRendered(&mut quadtree_tile_query, *entity);
+            .mark_tile_rendered(&mut quadtree_tile_query, *entity);
         let mut other_state = quadtree_tile_query
             .get_component_mut::<QuadtreeTileOtherState>(*entity)
             .unwrap();
         if !other_state.renderable {
             commands.entity(*entity).insert(TileLoadHigh);
-            tile_quad_tree.debug.tilesWaitingForChildren += 1;
+            tile_quad_tree.debug.tiles_waiting_for_children += 1;
         } else {
-            let mut ancestorMeetsSse = false;
-            visitIfVisible(
+            let mut ancestor_meets_sse = false;
+            visit_if_visible(
                 &mut commands,
                 &mut tile_quad_tree,
-                &ellipsoidalOccluder.ellipsoid,
-                &ellipsoidalOccluder,
+                &ellipsoidal_occluder.ellipsoid,
+                &ellipsoidal_occluder,
                 &mut quadtree_tile_query,
                 &frame_count,
                 &mut globe_camera,
                 window,
                 terrain_datasource.as_mut(),
-                &mut ancestorMeetsSse,
+                &mut ancestor_meets_sse,
                 &mut all_traversal_quad_details,
                 &mut root_traversal_details,
                 &mut queue_params_set,
@@ -350,32 +352,25 @@ fn render(
             );
         }
     });
+    //清除已经渲染但不需要渲染的瓦片
+    rendered_query.iter().for_each(|(e, tile_rendered)| {
+        if !render_queue_query.contains(e) {
+            commands.entity(tile_rendered.0).despawn();
+        }
+    });
 }
-fn get_traversal_details<'a>(
-    all_traversal_quad_details: &'a mut ResMut<AllTraversalQuadDetails>,
-    root_traversal_details: &'a mut ResMut<RootTraversalDetails>,
-    location: &Quadrant,
-    key: &TileKey,
-) -> &'a mut TraversalDetails {
-    return match location {
-        Quadrant::Southwest => &mut all_traversal_quad_details.get_mut(key.level).southwest,
-        Quadrant::Southeast => &mut all_traversal_quad_details.get_mut(key.level).southeast,
-        Quadrant::Northwest => &mut all_traversal_quad_details.get_mut(key.level).northwest,
-        Quadrant::Northeast => &mut all_traversal_quad_details.get_mut(key.level).northeast,
-        Quadrant::Root(i) => root_traversal_details.0.get_mut(*i).unwrap(),
-    };
-}
-fn visitTile(
+
+pub fn visitTile(
     commands: &mut Commands,
     tile_quad_tree: &mut ResMut<TileQuadTree>,
     ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
+    ellipsoidal_occluder: &Res<EllipsoidalOccluder>,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     frame_count: &Res<FrameCount>,
     globe_camera: &mut GlobeCamera,
     window: &Window,
     terrain_datasource: &mut TerrainDataSource,
-    ancestorMeetsSse: &mut bool,
+    ancestor_meets_sse: &mut bool,
     all_traversal_quad_details: &mut ResMut<AllTraversalQuadDetails>,
     root_traversal_details: &mut ResMut<RootTraversalDetails>,
     queue_params_set: &mut ParamSet<(
@@ -387,11 +382,11 @@ fn visitTile(
     )>,
     quadtree_tile_entity: Entity,
 ) {
-    tile_quad_tree.debug.tilesVisited += 1;
+    tile_quad_tree.debug.tiles_visited += 1;
 
     tile_quad_tree
         .replacement_queue
-        .markTileRendered(quadtree_tile_query, quadtree_tile_entity);
+        .mark_tile_rendered(quadtree_tile_query, quadtree_tile_entity);
     let (
         entity,
         globe_surface_tile,
@@ -407,10 +402,10 @@ fn visitTile(
         terrain_datasource_data,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     // info!("visitTile key={:?}", key);
-    if key.level > tile_quad_tree.debug.maxDepthVisited {
-        tile_quad_tree.debug.maxDepthVisited = key.level;
+    if key.level > tile_quad_tree.debug.max_depth_visited {
+        tile_quad_tree.debug.max_depth_visited = key.level;
     }
-    let traversalDetails = get_traversal_details(
+    let traversal_details = get_traversal_details(
         all_traversal_quad_details,
         root_traversal_details,
         location,
@@ -418,14 +413,14 @@ fn visitTile(
     );
     let mut entity_mut = commands.entity(entity);
 
-    let meetsSse = screenSpaceError(
+    let meets_sse = screen_space_error(
         key,
         &mut other_state,
         globe_camera,
         window,
         ellipsoid,
         terrain_datasource,
-    ) < tile_quad_tree.maximumScreenSpaceError;
+    ) < tile_quad_tree.maximum_screen_space_error;
     subdivide(
         entity_mut.commands(),
         node_id,
@@ -433,18 +428,18 @@ fn visitTile(
         &mut node_children,
         terrain_datasource,
     );
-    let southwestChild = node_children.southwest;
-    let southeastChild = node_children.southeast;
-    let northwestChild = node_children.northwest;
-    let northeastChild = node_children.northeast;
+    let south_west_child = node_children.southwest;
+    let south_east_child = node_children.southeast;
+    let north_west_child = node_children.northwest;
+    let north_east_child = node_children.northeast;
 
-    let lastFrame = tile_quad_tree._lastSelectionFrameNumber;
-    let lastFrameSelectionResult = if other_state._lastSelectionResultFrame == lastFrame {
-        other_state._lastSelectionResult.clone()
+    let last_frame = tile_quad_tree.last_selection_frame_number;
+    let last_frame_selection_result = if other_state.last_selection_result_frame == last_frame {
+        other_state.last_selection_result.clone()
     } else {
         TileSelectionResult::NONE
     };
-    if meetsSse || *ancestorMeetsSse {
+    if meets_sse || *ancestor_meets_sse {
         // This tile (or an ancestor) is the one we want to render this frame, but we'll do different things depending
         // on the state of this tile and on what we did _last_ frame.
 
@@ -470,16 +465,19 @@ fn visitTile(
         4. a) 地形已经准备好了
            b) 所有必要的图片准备好了，必要的图片是指当前瓦片和当前瓦片的子孙瓦片需要的图片。之所以需要，是因为没有它们将丢失细节。
         */
-        let oneRenderedLastFrame = TileSelectionResult::originalResult(&lastFrameSelectionResult)
-            == TileSelectionResult::RENDERED as u8;
-        let twoCulledOrNotVisited = TileSelectionResult::originalResult(&lastFrameSelectionResult)
-            == TileSelectionResult::CULLED as u8
-            || lastFrameSelectionResult == TileSelectionResult::NONE;
-        let threeCompletelyLoaded = *state == QuadtreeTileLoadState::DONE;
+        let one_rendered_last_frame =
+            TileSelectionResult::originalResult(&last_frame_selection_result)
+                == TileSelectionResult::RENDERED as u8;
+        let two_culled_or_not_visited =
+            TileSelectionResult::originalResult(&last_frame_selection_result)
+                == TileSelectionResult::CULLED as u8
+                || last_frame_selection_result == TileSelectionResult::NONE;
+        let three_completely_loaded = *state == QuadtreeTileLoadState::DONE;
 
-        let mut renderable = oneRenderedLastFrame || twoCulledOrNotVisited || threeCompletelyLoaded;
+        let mut renderable =
+            one_rendered_last_frame || two_culled_or_not_visited || three_completely_loaded;
 
-        if (!renderable) {
+        if !renderable {
             // Check the more expensive condition 4 above. This requires details of the thing
             // we're rendering (e.g. the globe surface), so delegate it to the tile provider.
             /*
@@ -488,24 +486,24 @@ fn visitTile(
             renderable = false
         }
 
-        if (renderable) {
+        if renderable {
             // Only load this tile if it (not just an ancestor) meets the SSE.
             // 只有当前瓦片满足SSE时再去加载所需资源
-            if (meetsSse) {
+            if meets_sse {
                 entity_mut.insert(TileLoadMedium);
             }
             entity_mut.insert(TileToRender);
             entity_mut.remove::<(TileToLoad)>();
 
-            traversalDetails.all_are_renderable = other_state.renderable;
-            traversalDetails.any_were_rendered_last_frame =
-                lastFrameSelectionResult == TileSelectionResult::RENDERED;
-            traversalDetails.not_yet_renderable_count = if other_state.renderable { 0 } else { 1 };
+            traversal_details.all_are_renderable = other_state.renderable;
+            traversal_details.any_were_rendered_last_frame =
+                last_frame_selection_result == TileSelectionResult::RENDERED;
+            traversal_details.not_yet_renderable_count = if other_state.renderable { 0 } else { 1 };
 
-            other_state._lastSelectionResultFrame = Some(frame_count.0);
-            other_state._lastSelectionResult = TileSelectionResult::RENDERED;
+            other_state.last_selection_result_frame = Some(frame_count.0);
+            other_state.last_selection_result = TileSelectionResult::RENDERED;
 
-            if (!traversalDetails.any_were_rendered_last_frame) {
+            if !traversal_details.any_were_rendered_last_frame {
                 // Tile is newly-rendered this frame, so update its heights.
                 entity_mut.insert(TileToUpdateHeight);
             }
@@ -524,43 +522,43 @@ fn visitTile(
         如果我们上一帧在渲染15层，但是这一帧渲染14层和最近的可渲染层<=14是0。渲染0层肯定是不合适的，所以我们继续渲染15层，即使他的SSE比需要的更好。
         所以要继续遍历。
          */
-        *ancestorMeetsSse = true;
+        *ancestor_meets_sse = true;
 
         // Load this blocker tile with high priority, but only if this tile (not just an ancestor) meets the SSE.
-        if (meetsSse) {
+        if meets_sse {
             entity_mut.insert(TileLoadHigh);
         }
     }
 
-    if terrain_datasource.canRefine(&terrain_datasource_data, key) {
-        let mut allAreUpsampled = true;
-        if let TileNode::Internal(v) = southwestChild {
+    if terrain_datasource.can_refine(&terrain_datasource_data, key) {
+        let mut all_are_upsampled = true;
+        if let TileNode::Internal(v) = south_west_child {
             if let Ok(state) = quadtree_tile_query.get_component::<QuadtreeTileOtherState>(v) {
-                allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
+                all_are_upsampled = all_are_upsampled && state.upsampled_from_parent;
             } else {
                 return;
             }
         }
-        if let TileNode::Internal(v) = southeastChild {
+        if let TileNode::Internal(v) = south_east_child {
             let state = quadtree_tile_query
                 .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
-            allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
+            all_are_upsampled = all_are_upsampled && state.upsampled_from_parent;
         }
-        if let TileNode::Internal(v) = northwestChild {
+        if let TileNode::Internal(v) = north_west_child {
             let state = quadtree_tile_query
                 .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
-            allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
+            all_are_upsampled = all_are_upsampled && state.upsampled_from_parent;
         }
-        if let TileNode::Internal(v) = northeastChild {
+        if let TileNode::Internal(v) = north_east_child {
             let state = quadtree_tile_query
                 .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
-            allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
+            all_are_upsampled = all_are_upsampled && state.upsampled_from_parent;
         }
 
-        if (allAreUpsampled) {
+        if all_are_upsampled {
             // No point in rendering the children because they're all upsampled.  Render this tile instead.
             // 没必要渲染子孙瓦片，因为他们都是被采样过的。渲染当前瓦片。
             entity_mut.insert(TileToRender);
@@ -571,32 +569,32 @@ fn visitTile(
 
             // Make sure we don't unload the children and forget they're upsampled.
             // 确保我们没卸载子孙瓦片忘记他们被采样过。
-            let mut markTileRendered_child =
+            let mut mark_tile_rendered_child =
                 |tile_quad_tree: &mut ResMut<TileQuadTree>,
                  node_id: &TileNode,
                  quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>| {
                     if let TileNode::Internal(v) = node_id {
                         tile_quad_tree
                             .replacement_queue
-                            .markTileRendered(quadtree_tile_query, v.clone());
+                            .mark_tile_rendered(quadtree_tile_query, v.clone());
                     }
                 };
-            markTileRendered_child(tile_quad_tree, &southwestChild, quadtree_tile_query);
-            markTileRendered_child(tile_quad_tree, &southeastChild, quadtree_tile_query);
-            markTileRendered_child(tile_quad_tree, &northwestChild, quadtree_tile_query);
-            markTileRendered_child(tile_quad_tree, &northeastChild, quadtree_tile_query);
+            mark_tile_rendered_child(tile_quad_tree, &south_west_child, quadtree_tile_query);
+            mark_tile_rendered_child(tile_quad_tree, &south_east_child, quadtree_tile_query);
+            mark_tile_rendered_child(tile_quad_tree, &north_west_child, quadtree_tile_query);
+            mark_tile_rendered_child(tile_quad_tree, &north_east_child, quadtree_tile_query);
             let mut other_state = quadtree_tile_query
                 .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
                 .unwrap();
-            traversalDetails.all_are_renderable = other_state.renderable;
-            traversalDetails.any_were_rendered_last_frame =
-                lastFrameSelectionResult == TileSelectionResult::RENDERED;
-            traversalDetails.not_yet_renderable_count = if other_state.renderable { 0 } else { 1 };
+            traversal_details.all_are_renderable = other_state.renderable;
+            traversal_details.any_were_rendered_last_frame =
+                last_frame_selection_result == TileSelectionResult::RENDERED;
+            traversal_details.not_yet_renderable_count = if other_state.renderable { 0 } else { 1 };
 
-            other_state._lastSelectionResultFrame = Some(frame_count.0);
-            other_state._lastSelectionResult = TileSelectionResult::RENDERED;
+            other_state.last_selection_result_frame = Some(frame_count.0);
+            other_state.last_selection_result = TileSelectionResult::RENDERED;
 
-            if (!traversalDetails.any_were_rendered_last_frame) {
+            if !traversal_details.any_were_rendered_last_frame {
                 // Tile is newly-rendered this frame, so update its heights.
                 entity_mut.insert(TileToUpdateHeight);
             }
@@ -608,35 +606,35 @@ fn visitTile(
         let mut other_state = quadtree_tile_query
             .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
             .unwrap();
-        other_state._lastSelectionResultFrame = Some(frame_count.0);
-        other_state._lastSelectionResult = TileSelectionResult::REFINED;
+        other_state.last_selection_result_frame = Some(frame_count.0);
+        other_state.last_selection_result = TileSelectionResult::REFINED;
 
-        let firstRenderedDescendantIndex = queue_params_set.p0().iter().count();
-        let loadIndexLow = queue_params_set.p4().iter().count();
-        let loadIndexMedium = queue_params_set.p3().iter().count();
-        let loadIndexHigh = queue_params_set.p2().iter().count();
-        let tilesToUpdateHeightsIndex = queue_params_set.p1().iter().count();
+        let first_rendered_descendant_index = queue_params_set.p0().iter().count();
+        let load_index_low = queue_params_set.p4().iter().count();
+        let load_index_medium = queue_params_set.p3().iter().count();
+        let load_index_high = queue_params_set.p2().iter().count();
+        let tiles_to_update_heights_index = queue_params_set.p1().iter().count();
 
         // No need to add the children to the load queue because they'll be added (if necessary) when they're visited.
         // 不需要将子孙放入加载队列，因为他们被visited时会被加载
-        visitVisibleChildrenNearToFar(
+        visit_visible_children_near_to_far(
             entity_mut.commands(),
             tile_quad_tree,
             ellipsoid,
-            ellipsoidalOccluder,
+            ellipsoidal_occluder,
             quadtree_tile_query,
             frame_count,
             globe_camera,
             window,
             terrain_datasource,
-            ancestorMeetsSse,
+            ancestor_meets_sse,
             queue_params_set,
             all_traversal_quad_details,
             root_traversal_details,
-            &southwestChild,
-            &southeastChild,
-            &northwestChild,
-            &northeastChild,
+            &south_west_child,
+            &south_east_child,
+            &north_west_child,
+            &north_east_child,
             quadtree_tile_entity,
         );
         let key = quadtree_tile_query
@@ -645,7 +643,7 @@ fn visitTile(
         let location = quadtree_tile_query
             .get_component::<Quadrant>(quadtree_tile_entity)
             .unwrap();
-        let traversalDetails = get_traversal_details(
+        let traversal_details = get_traversal_details(
             all_traversal_quad_details,
             root_traversal_details,
             location,
@@ -659,17 +657,17 @@ fn visitTile(
         如果最初的渲染列表长度不等于当前的渲染列表长度，则添加了子孙瓦片到渲染列表中
          */
 
-        if (firstRenderedDescendantIndex != render_count) {
+        if first_rendered_descendant_index != render_count {
             // At least one descendant tile was added to the render list.
-            // The traversalDetails tell us what happened while visiting the children.
+            // The traversal_details tell us what happened while visiting the children.
             /*
             至少一个子孙瓦片被添加到渲染列表中。traversalDetails告诉我们遍历子孙时发生了什么。
              */
 
-            let all_are_renderable = traversalDetails.all_are_renderable;
-            let any_were_rendered_last_frame = traversalDetails.any_were_rendered_last_frame;
-            let not_yet_renderable_count = traversalDetails.not_yet_renderable_count;
-            let mut queuedForLoad = false;
+            let all_are_renderable = traversal_details.all_are_renderable;
+            let any_were_rendered_last_frame = traversal_details.any_were_rendered_last_frame;
+            let not_yet_renderable_count = traversal_details.not_yet_renderable_count;
+            let mut queued_for_load = false;
             /*
             如果all_are_renderable==false，意味着当前瓦片和子孙瓦片中有一个瓦片不可被渲染
             如果all_are_renderable==True，意味着当前瓦片和子孙瓦片都可渲染
@@ -678,7 +676,7 @@ fn visitTile(
             如果它俩都等于false，则意味着当前瓦片和子孙瓦片上帧都没被渲染过，而且有一个子孙瓦片不可被渲染
             此时，执行下面的操作，将所有子孙瓦片从渲染列表中踢出，只渲染当前瓦片，继续加载子孙瓦片。
             */
-            if (!all_are_renderable && !any_were_rendered_last_frame) {
+            if !all_are_renderable && !any_were_rendered_last_frame {
                 // Some of our descendants aren't ready to render yet, and none were rendered last frame,
                 // so kick them all out of the render list and render this tile instead. Continue to load them though!
 
@@ -690,17 +688,17 @@ fn visitTile(
                 标记被渲染的子孙瓦片和他们的祖先瓦片(直到当前瓦片),然后踢出去
                  */
                 queue_params_set.p0().iter().enumerate().for_each(|(i, e)| {
-                    if i >= firstRenderedDescendantIndex {
-                        let mut workTile = e.clone();
-                        while (workTile != entity) {
-                            let mut work_tile = quadtree_tile_query.get_mut(workTile).unwrap();
+                    if i >= first_rendered_descendant_index {
+                        let mut work_tile_a = e.clone();
+                        while (work_tile_a != entity) {
+                            let mut work_tile = quadtree_tile_query.get_mut(work_tile_a).unwrap();
                             let other_state = &mut work_tile.3;
-                            other_state._lastSelectionResult = TileSelectionResult::from_u8(
-                                TileSelectionResult::kick(&other_state._lastSelectionResult),
+                            other_state.last_selection_result = TileSelectionResult::from_u8(
+                                TileSelectionResult::kick(&other_state.last_selection_result),
                             );
                             let parent = &work_tile.10;
                             if let QuadtreeTileParent(TileNode::Internal(v)) = parent {
-                                workTile = v.clone();
+                                work_tile_a = v.clone();
                             }
                         }
                     }
@@ -711,20 +709,20 @@ fn visitTile(
                 remove_component(
                     entity_mut.commands(),
                     &queue_params_set.p0(),
-                    firstRenderedDescendantIndex,
+                    first_rendered_descendant_index,
                 );
 
                 remove_component(
                     entity_mut.commands(),
                     &queue_params_set.p1(),
-                    tilesToUpdateHeightsIndex,
+                    tiles_to_update_heights_index,
                 );
                 entity_mut.insert(TileToRender);
 
                 let mut other_state = quadtree_tile_query
                     .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
                     .unwrap();
-                other_state._lastSelectionResult = TileSelectionResult::RENDERED;
+                other_state.last_selection_result = TileSelectionResult::RENDERED;
 
                 // If we're waiting on heaps of descendants, the above will take too long. So in that case,
                 // load this tile INSTEAD of loading any of the descendants, and tell the up-level we're only waiting
@@ -733,37 +731,45 @@ fn visitTile(
                 如果我们要等一大堆后代，上面的计算将花费很长时间，所以这种情况，加载当前瓦片而不是任何子孙瓦片，并告诉上层？
                 我们正在等待当前瓦片加载，继续这样做直到我们能渲染当前瓦片
                  */
-                let wasRenderedLastFrame =
-                    lastFrameSelectionResult == TileSelectionResult::RENDERED;
-                if (!wasRenderedLastFrame
-                    && not_yet_renderable_count > tile_quad_tree.loadingDescendantLimit)
+                let was_rendered_last_frame =
+                    last_frame_selection_result == TileSelectionResult::RENDERED;
+                if !was_rendered_last_frame
+                    && not_yet_renderable_count > tile_quad_tree.loading_descendant_limit
                 {
                     // Remove all descendants from the load queues.
-                    remove_component(entity_mut.commands(), &queue_params_set.p4(), loadIndexLow);
+                    remove_component(
+                        entity_mut.commands(),
+                        &queue_params_set.p4(),
+                        load_index_low,
+                    );
                     remove_component(
                         entity_mut.commands(),
                         &queue_params_set.p3(),
-                        loadIndexMedium,
+                        load_index_medium,
                     );
-                    remove_component(entity_mut.commands(), &queue_params_set.p2(), loadIndexHigh);
+                    remove_component(
+                        entity_mut.commands(),
+                        &queue_params_set.p2(),
+                        load_index_high,
+                    );
                     entity_mut.insert(TileLoadMedium);
-                    traversalDetails.not_yet_renderable_count =
+                    traversal_details.not_yet_renderable_count =
                         if other_state.renderable { 0 } else { 1 };
-                    queuedForLoad = true;
+                    queued_for_load = true;
                 }
 
-                traversalDetails.all_are_renderable = other_state.renderable;
-                traversalDetails.any_were_rendered_last_frame = wasRenderedLastFrame;
+                traversal_details.all_are_renderable = other_state.renderable;
+                traversal_details.any_were_rendered_last_frame = was_rendered_last_frame;
 
-                if (!wasRenderedLastFrame) {
+                if !was_rendered_last_frame {
                     // Tile is newly-rendered this frame, so update its heights.
                     // 瓦片时这帧刚渲染的，所以更新它的高度
                     entity_mut.insert(TileToUpdateHeight);
                 }
-                tile_quad_tree.debug.tilesWaitingForChildren += 1;
+                tile_quad_tree.debug.tiles_waiting_for_children += 1;
             }
 
-            if (tile_quad_tree.preloadAncestors && !queuedForLoad) {
+            if tile_quad_tree.preload_ancestors && !queued_for_load {
                 entity_mut.insert(TileLoadLow);
             }
         }
@@ -774,8 +780,8 @@ fn visitTile(
         let mut other_state = quadtree_tile_query
             .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
             .unwrap();
-        other_state._lastSelectionResultFrame = Some(frame_count.0);
-        other_state._lastSelectionResult = TileSelectionResult::RENDERED;
+        other_state.last_selection_result_frame = Some(frame_count.0);
+        other_state.last_selection_result = TileSelectionResult::RENDERED;
         other_state.renderable
     };
     // We'd like to refine but can't because we have no availability data for this tile's children,
@@ -788,118 +794,10 @@ fn visitTile(
      */
     entity_mut.insert(TileToRender);
     entity_mut.insert(TileLoadHigh);
-    traversalDetails.all_are_renderable = renderable;
-    traversalDetails.any_were_rendered_last_frame =
-        lastFrameSelectionResult == TileSelectionResult::RENDERED;
-    traversalDetails.not_yet_renderable_count = if renderable { 0 } else { 1 };
-}
-fn visitIfVisible(
-    commands: &mut Commands,
-    tile_quad_tree: &mut ResMut<TileQuadTree>,
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
-    quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
-    frame_count: &Res<FrameCount>,
-    globe_camera: &mut GlobeCamera,
-    window: &Window,
-    terrain_datasource: &mut TerrainDataSource,
-    ancestorMeetsSse: &mut bool,
-    all_traversal_quad_details: &mut ResMut<AllTraversalQuadDetails>,
-    root_traversal_details: &mut ResMut<RootTraversalDetails>,
-    queue_params_set: &mut ParamSet<(
-        Query<Entity, With<TileToRender>>,
-        Query<Entity, With<TileToUpdateHeight>>,
-        Query<Entity, With<TileLoadHigh>>,
-        Query<Entity, With<TileLoadMedium>>,
-        Query<Entity, With<TileLoadLow>>,
-    )>,
-    quadtree_tile_entity: Entity,
-) {
-    // info!("visitIfVisible entity={:?}", quadtree_tile_entity);
-    if computeTileVisibility(
-        // commands,
-        // ellipsoid,
-        ellipsoidalOccluder,
-        quadtree_tile_query,
-        globe_camera,
-        quadtree_tile_entity,
-    ) != TileVisibility::NONE
-    {
-        return visitTile(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            quadtree_tile_entity,
-        );
-    }
-    tile_quad_tree.debug.tilesCulled += 1;
-    tile_quad_tree
-        .replacement_queue
-        .markTileRendered(quadtree_tile_query, quadtree_tile_entity);
-    let (
-        entity,
-        globe_surface_tile,
-        rectangle,
-        mut other_state,
-        mut replacement_state,
-        key,
-        node_id,
-        node_children,
-        state,
-        location,
-        parent,
-        terrain_datasource_data,
-    ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-    let mut entity_mut = commands.entity(entity);
-
-    let traversalDetails = get_traversal_details(
-        all_traversal_quad_details,
-        root_traversal_details,
-        location,
-        key,
-    );
-    traversalDetails.all_are_renderable = true;
-    traversalDetails.any_were_rendered_last_frame = false;
-    traversalDetails.not_yet_renderable_count = 0;
-    if containsNeededPosition(&rectangle, tile_quad_tree) {
-        // if data.0.is_none() || data.0.as_ref().unwrap().vertexArray.is_none() {
-        //     entity_mut.insert(TileLoadMedium);
-        // }
-
-        // let lastFrame = &tile_quad_tree._lastSelectionFrameNumber;
-        // let lastFrameSelectionResult = if other_state._lastSelectionResultFrame == *lastFrame {
-        //     &other_state._lastSelectionResult
-        // } else {
-        //     &TileSelectionResult::NONE
-        // };
-        // if (*lastFrameSelectionResult != TileSelectionResult::CULLED_BUT_NEEDED
-        //     && *lastFrameSelectionResult != TileSelectionResult::RENDERED)
-        // {
-        //     // tile_quad_tree._tileToUpdateHeights.push(tile);
-        //     entity_mut.insert(TileToUpdateHeight);
-        // }
-
-        // other_state._lastSelectionResult = TileSelectionResult::CULLED_BUT_NEEDED;
-    } else if (tile_quad_tree.preloadSiblings || key.level == 0) {
-        // Load culled level zero tiles with low priority.
-        // For all other levels, only load culled tiles if preloadSiblings is enabled.
-        entity_mut.insert(TileLoadLow);
-        other_state._lastSelectionResult = TileSelectionResult::CULLED;
-    } else {
-        other_state._lastSelectionResult = TileSelectionResult::CULLED;
-    }
-
-    other_state._lastSelectionResultFrame = Some(frame_count.0);
+    traversal_details.all_are_renderable = renderable;
+    traversal_details.any_were_rendered_last_frame =
+        last_frame_selection_result == TileSelectionResult::RENDERED;
+    traversal_details.not_yet_renderable_count = if renderable { 0 } else { 1 };
 }
 
 pub type GlobeSurfaceTileQuery<'a> = (
@@ -917,7 +815,7 @@ pub type GlobeSurfaceTileQuery<'a> = (
     &'a TerrainDataSourceData,
 );
 
-fn screenSpaceError(
+fn screen_space_error(
     key: &TileKey,
     other_state: &QuadtreeTileOtherState,
     globe_camera: &GlobeCamera,
@@ -925,447 +823,18 @@ fn screenSpaceError(
     ellipsoid: &Ellipsoid,
     terrain_datasource: &mut TerrainDataSource,
 ) -> f64 {
-    let maxGeometricError: f64 = terrain_datasource.getLevelMaximumGeometricError(key.level);
+    let max_geometric_error: f64 = terrain_datasource.get_level_maximum_geometric_error(key.level);
 
     let distance = other_state._distance;
     let height = window.height() as f64;
-    let sseDenominator = globe_camera.frustum.sseDenominator();
+    let sse_denominator = globe_camera.frustum.sse_denominator();
 
-    let mut error = (maxGeometricError * height) / (distance * sseDenominator);
+    let mut error = (max_geometric_error * height) / (distance * sse_denominator);
 
     error /= window.scale_factor();
     return error;
 }
-fn containsNeededPosition(
-    rectangle: &Rectangle,
-    tile_quad_tree: &mut ResMut<TileQuadTree>,
-) -> bool {
-    return tile_quad_tree._cameraPositionCartographic.is_some()
-        && rectangle.contains(&tile_quad_tree._cameraPositionCartographic.unwrap())
-        || tile_quad_tree
-            ._cameraReferenceFrameOriginCartographic
-            .is_some()
-            && rectangle.contains(
-                &tile_quad_tree
-                    ._cameraReferenceFrameOriginCartographic
-                    .unwrap(),
-            );
-}
-fn make_new_quadtree_tile(
-    commands: &mut Commands,
-    key: TileKey,
-    rectangle: Rectangle,
-    location: Quadrant,
-    parent: QuadtreeTileParent,
-) -> TileNode {
-    let mut entity_mut = commands.spawn((
-        QuadtreeTile::new(key, rectangle, location, parent),
-        TerrainDataSourceData::default(),
-    ));
-    let entity = entity_mut.id();
-    let node_id = TileNode::Internal(entity);
-    entity_mut.insert((TileReplacementState::new(entity), node_id.clone()));
-    return node_id;
-}
-fn subdivide(
-    commands: &mut Commands,
-    node_id: &TileNode,
-    key: &TileKey,
-    children: &mut NodeChildren,
-    terrain_datasource: &mut TerrainDataSource,
-) {
-    if let TileNode::Internal(v) = children.southeast {
-        return;
-    }
-    if let TileNode::Internal(index) = node_id {
-        let southwest = key.southwest();
-        let southwest_rectangle = terrain_datasource.tiling_scheme.tile_x_y_to_rectange(
-            southwest.x,
-            southwest.y,
-            southwest.level,
-        );
-        let southeast = key.southeast();
-        let southeast_rectangle = terrain_datasource.tiling_scheme.tile_x_y_to_rectange(
-            southeast.x,
-            southeast.y,
-            southeast.level,
-        );
-        let northwest = key.northwest();
-        let northwest_rectangle = terrain_datasource.tiling_scheme.tile_x_y_to_rectange(
-            northwest.x,
-            northwest.y,
-            northwest.level,
-        );
-        let northeast = key.northeast();
-        let northeast_rectangle = terrain_datasource.tiling_scheme.tile_x_y_to_rectange(
-            northeast.x,
-            northeast.y,
-            northeast.level,
-        );
-        let sw = make_new_quadtree_tile(
-            commands,
-            southwest,
-            southwest_rectangle,
-            Quadrant::Southwest,
-            QuadtreeTileParent(node_id.clone()),
-        );
-        let se = make_new_quadtree_tile(
-            commands,
-            southeast,
-            southeast_rectangle,
-            Quadrant::Southeast,
-            QuadtreeTileParent(node_id.clone()),
-        );
-        let nw = make_new_quadtree_tile(
-            commands,
-            northwest,
-            northwest_rectangle,
-            Quadrant::Northwest,
-            QuadtreeTileParent(node_id.clone()),
-        );
-        let ne = make_new_quadtree_tile(
-            commands,
-            northeast,
-            northeast_rectangle,
-            Quadrant::Northeast,
-            QuadtreeTileParent(node_id.clone()),
-        );
-        children.northwest = nw;
-        children.northeast = ne;
-        children.southwest = sw;
-        children.southeast = se;
-    }
-}
 
-fn canRenderWithoutLosingDetail() -> bool {
-    return true;
-}
-fn visitVisibleChildrenNearToFar(
-    commands: &mut Commands,
-    tile_quad_tree: &mut ResMut<TileQuadTree>,
-    ellipsoid: &Ellipsoid,
-    ellipsoidalOccluder: &Res<EllipsoidalOccluder>,
-    quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
-    frame_count: &Res<FrameCount>,
-    globe_camera: &mut GlobeCamera,
-    window: &Window,
-    terrain_datasource: &mut TerrainDataSource,
-    ancestorMeetsSse: &mut bool,
-    queue_params_set: &mut ParamSet<(
-        Query<Entity, With<TileToRender>>,
-        Query<Entity, With<TileToUpdateHeight>>,
-        Query<Entity, With<TileLoadHigh>>,
-        Query<Entity, With<TileLoadMedium>>,
-        Query<Entity, With<TileLoadLow>>,
-    )>,
-
-    all_traversal_quad_details: &mut ResMut<AllTraversalQuadDetails>,
-    root_traversal_details: &mut ResMut<RootTraversalDetails>,
-    southwest: &TileNode,
-    southeast: &TileNode,
-    northwest: &TileNode,
-    northeast: &TileNode,
-    quadtree_tile_entity: Entity,
-) {
-    let get_tile_ndoe_entity = |node_id: &TileNode| -> Option<Entity> {
-        if let TileNode::Internal(v) = node_id {
-            Some(v.clone())
-        } else {
-            None
-        }
-    };
-    info!(
-        "visitVisibleChildrenNearToFar key={:?}",
-        quadtree_tile_entity
-    );
-    let southwest_entity = get_tile_ndoe_entity(southwest).expect("data不存在");
-    let southeast_entity = get_tile_ndoe_entity(southeast).expect("data不存在");
-    let northwest_entity = get_tile_ndoe_entity(northwest).expect("data不存在");
-    let northeast_entity = get_tile_ndoe_entity(northeast).expect("data不存在");
-    let (east, west, south, north, level) = {
-        let v = quadtree_tile_query.get(southwest_entity).unwrap();
-        (v.2.east, v.2.west, v.2.south, v.2.north, v.5.level)
-    };
-
-    let cameraPositionCartographic = globe_camera.get_position_cartographic();
-    if (cameraPositionCartographic.longitude < east) {
-        if (cameraPositionCartographic.latitude < north) {
-            // Camera in southwest quadrant
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                southwest_entity,
-            );
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                southeast_entity,
-            );
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                northwest_entity,
-            );
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                northeast_entity,
-            );
-        } else {
-            // Camera in northwest quadrant
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                northwest_entity,
-            );
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                southwest_entity,
-            );
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                northeast_entity,
-            );
-            visitIfVisible(
-                commands,
-                tile_quad_tree,
-                ellipsoid,
-                ellipsoidalOccluder,
-                quadtree_tile_query,
-                frame_count,
-                globe_camera,
-                window,
-                terrain_datasource,
-                ancestorMeetsSse,
-                all_traversal_quad_details,
-                root_traversal_details,
-                queue_params_set,
-                southeast_entity,
-            );
-        }
-    } else if (cameraPositionCartographic.latitude < north) {
-        // Camera southeast quadrant
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            southeast_entity,
-        );
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            southwest_entity,
-        );
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            northeast_entity,
-        );
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            northwest_entity,
-        );
-    } else {
-        // Camera in northeast quadrant
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            northeast_entity,
-        );
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            northwest_entity,
-        );
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            southeast_entity,
-        );
-        visitIfVisible(
-            commands,
-            tile_quad_tree,
-            ellipsoid,
-            ellipsoidalOccluder,
-            quadtree_tile_query,
-            frame_count,
-            globe_camera,
-            window,
-            terrain_datasource,
-            ancestorMeetsSse,
-            all_traversal_quad_details,
-            root_traversal_details,
-            queue_params_set,
-            southwest_entity,
-        );
-    }
-    let (_, _, _, _, _, key, _, _, _, location, _, terrain_datasource_data) =
-        quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-    let quadDetailsCombine = { all_traversal_quad_details.get_mut(level).combine() };
-    let traversalDetails = get_traversal_details(
-        all_traversal_quad_details,
-        root_traversal_details,
-        location,
-        key,
-    );
-    *traversalDetails = quadDetailsCombine;
-}
 fn remove_component<T: Component>(
     commands: &mut Commands,
     queue_query: &Query<(Entity), With<T>>,
@@ -1386,7 +855,7 @@ fn end_frame(
     frame_count: Res<FrameCount>,
     mut quadtree_tile_query: Query<GlobeSurfaceTileQuery>,
 ) {
-    processTileLoadQueue(
+    process_tile_load_queue(
         &queue_tile_load_high,
         &queue_tile_load_medium,
         &queue_tile_load_low,
@@ -1398,7 +867,7 @@ fn end_frame(
     //TODO update_heights_system
 }
 
-fn processTileLoadQueue(
+fn process_tile_load_queue(
     queue_tile_load_high: &Query<Entity, With<TileLoadHigh>>,
     queue_tile_load_medium: &Query<Entity, With<TileLoadMedium>>,
     queue_tile_load_low: &Query<Entity, With<TileLoadLow>>,
@@ -1416,65 +885,65 @@ fn processTileLoadQueue(
 
     // Remove any tiles that were not used this frame beyond the number
     // we're allowed to keep.
-    let size = tile_quad_tree.tileCacheSize;
+    let size = tile_quad_tree.tile_cache_size;
     tile_quad_tree
         .replacement_queue
         .trimTiles(size, quadtree_tile_query);
 
-    let endTime = frame_count.0 + tile_quad_tree._loadQueueTimeSlice;
+    let end_time = frame_count.0 + tile_quad_tree.load_queue_time_slice;
 
-    let mut didSomeLoading = false;
-    processSinglePriorityLoadQueue(
+    let mut did_some_loading = false;
+    process_single_priority_load_queue(
         frame_count,
         commands,
-        endTime,
+        end_time,
         &queue_tile_load_high,
-        &mut didSomeLoading,
+        &mut did_some_loading,
         quadtree_tile_query,
         tile_quad_tree,
     );
-    processSinglePriorityLoadQueue(
+    process_single_priority_load_queue(
         frame_count,
         commands,
-        endTime,
+        end_time,
         &queue_tile_load_medium,
-        &mut didSomeLoading,
+        &mut did_some_loading,
         quadtree_tile_query,
         tile_quad_tree,
     );
-    processSinglePriorityLoadQueue(
+    process_single_priority_load_queue(
         frame_count,
         commands,
-        endTime,
+        end_time,
         &queue_tile_load_low,
-        &mut didSomeLoading,
+        &mut did_some_loading,
         quadtree_tile_query,
         tile_quad_tree,
     );
 }
 
-fn processSinglePriorityLoadQueue<T: Component>(
+fn process_single_priority_load_queue<T: Component>(
     frame_count: &Res<FrameCount>,
     commands: &mut Commands,
-    endTime: u32,
-    loadQueue: &Query<Entity, With<T>>,
-    didSomeLoading: &mut bool,
+    end_time: u32,
+    load_queue: &Query<Entity, With<T>>,
+    did_some_loading: &mut bool,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     tile_quad_tree: &mut ResMut<TileQuadTree>,
 ) {
-    for i in loadQueue.iter() {
+    for i in load_queue.iter() {
         tile_quad_tree
             .replacement_queue
-            .markTileRendered(quadtree_tile_query, i);
+            .mark_tile_rendered(quadtree_tile_query, i);
         commands.entity(i).insert(TileToLoad);
-        *didSomeLoading = true;
-        if !(frame_count.0 < endTime || !*didSomeLoading) {
+        *did_some_loading = true;
+        if !(frame_count.0 < end_time || !*did_some_loading) {
             break;
         }
     }
 }
 pub struct TileLoadEvent(pub u32);
-fn updateTileLoadProgress_system(
+fn update_tile_load_progress_system(
     mut tile_quad_tree: ResMut<TileQuadTree>,
     queue_tile_to_render: Query<(Entity, &TileKey), With<TileToRender>>,
     queue_tile_to_update_height: Query<Entity, With<TileToUpdateHeight>>,
@@ -1488,37 +957,37 @@ fn updateTileLoadProgress_system(
     let p2_count = queue_tile_load_high.iter().count();
     let p3_count = queue_tile_load_medium.iter().count();
     let p4_count = queue_tile_load_low.iter().count();
-    let currentLoadQueueLength = (p2_count + p3_count + p4_count) as u32;
-    if tile_quad_tree._lastTileLoadQueueLength != currentLoadQueueLength
-        || tile_quad_tree._tilesInvalidated
+    let current_load_queue_length = (p2_count + p3_count + p4_count) as u32;
+    if tile_quad_tree.last_tile_load_queue_length != current_load_queue_length
+        || tile_quad_tree.tiles_invalidated
     {
-        tile_quad_tree._lastTileLoadQueueLength = currentLoadQueueLength;
-        tile_load_event_writer.send(TileLoadEvent(currentLoadQueueLength));
+        tile_quad_tree.last_tile_load_queue_length = current_load_queue_length;
+        tile_load_event_writer.send(TileLoadEvent(current_load_queue_length));
     }
     let debug = &mut tile_quad_tree.debug;
-    if (debug.enableDebugOutput && !debug.suspendLodUpdate) {
-        debug.maxDepth = queue_tile_to_render
+    if debug.enable_debug_output && !debug.suspend_lod_update {
+        debug.max_depth = queue_tile_to_render
             .iter()
             .map(|(entity, key)| key.level)
             .max()
             .unwrap_or(0);
-        debug.tilesRendered = p0_count as u32;
+        debug.tiles_rendered = p0_count as u32;
 
-        if (debug.tilesVisited != debug.lastTilesVisited
-            || debug.tilesRendered != debug.lastTilesRendered
-            || debug.tilesCulled != debug.lastTilesCulled
-            || debug.maxDepth != debug.lastMaxDepth
-            || debug.tilesWaitingForChildren != debug.lastTilesWaitingForChildren
-            || debug.maxDepthVisited != debug.lastMaxDepthVisited)
+        if (debug.tiles_visited != debug.last_tiles_visited
+            || debug.tiles_rendered != debug.last_tiles_rendered
+            || debug.tiles_culled != debug.last_tiles_culled
+            || debug.max_depth != debug.last_max_depth
+            || debug.tiles_waiting_for_children != debug.last_tiles_waiting_for_children
+            || debug.max_depth_visited != debug.last_max_depth_visited)
         {
-            println!("Visited {}, Rendered: {}, Culled: {}, Max Depth Rendered: {}, Max Depth Visited: {}, Waiting for children: {}",debug.tilesVisited,debug.tilesRendered,debug.tilesCulled,debug.maxDepth,debug.maxDepthVisited,debug.tilesWaitingForChildren);
+            println!("Visited {}, Rendered: {}, Culled: {}, Max Depth Rendered: {}, Max Depth Visited: {}, Waiting for children: {}",debug.tiles_visited,debug.tiles_rendered,debug.tiles_culled,debug.max_depth,debug.max_depth_visited,debug.tiles_waiting_for_children);
 
-            debug.lastTilesVisited = debug.tilesVisited;
-            debug.lastTilesRendered = debug.tilesRendered;
-            debug.lastTilesCulled = debug.tilesCulled;
-            debug.lastMaxDepth = debug.maxDepth;
-            debug.lastTilesWaitingForChildren = debug.tilesWaitingForChildren;
-            debug.lastMaxDepthVisited = debug.maxDepthVisited;
+            debug.last_tiles_visited = debug.tiles_visited;
+            debug.last_tiles_rendered = debug.tiles_rendered;
+            debug.last_tiles_culled = debug.tiles_culled;
+            debug.last_max_depth = debug.max_depth;
+            debug.last_tiles_waiting_for_children = debug.tiles_waiting_for_children;
+            debug.last_max_depth_visited = debug.max_depth_visited;
         }
     }
 }
@@ -1535,7 +1004,7 @@ fn quad_tile_state_end_system(
     mut asset_server: Res<AssetServer>,
     mut images: ResMut<Assets<Image>>,
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
-    mut indicesAndEdgesCache: ResMut<IndicesAndEdgesCacheArc>,
+    mut indices_and_edges_cache: ResMut<IndicesAndEdgesCacheArc>,
     render_device: Res<RenderDevice>,
     mut globe_camera_query: Query<(&mut GlobeCamera)>,
 ) {
@@ -1557,11 +1026,11 @@ fn quad_tile_state_end_system(
         terrain_datasource_data,
     ) in &mut quadtree_tile_query
     {
-        let mut terrainOnly = if let Some(v) = globe_surface_tile.boundingVolumeSourceTile {
+        let mut terrainOnly = if let Some(v) = globe_surface_tile.bounding_volume_source_tile {
             v == entity
         } else {
             false
-        } || other_state._lastSelectionResult
+        } || other_state.last_selection_result
             == TileSelectionResult::CULLED_BUT_NEEDED;
         // let terrainStateBefore = terrain_datasource_data.state.clone();
 
@@ -1570,24 +1039,25 @@ fn quad_tile_state_end_system(
         }
         info!("quad_tile_state_end_system");
 
-        let wasAlreadyRenderable = other_state.renderable;
+        let was_already_renderable = other_state.renderable;
 
         // The terrain is renderable as soon as we have a valid vertex array.
         other_state.renderable = terrain_datasource_data.has_mesh();
 
         // But it's not done loading until it's in the READY state.
-        let isTerrainDoneLoading = terrain_datasource_data.state == TerrainDataSourceState::READY;
+        let is_terrain_done_loading =
+            terrain_datasource_data.state == TerrainDataSourceState::READY;
 
         // If this tile's terrain and imagery are just upsampled from its parent, mark the tile as
         // upsampled only.  We won't refine a tile if its four children are upsampled only.
-        other_state.upsampledFromParent = terrain_datasource_data.has_terrain_data()
-            && terrain_datasource_data.wasCreatedByUpsampling();
+        other_state.upsampled_from_parent = terrain_datasource_data.has_terrain_data()
+            && terrain_datasource_data.was_created_by_upsampling();
 
-        let isImageryDoneLoading = {
+        let is_imagery_done_loading = {
             //GlobeSurfaceTile.prototype.processImagery
-            let mut isUpsampledOnly = other_state.upsampledFromParent;
-            let mut isAnyTileLoaded = false;
-            let mut isDoneLoading = true;
+            let mut is_upsampled_only = other_state.upsampled_from_parent;
+            let mut is_any_tile_loaded = false;
+            let mut is_done_loading = true;
 
             // Transition imagery states
 
@@ -1597,25 +1067,25 @@ fn quad_tile_state_end_system(
                 if !(i >= 0 && i < length) {
                     break;
                 }
-                let tileImageryCollection = &mut globe_surface_tile.imagery;
-                let mut tileImagery = tileImageryCollection.get_mut(i).expect("tilg_imagery");
+                let tile_imagery_collection = &mut globe_surface_tile.imagery;
+                let mut tile_imagery = tile_imagery_collection.get_mut(i).expect("tilg_imagery");
 
-                if tileImagery.loadingImagery.is_none() {
-                    isUpsampledOnly = false;
+                if tile_imagery.loading_imagery.is_none() {
+                    is_upsampled_only = false;
                     continue;
                 }
-                let imagery_layer_entity = tileImagery.get_loading_imagery_layer_entity();
+                let imagery_layer_entity = tile_imagery.get_loading_imagery_layer_entity();
                 let (_, _, mut imagery_layer, mut imagery_datasource) =
                     imagery_layer_query.get_mut(imagery_layer_entity).unwrap();
-                let loading_imagery = tileImagery.get_loading_imagery(&imagery_layer).unwrap();
+                let loading_imagery = tile_imagery.get_loading_imagery(&imagery_layer).unwrap();
                 // ImageryProvider.ready is deprecated. This is here for backwards compatibility
 
-                if (loading_imagery.state == ImageryState::PLACEHOLDER) {
-                    if (imagery_layer.ready && imagery_datasource.ready) {
+                if loading_imagery.state == ImageryState::PLACEHOLDER {
+                    if imagery_layer.ready && imagery_datasource.ready {
                         // Remove the placeholder and add the actual skeletons (if any)
                         // at the same position.  Then continue the loop at the same index.
-                        // tileImagery.freeResources();
-                        tileImageryCollection.remove(i);
+                        // tile_imagery.freeResources();
+                        tile_imagery_collection.remove(i);
                         imagery_layer._createTileImagerySkeletons(
                             &mut globe_surface_tile,
                             rectangle,
@@ -1630,11 +1100,11 @@ fn quad_tile_state_end_system(
                         length = globe_surface_tile.imagery.len();
                         continue;
                     } else {
-                        isUpsampledOnly = false;
+                        is_upsampled_only = false;
                     }
                 }
 
-                let thisTileDoneLoading = tileImagery.processStateMachine(
+                let this_tile_done_loading = tile_imagery.process_state_machine(
                     false,
                     &mut imagery_layer,
                     &mut imagery_datasource,
@@ -1642,34 +1112,36 @@ fn quad_tile_state_end_system(
                     &mut asset_server,
                     &mut images,
                     &mut render_world_queue,
-                    &mut indicesAndEdgesCache,
+                    &mut indices_and_edges_cache,
                     &render_device,
                     &globe_camera,
                 );
-                isDoneLoading = isDoneLoading && thisTileDoneLoading;
+                is_done_loading = is_done_loading && this_tile_done_loading;
 
                 // The imagery is renderable as soon as we have any renderable imagery for this region.
                 // 只要这块区域有一个可渲染的图片。imagery就是可渲染的。
-                isAnyTileLoaded =
-                    isAnyTileLoaded || thisTileDoneLoading || tileImagery.readyImagery.is_some();
-                let loading_imagery = tileImagery.get_loading_imagery(&imagery_layer).unwrap();
+                is_any_tile_loaded = is_any_tile_loaded
+                    || this_tile_done_loading
+                    || tile_imagery.ready_imagery.is_some();
+                let loading_imagery = tile_imagery.get_loading_imagery(&imagery_layer).unwrap();
 
-                isUpsampledOnly = isUpsampledOnly
+                is_upsampled_only = is_upsampled_only
                     && (loading_imagery.state == ImageryState::FAILED
                         || loading_imagery.state == ImageryState::INVALID);
                 i += 1;
             }
 
-            other_state.upsampledFromParent = isUpsampledOnly;
+            other_state.upsampled_from_parent = is_upsampled_only;
 
             // Allow rendering if any available layers are loaded
             //如果任何可用图层加载上，就渲染
-            other_state.renderable = other_state.renderable && (isAnyTileLoaded || isDoneLoading);
+            other_state.renderable =
+                other_state.renderable && (is_any_tile_loaded || is_done_loading);
 
-            isDoneLoading
+            is_done_loading
         };
 
-        if (isTerrainDoneLoading && isImageryDoneLoading) {
+        if is_terrain_done_loading && is_imagery_done_loading {
             *state = QuadtreeTileLoadState::DONE;
         }
 
@@ -1677,19 +1149,19 @@ fn quad_tile_state_end_system(
         // cause detail (or maybe even the entire globe) to vanish when adding a new
         // imagery layer. `GlobeSurfaceTileProvider._onLayerAdded` sets renderable to
         // false for all affected tiles that are not currently being rendered.
-        if (wasAlreadyRenderable) {
+        if was_already_renderable {
             other_state.renderable = true;
         }
         // if terrainOnly && terrainStateBefore != terrain_datasource_data.state {
         //     if computeTileVisibility(
         //         // commands,
         //         // ellipsoid,
-        //         &tile_quad_tree._occluders,
+        //         &tile_quad_tree.occluders,
         //         &mut quadtree_tile_query,
         //         &mut globe_camera,
         //         entity,
         //     ) != TileVisibility::NONE
-        //         && if let Some(v) = globe_surface_tile.boundingVolumeSourceTile {
+        //         && if let Some(v) = globe_surface_tile.bounding_volume_source_tile {
         //             v == entity
         //         } else {
         //             false
@@ -1704,7 +1176,7 @@ fn quad_tile_state_end_system(
 fn quadtree_tile_load_state_done_system(
     mut quadtree_tile_query: Query<
         GlobeSurfaceTileQuery,
-        (With<TileToLoad>, Without<TileRendered>),
+        (With<TileToRender>, Without<TileRendered>),
     >,
     mut commands: Commands,
     mut terrain_materials: ResMut<Assets<TerrainMeshMaterial>>,
@@ -1732,7 +1204,7 @@ fn quadtree_tile_load_state_done_system(
             let r: f32 = rng.gen();
             let g: f32 = rng.gen();
             let b: f32 = rng.gen();
-            commands.spawn(MaterialMeshBundle {
+            let mut rendered_entity = commands.spawn(MaterialMeshBundle {
                 mesh: meshes.add(terrain_datasource_data.get_mesh().unwrap()),
                 material: terrain_materials.add(TerrainMeshMaterial {
                     color: Color::rgba(r, g, b, 1.0),
@@ -1748,10 +1220,10 @@ fn quadtree_tile_load_state_done_system(
                 // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
                 ..Default::default()
             });
-            commands
-                .entity(entity)
-                .remove::<TileToLoad>()
-                .insert(TileRendered);
+            let entity = rendered_entity.id();
+            rendered_entity
+                .remove::<(TileToLoad, TileToRender)>()
+                .insert(TileRendered(entity));
         }
     }
 }
@@ -1777,20 +1249,21 @@ fn quad_tile_state_init_system(
             .unwrap();
         if *state == QuadtreeTileLoadState::START {
             //prepare new
-            let mut available = terrain_datasource.getTileDataAvailable(key);
+            let mut available = terrain_datasource.get_tile_data_available(key);
             if !available.is_none() && parent.0 != TileNode::None {
                 if let TileNode::Internal(e) = parent.0 {
-                    let parentKey = {
+                    let parent_key = {
                         let key = query_immut.get_component::<TileKey>(e).unwrap();
                         key.clone()
                     };
                     let parentSurfaceTile =
                         globe_surface_tile_query.get_component_mut::<TerrainDataSourceData>(e);
                     if parentSurfaceTile.is_ok() {
-                        // let parentKey = quadtree_tile_query.get_component::<TileKey>(e).unwrap();
+                        // let parent_key = quadtree_tile_query.get_component::<TileKey>(e).unwrap();
                         let parentSurfaceTile = parentSurfaceTile.unwrap();
                         if parentSurfaceTile.has_terrain_data() {
-                            available = Some(parentSurfaceTile.isChildAvailable(&parentKey, &key));
+                            available =
+                                Some(parentSurfaceTile.is_child_available(&parent_key, &key));
                         }
                     }
                 }
@@ -1830,51 +1303,51 @@ fn quad_tile_state_init_system(
         }
     }
 }
-fn terrain_state_machine_system(
-    mut quadtree_tile_query: Query<
-        (
-            Entity,
-            &QuadtreeTileParent,
-            &mut QuadtreeTileLoadState,
-            &TileKey,
-        ),
-        With<TileToLoad>,
-    >,
-    mut globe_surface_tile_query: Query<(&TerrainDataSourceData), With<TileToLoad>>,
-) {
-    for (entity, parent, mut state, key) in &mut quadtree_tile_query {
-        if *state == QuadtreeTileLoadState::LOADING {
-            let terrain_datasource_data = globe_surface_tile_query
-                .get_component::<TerrainDataSourceData>(entity)
-                .unwrap();
-            if terrain_datasource_data.state == TerrainDataSourceState::FAILED
-                && parent.0 != TileNode::None
-            {
-                if let TileNode::Internal(v) = parent.0 {
-                    let parent_globe_surface_tile = globe_surface_tile_query
-                        .get_component_mut::<TerrainDataSourceData>(v)
-                        .unwrap();
-                    let parentReady = parent_globe_surface_tile.has_terrain_data()
-                        && parent_globe_surface_tile.canUpsample();
-                    if (!parentReady) {
-                        //TODO 在下一帧能为其父节点执行processStateMachine
-                        // processStateMachine(
-                        //     quadtree_tile_query,
-                        //     v.clone(),
-                        //     terrain_datasource,
-                        //     commands,
-                        //     imagery_layer_query,
-                        //     task_executor,
-                        //     indicesAndEdgesCache,
-                        //     task_executor_create_mesh,
-                        //     terrainOnly,
-                        //     images,
-                        //     render_world_queue,
-                        //     asset_server,
-                        // );
-                    }
-                }
-            }
-        }
-    }
-}
+// fn terrain_state_machine_system(
+//     mut quadtree_tile_query: Query<
+//         (
+//             Entity,
+//             &QuadtreeTileParent,
+//             &mut QuadtreeTileLoadState,
+//             &TileKey,
+//         ),
+//         With<TileToLoad>,
+//     >,
+//     mut globe_surface_tile_query: Query<(&TerrainDataSourceData), With<TileToLoad>>,
+// ) {
+//     for (entity, parent, mut state, key) in &mut quadtree_tile_query {
+//         if *state == QuadtreeTileLoadState::LOADING {
+//             let terrain_datasource_data = globe_surface_tile_query
+//                 .get_component::<TerrainDataSourceData>(entity)
+//                 .unwrap();
+//             if terrain_datasource_data.state == TerrainDataSourceState::FAILED
+//                 && parent.0 != TileNode::None
+//             {
+//                 if let TileNode::Internal(v) = parent.0 {
+//                     let parent_globe_surface_tile = globe_surface_tile_query
+//                         .get_component_mut::<TerrainDataSourceData>(v)
+//                         .unwrap();
+//                     let parentReady = parent_globe_surface_tile.has_terrain_data()
+//                         && parent_globe_surface_tile.can_upsample();
+//                     if !parentReady {
+//                         //TODO 在下一帧能为其父节点执行processStateMachine
+//                         // process_state_machine(
+//                         //     quadtree_tile_query,
+//                         //     v.clone(),
+//                         //     terrain_datasource,
+//                         //     commands,
+//                         //     imagery_layer_query,
+//                         //     task_executor,
+//                         //     indices_and_edges_cache,
+//                         //     task_executor_create_mesh,
+//                         //     terrainOnly,
+//                         //     images,
+//                         //     render_world_queue,
+//                         //     asset_server,
+//                         // );
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }

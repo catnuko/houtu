@@ -28,11 +28,12 @@ pub struct GlobeSurfaceTileDataSource {
 impl GlobeSurfaceTileDataSource {
     pub fn new() -> Self {
         let tiling_scheme = GeographicTilingScheme::default();
-        let _levelZeroMaximumGeometricError = getEstimatedLevelZeroGeometricErrorForAHeightmap(
-            &tiling_scheme,
-            64,
-            tiling_scheme.get_number_of_x_tiles_at_level(0),
-        );
+        let _levelZeroMaximumGeometricError =
+            get_estimated_level_zero_geometric_error_for_a_heightmap(
+                &tiling_scheme,
+                64,
+                tiling_scheme.get_number_of_x_tiles_at_level(0),
+            );
         Self {
             tiling_scheme: tiling_scheme,
             is_ready: false,
@@ -54,13 +55,13 @@ impl DataSource for GlobeSurfaceTileDataSource {
         cameraPositionWC: &DVec3,
         cameraDirectionWC: &DVec3,
     ) -> f64 {
-        let obb = tile.tileBoundingRegion.orientedBoundingBox;
-        if (obb.is_none()) {
+        let obb = tile.tileBoundingRegion.oriented_bounding_box;
+        if obb.is_none() {
             return 0.0;
         }
         let mut tileDirection = obb.unwrap().center.subtract(*cameraPositionWC);
         let magnitude = tileDirection.magnitude();
-        if (magnitude < EPSILON5) {
+        if magnitude < EPSILON5 {
             return 0.0;
         }
         tileDirection = tileDirection.divide_by_scalar(magnitude);
@@ -72,15 +73,15 @@ impl DataSource for GlobeSurfaceTileDataSource {
     //     fn canRenderWithoutLosingDetail(&self, tile: &Tile) -> bool {
     //         let surfaceTile = tile.data;
 
-    //         let readyImagery = vec![];
-    //         readyImagery.length = this._imageryLayers.length;
+    //         let ready_imagery = vec![];
+    //         ready_imagery.length = this._imageryLayers.length;
 
     //         let terrainReady = false;
 
     //         let initialImageryState = false;
     //         let imagery;
 
-    //         if (defined(surfaceTile)) {
+    //         if defined(surfaceTile) {
     //           // We can render even with non-ready terrain as long as all our rendered descendants
     //           // are missing terrain geometry too. i.e. if we rendered fills for more detailed tiles
     //           // last frame, it's ok to render a fill for this tile this frame.
@@ -94,24 +95,24 @@ impl DataSource for GlobeSurfaceTileDataSource {
 
     //         let i;
     //         let len;
-    //         for i in 0..readyImagery.len(){
-    //           readyImagery[i] = initialImageryState;
+    //         for i in 0..ready_imagery.len(){
+    //           ready_imagery[i] = initialImageryState;
     //         }
 
-    //         if (defined(imagery)) {
+    //         if defined(imagery) {
     //             for i in 0..imagery.len(){
-    //             let tileImagery = imagery[i];
-    //             let loadingImagery = tileImagery.loadingImagery;
+    //             let tile_imagery = imagery[i];
+    //             let loading_imagery = tile_imagery.loading_imagery;
     //             let isReady =
-    //               !defined(loadingImagery) ||
-    //               loadingImagery.state == ImageryState.FAILED ||
-    //               loadingImagery.state == ImageryState.INVALID;
+    //               !defined(loading_imagery) ||
+    //               loading_imagery.state == ImageryState.FAILED ||
+    //               loading_imagery.state == ImageryState.INVALID;
     //             let layerIndex = (
-    //               tileImagery.loadingImagery || tileImagery.readyImagery
-    //             ).imageryLayer._layerIndex;
+    //               tile_imagery.loading_imagery || tile_imagery.ready_imagery
+    //             ).imagery_layer._layerIndex;
 
     //             // For a layer to be ready, all tiles belonging to that layer must be ready.
-    //             readyImagery[layerIndex] = isReady && readyImagery[layerIndex];
+    //             ready_imagery[layerIndex] = isReady && ready_imagery[layerIndex];
     //           }
     //         }
 
@@ -132,14 +133,14 @@ impl DataSource for GlobeSurfaceTileDataSource {
     //         while (stack.length > 0) {
     //           let descendant = stack.pop();
     //           let lastFrameSelectionResult =
-    //             descendant._lastSelectionResultFrame == lastFrame
-    //               ? descendant._lastSelectionResult
+    //             descendant.last_selection_result_frame == lastFrame
+    //               ? descendant.last_selection_result
     //               : TileSelectionResult::NONE;
 
-    //           if (lastFrameSelectionResult == TileSelectionResult::RENDERED) {
+    //           if lastFrameSelectionResult == TileSelectionResult::RENDERED {
     //             let descendantSurface = descendant.data;
 
-    //             if (!defined(descendantSurface)) {
+    //             if !defined(descendantSurface) {
     //               // Descendant has no data, so it can't block rendering.
     //               continue;
     //             }
@@ -155,23 +156,23 @@ impl DataSource for GlobeSurfaceTileDataSource {
     //             let descendantImagery = descendant.data.imagery;
     //             for i in 0..descendantImagery.len(){
     //               let descendantTileImagery = descendantImagery[i];
-    //               let descendantLoadingImagery = descendantTileImagery.loadingImagery;
+    //               let descendantLoadingImagery = descendantTileImagery.loading_imagery;
     //               let descendantIsReady =
     //                 !defined(descendantLoadingImagery) ||
     //                 descendantLoadingImagery.state == ImageryState.FAILED ||
     //                 descendantLoadingImagery.state == ImageryState.INVALID;
     //               let descendantLayerIndex = (
-    //                 descendantTileImagery.loadingImagery ||
-    //                 descendantTileImagery.readyImagery
-    //               ).imageryLayer._layerIndex;
+    //                 descendantTileImagery.loading_imagery ||
+    //                 descendantTileImagery.ready_imagery
+    //               ).imagery_layer._layerIndex;
 
     //               // If this imagery tile of a descendant is ready but the layer isn't ready in this tile,
     //               // then rendering is blocked.
-    //               if (descendantIsReady && !readyImagery[descendantLayerIndex]) {
+    //               if descendantIsReady && !ready_imagery[descendantLayerIndex] {
     //                 return false;
     //               }
     //             }
-    //           } else if (lastFrameSelectionResult == TileSelectionResult::REFINED) {
+    //           } else if lastFrameSelectionResult == TileSelectionResult::REFINED {
     //             stack.push(
     //                 descendant.southwestChild,);
     //             stack.push(
@@ -186,12 +187,12 @@ impl DataSource for GlobeSurfaceTileDataSource {
     //         return true;
     //     }
 }
-fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
+fn get_estimated_level_zero_geometric_error_for_a_heightmap(
     ellipsoid: &Ellipsoid,
     tileImageWidth: u32,
-    numberOfTilesAtLevelZero: u32,
+    number_of_tiles_at_level_zero: u32,
 ) -> f64 {
     let heightmapTerrainQuality = 0.25;
-    return ((ellipsoid.maximumRadius * 2 * PI * heightmapTerrainQuality)
-        / (tileImageWidth * numberOfTilesAtLevelZero));
+    return ((ellipsoid.maximum_radius * 2 * PI * heightmapTerrainQuality)
+        / (tileImageWidth * number_of_tiles_at_level_zero));
 }

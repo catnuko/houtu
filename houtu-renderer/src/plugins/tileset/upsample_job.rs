@@ -13,14 +13,14 @@ use std::{
 
 use super::TileKey;
 
-pub struct UnsampleJob {
+pub struct UpsampleJob {
     pub terrain_data: Arc<Mutex<HeightmapTerrainData>>,
     pub tiling_scheme: GeographicTilingScheme,
     pub key: TileKey,
     pub parent_key: TileKey,
     pub entity: Entity,
 }
-pub struct UnsampleJobOutcome {
+pub struct UpsampleJobOutcome {
     pub entity: Entity,
     pub terrain_data: Option<HeightmapTerrainData>,
 }
@@ -32,8 +32,8 @@ pub enum Error {
     #[error("{0}")]
     Reqwest(#[from] reqwest::Error),
 }
-impl Job for UnsampleJob {
-    type Outcome = Result<UnsampleJobOutcome, Error>;
+impl Job for UpsampleJob {
+    type Outcome = Result<UpsampleJobOutcome, Error>;
     fn name(&self) -> String {
         format!("create vertice ",)
     }
@@ -54,7 +54,7 @@ impl Job for UnsampleJob {
                         self.key.level,
                     )
                     .await;
-                Ok(UnsampleJobOutcome {
+                Ok(UpsampleJobOutcome {
                     entity: self.entity,
                     terrain_data: new_terrain_data,
                 })

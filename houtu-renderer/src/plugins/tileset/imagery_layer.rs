@@ -696,6 +696,14 @@ impl TerrainDataSource {
     pub fn getLevelMaximumGeometricError(&self, level: u32) -> f64 {
         return self._levelZeroMaximumGeometricError / (1 << level) as f64;
     }
+    pub fn canRefine(&self, globe_surface_tile: &GlobeSurfaceTile, key: &TileKey) -> bool {
+        if globe_surface_tile.terrainData.is_some() {
+            return true;
+        }
+        let new_key = TileKey::new(key.x * 2, key.y * 2, key.level + 1);
+        let childAvailable = self.getTileDataAvailable(&new_key);
+        return childAvailable != None;
+    }
 
     pub fn requestTileGeometry(&self) -> Option<HeightmapTerrainData> {
         let width = 16;

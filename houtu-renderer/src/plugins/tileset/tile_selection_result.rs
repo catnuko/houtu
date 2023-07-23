@@ -4,9 +4,9 @@ pub enum TileSelectionResult {
     CULLED = 1,
     RENDERED = 2,
     REFINED = 3,
-    RENDERED_AND_KICKED = 2 | 4,
-    REFINED_AND_KICKED = 3 | 4,
-    CULLED_BUT_NEEDED = 1 | 8,
+    RENDERED_AND_KICKED = 2 | 4, //6
+    REFINED_AND_KICKED = 3 | 4,  //7
+    CULLED_BUT_NEEDED = 1 | 8,   //9
 }
 impl Default for TileSelectionResult {
     fn default() -> Self {

@@ -187,6 +187,7 @@ impl HeightmapTerrainData {
         });
         return result;
     }
+    //上采样 https://zhuanlan.zhihu.com/p/579702765
     pub async fn upsample(
         &self,
         tiling_scheme: &GeographicTilingScheme,

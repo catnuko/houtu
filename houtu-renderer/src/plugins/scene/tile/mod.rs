@@ -243,10 +243,10 @@ fn queueTileLoad(
 //         }
 //         //         tile_layer._tilesToRender.push(tile);
 
-//         traversalDetails.allAreRenderable = tile.renderable;
-//         traversalDetails.anyWereRenderedLastFrame =
+//         traversalDetails.all_are_renderable = tile.renderable;
+//         traversalDetails.any_were_rendered_last_frame =
 //           lastFrameSelectionResult == TileSelectionResult::RENDERED;
-//         traversalDetails.notYetRenderableCount =  {
+//         traversalDetails.not_yet_renderable_count =  {
 //           if tile.renderable{
 //             0
 //           }else{
@@ -257,7 +257,7 @@ fn queueTileLoad(
 //         tile._lastSelectionResultFrame = frame_count.0;
 //         tile._lastSelectionResult = TileSelectionResult::RENDERED;
 
-//         if (!traversalDetails.anyWereRenderedLastFrame) {
+//         if (!traversalDetails.any_were_rendered_last_frame) {
 //           // Tile is newly-rendered this frame, so update its heights.
 //           tile_layer._tileToUpdateHeights.push(tile);
 //         }
@@ -300,10 +300,10 @@ fn queueTileLoad(
 //         tile_layer._tileReplacementQueue.markTileRendered(northwestChild);
 //         tile_layer._tileReplacementQueue.markTileRendered(northeastChild);
 
-//         traversalDetails.allAreRenderable = tile.renderable;
-//         traversalDetails.anyWereRenderedLastFrame =
+//         traversalDetails.all_are_renderable = tile.renderable;
+//         traversalDetails.any_were_rendered_last_frame =
 //           lastFrameSelectionResult == TileSelectionResult::RENDERED;
-//         traversalDetails.notYetRenderableCount =  {
+//         traversalDetails.not_yet_renderable_count =  {
 //           if tile.renderable{
 //             0
 //           }else{
@@ -314,7 +314,7 @@ fn queueTileLoad(
 //         tile._lastSelectionResultFrame = frame_count.0;
 //         tile._lastSelectionResult = TileSelectionResult::RENDERED;
 
-//         if (!traversalDetails.anyWereRenderedLastFrame) {
+//         if (!traversalDetails.any_were_rendered_last_frame) {
 //           // Tile is newly-rendered this frame, so update its heights.
 //           tile_layer._tileToUpdateHeights.push(tile);
 //         }
@@ -351,13 +351,13 @@ fn queueTileLoad(
 //         // At least one descendant tile was added to the render list.
 //         // The traversalDetails tell us what happened while visiting the children.
 
-//         let allAreRenderable = traversalDetails.allAreRenderable;
-//         let anyWereRenderedLastFrame =
-//           traversalDetails.anyWereRenderedLastFrame;
-//         let notYetRenderableCount = traversalDetails.notYetRenderableCount;
+//         let all_are_renderable = traversalDetails.all_are_renderable;
+//         let any_were_rendered_last_frame =
+//           traversalDetails.any_were_rendered_last_frame;
+//         let not_yet_renderable_count = traversalDetails.not_yet_renderable_count;
 //         let queuedForLoad = false;
 
-//         if (!allAreRenderable && !anyWereRenderedLastFrame) {
+//         if (!all_are_renderable && !any_were_rendered_last_frame) {
 //           // Some of our descendants aren't ready to render yet, and none were rendered last frame,
 //           // so kick them all out of the render list and render this tile instead. Continue to load them though!
 
@@ -392,7 +392,7 @@ fn queueTileLoad(
 //             lastFrameSelectionResult == TileSelectionResult::RENDERED;
 //           if (
 //             !wasRenderedLastFrame &&
-//             notYetRenderableCount > tile_layer.loadingDescendantLimit
+//             not_yet_renderable_count > tile_layer.loadingDescendantLimit
 //           ) {
 //             // Remove all descendants from the load queues.
 //             tile_layer._tileLoadQueueLow.length = loadIndexLow;
@@ -401,7 +401,7 @@ fn queueTileLoad(
 //         // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueMedium, tile, globe_camera_control,&mut enqueue_evt);
 //         queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::Medium);
 
-//             traversalDetails.notYetRenderableCount = {
+//             traversalDetails.not_yet_renderable_count = {
 //               if tile.renderable{
 //                 0
 //               }else{
@@ -411,8 +411,8 @@ fn queueTileLoad(
 //             queuedForLoad = true;
 //           }
 
-//           traversalDetails.allAreRenderable = tile.renderable;
-//           traversalDetails.anyWereRenderedLastFrame = wasRenderedLastFrame;
+//           traversalDetails.all_are_renderable = tile.renderable;
+//           traversalDetails.any_were_rendered_last_frame = wasRenderedLastFrame;
 
 //           if (!wasRenderedLastFrame) {
 //             // Tile is newly-rendered this frame, so update its heights.
@@ -443,10 +443,10 @@ fn queueTileLoad(
 //     // queueTileLoad(tile_layer.datasource as &dyn DataSource, &mut tile_layer._tileLoadQueueHigh, tile, globe_camera_control,&mut enqueue_evt);
 //     queueTileLoad(tile, &mut enqueue_evt, tile_layer_loader::QueueType::High);
 
-//     traversalDetails.allAreRenderable = tile.renderable;
-//     traversalDetails.anyWereRenderedLastFrame =
+//     traversalDetails.all_are_renderable = tile.renderable;
+//     traversalDetails.any_were_rendered_last_frame =
 //       lastFrameSelectionResult == TileSelectionResult::RENDERED;
-//     traversalDetails.notYetRenderableCount =  {
+//     traversalDetails.not_yet_renderable_count =  {
 //       if tile.renderable{
 //         0
 //       }else{
@@ -603,16 +603,16 @@ pub fn get_zoom_level(h: f64) -> u32 {
     }
 }
 struct TraversalDetails {
-    allAreRenderable: bool,
-    anyWereRenderedLastFrame: bool,
-    notYetRenderableCount: u32,
+    all_are_renderable: bool,
+    any_were_rendered_last_frame: bool,
+    not_yet_renderable_count: u32,
 }
 impl Default for TraversalDetails {
     fn default() -> Self {
         Self {
-            allAreRenderable: true,
-            anyWereRenderedLastFrame: false,
-            notYetRenderableCount: 0,
+            all_are_renderable: true,
+            any_were_rendered_last_frame: false,
+            not_yet_renderable_count: 0,
         }
     }
 }
@@ -629,18 +629,18 @@ impl TraversalQuadDetails {
         let northwest = self.northwest;
         let northeast = self.northeast;
         let mut result = TraversalDetails::default();
-        result.allAreRenderable = southwest.allAreRenderable
-            && southeast.allAreRenderable
-            && northwest.allAreRenderable
-            && northeast.allAreRenderable;
-        result.anyWereRenderedLastFrame = southwest.anyWereRenderedLastFrame
-            || southeast.anyWereRenderedLastFrame
-            || northwest.anyWereRenderedLastFrame
-            || northeast.anyWereRenderedLastFrame;
-        result.notYetRenderableCount = southwest.notYetRenderableCount
-            + southeast.notYetRenderableCount
-            + northwest.notYetRenderableCount
-            + northeast.notYetRenderableCount;
+        result.all_are_renderable = southwest.all_are_renderable
+            && southeast.all_are_renderable
+            && northwest.all_are_renderable
+            && northeast.all_are_renderable;
+        result.any_were_rendered_last_frame = southwest.any_were_rendered_last_frame
+            || southeast.any_were_rendered_last_frame
+            || northwest.any_were_rendered_last_frame
+            || northeast.any_were_rendered_last_frame;
+        result.not_yet_renderable_count = southwest.not_yet_renderable_count
+            + southeast.not_yet_renderable_count
+            + northwest.not_yet_renderable_count
+            + northeast.not_yet_renderable_count;
         return result;
     }
 }

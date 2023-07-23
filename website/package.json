@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cesium": "^1.107.2",
     "vue": "^3.2.47"
   },
   "devDependencies": {

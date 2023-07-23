@@ -28,7 +28,8 @@ use super::imagery_layer::{
 use super::reproject_texture::{self, ReprojectTextureTaskQueue};
 use super::terrian_material::TerrainMeshMaterial;
 use super::tile_selection_result::TileSelectionResult;
-use super::unsample_job::UnsampleJob;
+use super::traversal_details::{AllTraversalQuadDetails, RootTraversalDetails, TraversalDetails};
+use super::upsample_job::UpsampleJob;
 use super::TileKey;
 
 use super::quadtree_tile::{
@@ -66,7 +67,7 @@ impl bevy::prelude::Plugin for Plugin {
         app.add_systems((
             quad_tile_state_init_system,
             terrain_state_machine_system,
-            unsample_system,
+            upsample_system,
             request_tile_geometry_system,
             transform_system,
             quad_tile_state_end_system,
@@ -475,6 +476,15 @@ fn visitTile(
         //
         // Note that even if we decide to render a tile here, it may later get "kicked" in favor of an ancestor.
 
+        /*
+        当前瓦片或者祖先瓦片时我们想要在这帧渲染的，但是，根据当前瓦片的状态和我们上帧做的事情的不同，将做一些不同的事情
+        我们将渲染当前瓦片如果下列任一条件满足：
+        1. 我们在上帧渲染过或者踢出过
+        2. 这个瓦片在上帧被视锥体裁剪了或者由于它的祖先瓦片被裁剪导致它不可见
+        3. 当前瓦片完全加载完成了
+        4. a) 地形已经准备好了
+           b) 所有必要的图片准备好了，必要的图片是指当前瓦片和当前瓦片的子孙瓦片需要的图片。之所以需要，是因为没有它们将丢失细节。
+        */
         let oneRenderedLastFrame = TileSelectionResult::originalResult(&lastFrameSelectionResult)
             == TileSelectionResult::RENDERED as u8;
         let twoCulledOrNotVisited = TileSelectionResult::originalResult(&lastFrameSelectionResult)
@@ -487,26 +497,30 @@ fn visitTile(
         if (!renderable) {
             // Check the more expensive condition 4 above. This requires details of the thing
             // we're rendering (e.g. the globe surface), so delegate it to the tile provider.
+            /*
+            上面四个条件满足其一时可渲染
+            */
             renderable = false
         }
 
         if (renderable) {
             // Only load this tile if it (not just an ancestor) meets the SSE.
+            // 只有当前瓦片满足SSE时再去加载所需资源
             if (meetsSse) {
                 entity_mut.insert(TileLoadMedium);
             }
             entity_mut.insert(TileToRender);
             entity_mut.remove::<(TileToLoad)>();
 
-            traversalDetails.allAreRenderable = other_state.renderable;
-            traversalDetails.anyWereRenderedLastFrame =
+            traversalDetails.all_are_renderable = other_state.renderable;
+            traversalDetails.any_were_rendered_last_frame =
                 lastFrameSelectionResult == TileSelectionResult::RENDERED;
-            traversalDetails.notYetRenderableCount = if other_state.renderable { 0 } else { 1 };
+            traversalDetails.not_yet_renderable_count = if other_state.renderable { 0 } else { 1 };
 
             other_state._lastSelectionResultFrame = Some(frame_count.0);
             other_state._lastSelectionResult = TileSelectionResult::RENDERED;
 
-            if (!traversalDetails.anyWereRenderedLastFrame) {
+            if (!traversalDetails.any_were_rendered_last_frame) {
                 // Tile is newly-rendered this frame, so update its heights.
                 entity_mut.insert(TileToUpdateHeight);
             }
@@ -520,6 +534,11 @@ fn visitTile(
         // frame but this frame we want level 14 and the closest renderable level <= 14 is 0, rendering level
         // zero would be pretty jarring so instead we keep rendering level 15 even though its SSE is better
         // than required. So fall through to continue traversal...
+        /*
+        否则，我们不能渲染当前瓦片，这样做会造成上一帧就有的细节丢失。相反，继续渲染上一帧渲染过的可见的子孙瓦片，刚刚可见的子孙瓦片。
+        如果我们上一帧在渲染15层，但是这一帧渲染14层和最近的可渲染层<=14是0。渲染0层肯定是不合适的，所以我们继续渲染15层，即使他的SSE比需要的更好。
+        所以要继续遍历。
+         */
         ancestorMeetsSse = true;
 
         // Load this blocker tile with high priority, but only if this tile (not just an ancestor) meets the SSE.
@@ -527,8 +546,8 @@ fn visitTile(
             entity_mut.insert(TileLoadHigh);
         }
     }
-    //TODO canRefine
-    if globe_surface_tile.terrainData.is_some() {
+
+    if terrain_datasource.canRefine(&globe_surface_tile, key) {
         let mut allAreUpsampled = true;
         if let TileNode::Internal(v) = southwestChild {
             if let Ok(state) = quadtree_tile_query.get_component::<QuadtreeTileOtherState>(v) {
@@ -536,13 +555,6 @@ fn visitTile(
             } else {
                 return;
             }
-            // let state = quadtree_tile_query
-            //     .get_component::<QuadtreeTileOtherState>(v)
-            //     .unwrap();
-            // allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
-        }
-        if !allAreUpsampled {
-            return;
         }
         if let TileNode::Internal(v) = southeastChild {
             let state = quadtree_tile_query
@@ -550,17 +562,11 @@ fn visitTile(
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
         }
-        if !allAreUpsampled {
-            return;
-        }
         if let TileNode::Internal(v) = northwestChild {
             let state = quadtree_tile_query
                 .get_component::<QuadtreeTileOtherState>(v)
                 .unwrap();
             allAreUpsampled = allAreUpsampled && state.upsampledFromParent;
-        }
-        if !allAreUpsampled {
-            return;
         }
         if let TileNode::Internal(v) = northeastChild {
             let state = quadtree_tile_query
@@ -571,13 +577,15 @@ fn visitTile(
 
         if (allAreUpsampled) {
             // No point in rendering the children because they're all upsampled.  Render this tile instead.
+            // 没必要渲染子孙瓦片，因为他们都是被采样过的。渲染当前瓦片。
             entity_mut.insert(TileToRender);
 
             // Rendered tile that's not waiting on children loads with medium priority.
+            // 渲染瓦片，不等待中等优先级的子孙瓦片加载
             entity_mut.insert(TileLoadHigh);
 
             // Make sure we don't unload the children and forget they're upsampled.
-
+            // 确保我们没卸载子孙瓦片忘记他们被采样过。
             let mut markTileRendered_child =
                 |tile_quad_tree: &mut ResMut<TileQuadTree>,
                  node_id: &TileNode,
@@ -595,15 +603,15 @@ fn visitTile(
             let mut other_state = quadtree_tile_query
                 .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
                 .unwrap();
-            traversalDetails.allAreRenderable = other_state.renderable;
-            traversalDetails.anyWereRenderedLastFrame =
+            traversalDetails.all_are_renderable = other_state.renderable;
+            traversalDetails.any_were_rendered_last_frame =
                 lastFrameSelectionResult == TileSelectionResult::RENDERED;
-            traversalDetails.notYetRenderableCount = if other_state.renderable { 0 } else { 1 };
+            traversalDetails.not_yet_renderable_count = if other_state.renderable { 0 } else { 1 };
 
             other_state._lastSelectionResultFrame = Some(frame_count.0);
             other_state._lastSelectionResult = TileSelectionResult::RENDERED;
 
-            if (!traversalDetails.anyWereRenderedLastFrame) {
+            if (!traversalDetails.any_were_rendered_last_frame) {
                 // Tile is newly-rendered this frame, so update its heights.
                 entity_mut.insert(TileToUpdateHeight);
             }
@@ -611,6 +619,7 @@ fn visitTile(
             return;
         }
         // SSE is not good enough, so refine.
+        // SSE不太好，所以细分
         let mut other_state = quadtree_tile_query
             .get_component_mut::<QuadtreeTileOtherState>(quadtree_tile_entity)
             .unwrap();
@@ -624,6 +633,7 @@ fn visitTile(
         let tilesToUpdateHeightsIndex = queue_params_set.p1().iter().count();
 
         // No need to add the children to the load queue because they'll be added (if necessary) when they're visited.
+        // 不需要将子孙放入加载队列，因为他们被visited时会被加载
         visitVisibleChildrenNearToFar(
             entity_mut.commands(),
             tile_quad_tree,
@@ -659,21 +669,41 @@ fn visitTile(
         let render_count = queue_params_set.p0().iter().count();
         // If no descendant tiles were added to the render list by the function above, it means they were all
         // culled even though this tile was deemed visible. That's pretty common.
+        /*
+        如果上面的函数没有添加子孙瓦片到渲染列表中，意味着他们子孙瓦片们都被剔除了，即使当前瓦片时可见的。这种情况很常见。
+        如果最初的渲染列表长度不等于当前的渲染列表长度，则添加了子孙瓦片到渲染列表中
+         */
 
         if (firstRenderedDescendantIndex != render_count) {
             // At least one descendant tile was added to the render list.
             // The traversalDetails tell us what happened while visiting the children.
+            /*
+            至少一个子孙瓦片被添加到渲染列表中。traversalDetails告诉我们遍历子孙时发生了什么。
+             */
 
-            let allAreRenderable = traversalDetails.allAreRenderable;
-            let anyWereRenderedLastFrame = traversalDetails.anyWereRenderedLastFrame;
-            let notYetRenderableCount = traversalDetails.notYetRenderableCount;
+            let all_are_renderable = traversalDetails.all_are_renderable;
+            let any_were_rendered_last_frame = traversalDetails.any_were_rendered_last_frame;
+            let not_yet_renderable_count = traversalDetails.not_yet_renderable_count;
             let mut queuedForLoad = false;
-
-            if (!allAreRenderable && !anyWereRenderedLastFrame) {
+            /*
+            如果all_are_renderable==false，意味着当前瓦片和子孙瓦片中有一个瓦片不可被渲染
+            如果all_are_renderable==True，意味着当前瓦片和子孙瓦片都可渲染
+            如果any_were_rendered_last_frame==false，意味着当前瓦片和子孙瓦片的上帧渲染结果都不等于Rendered
+            如果any_were_rendered_last_frame==True，意味着当前瓦片和子孙瓦片的上帧渲染结果中有一个等于Rendered
+            如果它俩都等于false，则意味着当前瓦片和子孙瓦片上帧都没被渲染过，而且有一个子孙瓦片不可被渲染
+            此时，执行下面的操作，将所有子孙瓦片从渲染列表中踢出，只渲染当前瓦片，继续加载子孙瓦片。
+            */
+            if (!all_are_renderable && !any_were_rendered_last_frame) {
                 // Some of our descendants aren't ready to render yet, and none were rendered last frame,
                 // so kick them all out of the render list and render this tile instead. Continue to load them though!
 
                 // Mark the rendered descendants and their ancestors - up to this tile - as kicked.
+                /*
+                子孙瓦片中的一些还没准备好渲染而且没有一个在上一帧渲染了，所以将所有子孙瓦片从渲染列表中踢出去
+                只渲染当前瓦片，继续加载子孙瓦片。
+
+                标记被渲染的子孙瓦片和他们的祖先瓦片(直到当前瓦片),然后踢出去
+                 */
                 queue_params_set.p0().iter().enumerate().for_each(|(i, e)| {
                     if i >= firstRenderedDescendantIndex {
                         let mut workTile = e.clone();
@@ -692,11 +722,13 @@ fn visitTile(
                 });
 
                 // Remove all descendants from the render list and add this tile.
+                // 移除所有的子孙瓦片和当前瓦片
                 remove_component(
                     entity_mut.commands(),
                     &queue_params_set.p0(),
                     firstRenderedDescendantIndex,
                 );
+
                 remove_component(
                     entity_mut.commands(),
                     &queue_params_set.p1(),
@@ -712,10 +744,14 @@ fn visitTile(
                 // If we're waiting on heaps of descendants, the above will take too long. So in that case,
                 // load this tile INSTEAD of loading any of the descendants, and tell the up-level we're only waiting
                 // on this tile. Keep doing this until we actually manage to render this tile.
+                /*
+                如果我们要等一大堆后代，上面的计算将花费很长时间，所以这种情况，加载当前瓦片而不是任何子孙瓦片，并告诉上层？
+                我们正在等待当前瓦片加载，继续这样做直到我们能渲染当前瓦片
+                 */
                 let wasRenderedLastFrame =
                     lastFrameSelectionResult == TileSelectionResult::RENDERED;
                 if (!wasRenderedLastFrame
-                    && notYetRenderableCount > tile_quad_tree.loadingDescendantLimit)
+                    && not_yet_renderable_count > tile_quad_tree.loadingDescendantLimit)
                 {
                     // Remove all descendants from the load queues.
                     remove_component(entity_mut.commands(), &queue_params_set.p4(), loadIndexLow);
@@ -726,16 +762,17 @@ fn visitTile(
                     );
                     remove_component(entity_mut.commands(), &queue_params_set.p2(), loadIndexHigh);
                     entity_mut.insert(TileLoadMedium);
-                    traversalDetails.notYetRenderableCount =
+                    traversalDetails.not_yet_renderable_count =
                         if other_state.renderable { 0 } else { 1 };
                     queuedForLoad = true;
                 }
 
-                traversalDetails.allAreRenderable = other_state.renderable;
-                traversalDetails.anyWereRenderedLastFrame = wasRenderedLastFrame;
+                traversalDetails.all_are_renderable = other_state.renderable;
+                traversalDetails.any_were_rendered_last_frame = wasRenderedLastFrame;
 
                 if (!wasRenderedLastFrame) {
                     // Tile is newly-rendered this frame, so update its heights.
+                    // 瓦片时这帧刚渲染的，所以更新它的高度
                     entity_mut.insert(TileToUpdateHeight);
                 }
                 tile_quad_tree.debug.tilesWaitingForChildren += 1;
@@ -760,12 +797,16 @@ fn visitTile(
     // so we have no idea if refinining would involve a load or an upsample. We'll have to finish
     // loading this tile first in order to find that out, so load this refinement blocker with
     // high priority.
+    /*
+    我们想要细分，但是，因为我们没有子孙瓦片的可用数据，所以我们不知道细分是否涉及到加载和采样上，
+    为了解决，我们不得不先等待当前瓦片加载完成，所以用高优先级加载细分块。
+     */
     entity_mut.insert(TileToRender);
     entity_mut.insert(TileLoadHigh);
-    traversalDetails.allAreRenderable = renderable;
-    traversalDetails.anyWereRenderedLastFrame =
+    traversalDetails.all_are_renderable = renderable;
+    traversalDetails.any_were_rendered_last_frame =
         lastFrameSelectionResult == TileSelectionResult::RENDERED;
-    traversalDetails.notYetRenderableCount = if renderable { 0 } else { 1 };
+    traversalDetails.not_yet_renderable_count = if renderable { 0 } else { 1 };
 }
 fn visitIfVisible(
     commands: &mut Commands,
@@ -841,9 +882,9 @@ fn visitIfVisible(
         location,
         key,
     );
-    traversalDetails.allAreRenderable = true;
-    traversalDetails.anyWereRenderedLastFrame = false;
-    traversalDetails.notYetRenderableCount = 0;
+    traversalDetails.all_are_renderable = true;
+    traversalDetails.any_were_rendered_last_frame = false;
+    traversalDetails.not_yet_renderable_count = 0;
     if containsNeededPosition(&rectangle, tile_quad_tree) {
         // if data.0.is_none() || data.0.as_ref().unwrap().vertexArray.is_none() {
         //     entity_mut.insert(TileLoadMedium);
@@ -888,84 +929,7 @@ pub type GlobeSurfaceTileQuery<'a> = (
     &'a Quadrant,
     &'a QuadtreeTileParent,
 );
-#[derive(Clone, Copy)]
-struct TraversalDetails {
-    allAreRenderable: bool,
-    anyWereRenderedLastFrame: bool,
-    notYetRenderableCount: u32,
-}
-impl Default for TraversalDetails {
-    fn default() -> Self {
-        Self {
-            allAreRenderable: true,
-            anyWereRenderedLastFrame: false,
-            notYetRenderableCount: 0,
-        }
-    }
-}
-#[derive(Resource)]
-struct AllTraversalQuadDetails([TraversalQuadDetails; 31]);
-impl AllTraversalQuadDetails {
-    pub fn new() -> Self {
-        AllTraversalQuadDetails([TraversalQuadDetails::new(); 31])
-    }
-    pub fn get(&self, level: u32) -> &TraversalQuadDetails {
-        self.0.get(level as usize).unwrap()
-    }
-    pub fn get_mut(&mut self, level: u32) -> &mut TraversalQuadDetails {
-        self.0.get_mut(level as usize).unwrap()
-    }
-}
-#[derive(Resource)]
-struct RootTraversalDetails(Vec<TraversalDetails>);
-impl RootTraversalDetails {
-    pub fn new() -> Self {
-        RootTraversalDetails(Vec::new())
-    }
-    pub fn get(&self, level: u32) -> &TraversalDetails {
-        self.0.get(level as usize).unwrap()
-    }
-    pub fn get_mut(&mut self, level: u32) -> &mut TraversalDetails {
-        self.0.get_mut(level as usize).unwrap()
-    }
-}
-#[derive(Clone, Copy)]
-struct TraversalQuadDetails {
-    southwest: TraversalDetails,
-    southeast: TraversalDetails,
-    northwest: TraversalDetails,
-    northeast: TraversalDetails,
-}
-impl TraversalQuadDetails {
-    fn new() -> Self {
-        Self {
-            southwest: TraversalDetails::default(),
-            southeast: TraversalDetails::default(),
-            northwest: TraversalDetails::default(),
-            northeast: TraversalDetails::default(),
-        }
-    }
-    fn combine(&self) -> TraversalDetails {
-        let southwest = self.southwest;
-        let southeast = self.southeast;
-        let northwest = self.northwest;
-        let northeast = self.northeast;
-        let mut result = TraversalDetails::default();
-        result.allAreRenderable = southwest.allAreRenderable
-            && southeast.allAreRenderable
-            && northwest.allAreRenderable
-            && northeast.allAreRenderable;
-        result.anyWereRenderedLastFrame = southwest.anyWereRenderedLastFrame
-            || southeast.anyWereRenderedLastFrame
-            || northwest.anyWereRenderedLastFrame
-            || northeast.anyWereRenderedLastFrame;
-        result.notYetRenderableCount = southwest.notYetRenderableCount
-            + southeast.notYetRenderableCount
-            + northwest.notYetRenderableCount
-            + northeast.notYetRenderableCount;
-        return result;
-    }
-}
+
 fn screenSpaceError(
     key: &TileKey,
     other_state: &QuadtreeTileOtherState,
@@ -1048,34 +1012,6 @@ fn subdivide(
             northeast.y,
             northeast.level,
         );
-        // let nw = make_new_quadtree_tile(
-        //     commands,
-        //     southwest,
-        //     southwest_rectangle,
-        //     Quadrant::Southwest,
-        //     QuadtreeTileParent(node_id.clone()),
-        // );
-        // let ne = make_new_quadtree_tile(
-        //     commands,
-        //     southeast,
-        //     southeast_rectangle,
-        //     Quadrant::Southeast,
-        //     QuadtreeTileParent(node_id.clone()),
-        // );
-        // let sw = make_new_quadtree_tile(
-        //     commands,
-        //     northwest,
-        //     northwest_rectangle,
-        //     Quadrant::Northwest,
-        //     QuadtreeTileParent(node_id.clone()),
-        // );
-        // let se = make_new_quadtree_tile(
-        //     commands,
-        //     northeast,
-        //     northeast_rectangle,
-        //     Quadrant::Northeast,
-        //     QuadtreeTileParent(node_id.clone()),
-        // );
         let sw = make_new_quadtree_tile(
             commands,
             southwest,
@@ -1729,6 +1665,7 @@ fn quad_tile_state_end_system(
                 isDoneLoading = isDoneLoading && thisTileDoneLoading;
 
                 // The imagery is renderable as soon as we have any renderable imagery for this region.
+                // 只要这块区域有一个可渲染的图片。imagery就是可渲染的。
                 isAnyTileLoaded =
                     isAnyTileLoaded || thisTileDoneLoading || tileImagery.readyImagery.is_some();
                 let loading_imagery = tileImagery.get_loading_imagery(&imagery_layer).unwrap();
@@ -1742,6 +1679,7 @@ fn quad_tile_state_end_system(
             other_state.upsampledFromParent = isUpsampledOnly;
 
             // Allow rendering if any available layers are loaded
+            //如果任何可用图层加载上，就渲染
             other_state.renderable = other_state.renderable && (isAnyTileLoaded || isDoneLoading);
 
             isDoneLoading
@@ -1961,7 +1899,7 @@ fn terrain_state_machine_system(
         }
     }
 }
-fn unsample_system(
+fn upsample_system(
     mut datasource_query: Query<(&mut TerrainDataSource)>,
     mut job_spawner: JobSpawner,
     mut finished_jobs: FinishedJobs,
@@ -2009,7 +1947,7 @@ fn unsample_system(
                     )
                 };
 
-                job_spawner.spawn(UnsampleJob {
+                job_spawner.spawn(UpsampleJob {
                     terrain_data: terrain_data,
                     tiling_scheme: terrain_datasource.tiling_scheme.clone(),
                     parent_key: parent_key,
@@ -2020,7 +1958,7 @@ fn unsample_system(
             }
         }
     }
-    while let Some(result) = finished_jobs.take_next::<UnsampleJob>() {
+    while let Some(result) = finished_jobs.take_next::<UpsampleJob>() {
         if let Ok(res) = result {
             let mut globe_surface_tile = query
                 .get_component_mut::<GlobeSurfaceTile>(res.entity)

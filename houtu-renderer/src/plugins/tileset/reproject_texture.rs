@@ -19,7 +19,7 @@ use std::mem;
 
 use houtu_scene::Rectangle;
 
-use super::{tile_quad_tree::IndicesAndEdgesCacheArc, TileKey};
+use super::TileKey;
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {

@@ -43,7 +43,6 @@ pub struct GlobeSurfaceTile {
     pub boundingVolumeIsFromMesh: bool,
     pub clippedByBoundaries: bool,
     pub mesh: Option<TerrainMesh>,
-    pub terrainData: Option<Arc<Mutex<HeightmapTerrainData>>>,
     pub boundingVolumeSourceTile: Option<Entity>,
     pub vertexArray: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,
@@ -56,28 +55,11 @@ impl GlobeSurfaceTile {
             terrain_state: TerrainState::default(),
             clippedByBoundaries: false,
             boundingVolumeIsFromMesh: false,
-            terrainData: None,
             mesh: None,
             boundingVolumeSourceTile: None,
             vertexArray: None,
             imagery: Vec::new(),
         }
-    }
-    pub fn has_mesh(&self) -> bool {
-        if let Some(v) = self.terrainData.as_ref() {
-            v.clone().lock().unwrap().has_mesh()
-        } else {
-            false
-        }
-    }
-    pub fn get_mesh(&self) -> Option<Mesh> {
-        if let Some(terrain_data) = self.terrainData.as_ref() {
-            if let Some(v) = terrain_data.clone().lock().unwrap()._mesh.as_ref() {
-                let mesh: Mesh = v.into();
-                return Some(mesh);
-            }
-        }
-        return None;
     }
     pub fn eligibleForUnloading(&self) -> bool {
         let loadingIsTransitioning = self.terrain_state == TerrainState::RECEIVING
@@ -99,22 +81,18 @@ impl GlobeSurfaceTile {
     }
 }
 pub fn computeTileVisibility(
-    // commands: &mut Commands,
-    // ellipsoid: &Ellipsoid,
     ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     camera: &mut GlobeCamera,
     quadtree_tile_entity: Entity,
 ) -> TileVisibility {
     computeDistanceToTile(
-        // commands,
-        // ellipsoid,
         ellipsoidalOccluder,
         quadtree_tile_query,
         quadtree_tile_entity,
         camera,
     );
-    let (_, globe_surface_tile, _, _, _, _, _, _, _, _, _) =
+    let (_, globe_surface_tile, _, _, _, _, _, _, _, _, _, terrain_datasource_data) =
         quadtree_tile_query.get(quadtree_tile_entity).unwrap();
 
     let tileBoundingRegion = globe_surface_tile.tileBoundingRegion.as_ref().unwrap();
@@ -165,24 +143,33 @@ pub fn computeTileVisibility(
 
     return TileVisibility::NONE;
 }
+
 //计算瓦片到相机的距离
 fn computeDistanceToTile(
-    // commands: &mut Commands,
-    // ellipsoid: &Ellipsoid,
     ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
     camera: &mut GlobeCamera,
 ) {
     updateTileBoundingRegion(
-        // commands,
-        // ellipsoid,
         ellipsoidalOccluder,
         quadtree_tile_query,
         quadtree_tile_entity,
     );
-    let (entity, mut globe_surface_tile, _, mut other_state, _, _, _, _, _, _, _) =
-        quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+    let (
+        entity,
+        mut globe_surface_tile,
+        _,
+        mut other_state,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        terrain_datasource_data,
+    ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let boundingVolumeSourceTile = globe_surface_tile.boundingVolumeSourceTile;
     if (boundingVolumeSourceTile.is_none()) {
         // Can't find any min/max heights anywhere? Ok, let's just say the
@@ -230,16 +217,33 @@ fn computeDistanceToTile(
 }
 
 pub fn updateTileBoundingRegion(
-    // commands: &mut Commands,
-    // ellipsoid: &Ellipsoid,
     ellipsoidalOccluder: &EllipsoidalOccluder,
     quadtree_tile_query: &mut Query<GlobeSurfaceTileQuery>,
     quadtree_tile_entity: Entity,
 ) {
-    let (entity, mut globe_surface_tile, rectangle, parent, _) = {
-        let (entity, mut globe_surface_tile, rectangle, other_state, _, _, _, _, _, _, parent) =
-            quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-        (entity, globe_surface_tile, rectangle, parent, other_state)
+    let (entity, mut globe_surface_tile, rectangle, parent, _, terrain_datasource_data) = {
+        let (
+            entity,
+            mut globe_surface_tile,
+            rectangle,
+            other_state,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            parent,
+            terrain_datasource_data,
+        ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+        (
+            entity,
+            globe_surface_tile,
+            rectangle,
+            parent,
+            other_state,
+            terrain_datasource_data,
+        )
     };
 
     // let (entity, mut globe_surface_tile, rectangle, parent, other_state, _, _, _, _, _, _, _, _) =
@@ -261,9 +265,9 @@ pub fn updateTileBoundingRegion(
     // If the terrain data is not available either, get them from an ancestor.
     // If none of the ancestors are available, then there are no min and max heights for this tile at this time.
     let mut source_tile = Some(entity);
-    if (globe_surface_tile.has_mesh()) {
+    if (terrain_datasource_data.has_mesh()) {
         let (minimumHeight, maximumHeight) = {
-            let cloned = globe_surface_tile.terrainData.as_ref().unwrap().clone();
+            let cloned = terrain_datasource_data.get_cloned_terrain_data();
             let terrain_data = cloned.lock().unwrap();
             let mesh = terrain_data._mesh.as_ref().unwrap();
             // let mesh = globe_surface_tile.mesh.as_ref().unwrap();
@@ -281,15 +285,23 @@ pub fn updateTileBoundingRegion(
 
         while let TileNode::Internal(ancestorTile) = ancestorTileNode.0 {
             let (min, max, parent_node) = {
-                let (_, ancestor_globe_surface_tile, _, _, _, _, _, _, _, _, parent_node) =
-                    quadtree_tile_query.get(ancestorTile).unwrap();
+                let (
+                    _,
+                    ancestor_globe_surface_tile,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    parent_node,
+                    terrain_datasource_data,
+                ) = quadtree_tile_query.get(ancestorTile).unwrap();
                 // (ancestor_globe_surface_tile, parent_node)
-                if (ancestor_globe_surface_tile.has_mesh()) {
-                    let cloned = ancestor_globe_surface_tile
-                        .terrainData
-                        .as_ref()
-                        .unwrap()
-                        .clone();
+                if (terrain_datasource_data.has_mesh()) {
+                    let cloned = terrain_datasource_data.get_cloned_terrain_data();
                     let terrain_data = cloned.lock().unwrap();
                     let mesh = terrain_data._mesh.as_ref().unwrap();
                     // let t = ancestor_globe_surface_tile.mesh.as_ref().unwrap();
@@ -305,7 +317,7 @@ pub fn updateTileBoundingRegion(
             source_tile = None;
         }
         let (mut globe_surface_tile,) = {
-            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _) =
+            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _, terrain_datasource_data) =
                 quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
             (globe_surface_tile,)
         };
@@ -316,15 +328,27 @@ pub fn updateTileBoundingRegion(
 
     // // Update bounding regions from the min and max heights
     if source_tile.is_some() {
-        let (mut globe_surface_tile, rectangle) = {
-            let (_, mut globe_surface_tile, rectangle, _, _, _, _, _, _, _, _) =
-                quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
-            (globe_surface_tile, rectangle)
+        let (mut globe_surface_tile, rectangle, terrain_datasource_data) = {
+            let (
+                _,
+                mut globe_surface_tile,
+                rectangle,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                terrain_datasource_data,
+            ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
+            (globe_surface_tile, rectangle, terrain_datasource_data)
         };
         if (hasBoundingVolumesFromMesh) {
             let (orientedBoundingBox, boundingSphere3D, occludeePointInScaledSpace) = {
                 // let mesh = globe_surface_tile.mesh.as_ref().unwrap();
-                let cloned = globe_surface_tile.terrainData.as_ref().unwrap().clone();
+                let cloned = terrain_datasource_data.get_cloned_terrain_data();
                 let terrain_data = cloned.lock().unwrap();
                 let mesh = terrain_data._mesh.as_ref().unwrap();
                 (
@@ -387,7 +411,7 @@ pub fn updateTileBoundingRegion(
         globe_surface_tile.boundingVolumeIsFromMesh = hasBoundingVolumesFromMesh;
     } else {
         let (mut globe_surface_tile,) = {
-            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _) =
+            let (_, mut globe_surface_tile, _, _, _, _, _, _, _, _, _, terrain_datasource_data) =
                 quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
             (globe_surface_tile,)
         };

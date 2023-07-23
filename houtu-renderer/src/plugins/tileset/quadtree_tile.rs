@@ -150,7 +150,6 @@ pub struct QuadtreeTile {
     pub key: TileKey,
     pub rectangle: Rectangle,
     pub parent: QuadtreeTileParent,
-    // pub node: TileNode,
     pub location: Quadrant,
     pub children: NodeChildren,
     pub state: QuadtreeTileLoadState,
@@ -194,3 +193,5 @@ pub struct TileLoadMedium;
 pub struct TileLoadLow;
 #[derive(Component, Reflect)]
 pub struct TileToLoad;
+#[derive(Component, Reflect)]
+pub struct TileRendered;

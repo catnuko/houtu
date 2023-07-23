@@ -16,20 +16,21 @@ use houtu_scene::{
 use rand::Rng;
 
 use crate::plugins::camera::GlobeCamera;
+use crate::plugins::tileset::quadtree_tile::TileRendered;
+use crate::plugins::tileset::terrain_datasource::TerrainDataSourceState;
 
-use super::create_terrain_mesh_job::CreateTileJob;
 use super::globe_surface_tile::{
     self, computeTileVisibility, GlobeSurfaceTile, TerrainState, TileVisibility,
 };
 use super::imagery::{Imagery, ImageryState};
-use super::imagery_layer::{
-    self, ImageryLayer, ImageryLayerOtherState, TerrainDataSource, XYZDataSource,
-};
+use super::imagery_layer::{self, ImageryLayer, ImageryLayerOtherState};
+use super::indices_and_edges_cache::IndicesAndEdgesCacheArc;
 use super::reproject_texture::{self, ReprojectTextureTaskQueue};
+use super::terrain_datasource::{self, TerrainDataSource, TerrainDataSourceData};
 use super::terrian_material::TerrainMeshMaterial;
 use super::tile_selection_result::TileSelectionResult;
 use super::traversal_details::{AllTraversalQuadDetails, RootTraversalDetails, TraversalDetails};
-use super::upsample_job::UpsampleJob;
+use super::xyz_datasource::XYZDataSource;
 use super::TileKey;
 
 use super::quadtree_tile::{
@@ -42,6 +43,7 @@ pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(imagery_layer::Plugin);
+        app.add_plugin(terrain_datasource::Plugin);
         app.register_type::<TileKey>()
             .register_type::<TileReplacementState>()
             .register_type::<Quadrant>()
@@ -67,25 +69,13 @@ impl bevy::prelude::Plugin for Plugin {
         app.add_systems((
             quad_tile_state_init_system,
             terrain_state_machine_system,
-            upsample_system,
-            request_tile_geometry_system,
-            transform_system,
             quad_tile_state_end_system,
         ));
         app.add_system(ImageryLayer::finish_reproject_texture_system);
         app.add_system(quadtree_tile_load_state_done_system);
     }
 }
-#[derive(Resource)]
-pub struct IndicesAndEdgesCacheArc(pub Arc<Mutex<IndicesAndEdgesCache>>);
-impl IndicesAndEdgesCacheArc {
-    fn new() -> Self {
-        IndicesAndEdgesCacheArc(Arc::new(Mutex::new(IndicesAndEdgesCache::new())))
-    }
-    fn get_cloned_cache(&self) -> Arc<Mutex<IndicesAndEdgesCache>> {
-        return self.0.clone();
-    }
-}
+
 #[derive(Resource)]
 pub struct TileQuadTree {
     tileCacheSize: u32,
@@ -218,7 +208,7 @@ fn render(
     mut commands: Commands,
     mut tile_quad_tree: ResMut<TileQuadTree>,
     render_queue_query: Query<Entity, With<TileToRender>>,
-    mut datasource_query: Query<&mut TerrainDataSource>,
+    mut terrain_datasource: ResMut<TerrainDataSource>,
     mut quadtree_tile_query: Query<GlobeSurfaceTileQuery>,
     mut globe_camera_query: Query<(&mut GlobeCamera)>,
     ellipsoidalOccluder: Res<EllipsoidalOccluder>,
@@ -246,15 +236,9 @@ fn render(
         let mut entity_mut = commands.get_entity(entity).expect("entity不存在");
         entity_mut.remove::<TileToRender>();
     });
-    if datasource_query.iter().len() != 1 {
-        return;
-    }
     let mut globe_camera = globe_camera_query
         .get_single_mut()
         .expect("GlobeCamera不存在");
-    let mut terrain_datasource = datasource_query
-        .get_single_mut()
-        .expect("QuadTreeTileDatasourceMark不存在");
     //创建根节点
     let root_count = quadtree_tile_query
         .iter()
@@ -347,6 +331,7 @@ fn render(
             commands.entity(*entity).insert(TileLoadHigh);
             tile_quad_tree.debug.tilesWaitingForChildren += 1;
         } else {
+            let mut ancestorMeetsSse = false;
             visitIfVisible(
                 &mut commands,
                 &mut tile_quad_tree,
@@ -357,7 +342,7 @@ fn render(
                 &mut globe_camera,
                 window,
                 terrain_datasource.as_mut(),
-                false,
+                &mut ancestorMeetsSse,
                 &mut all_traversal_quad_details,
                 &mut root_traversal_details,
                 &mut queue_params_set,
@@ -390,7 +375,7 @@ fn visitTile(
     globe_camera: &mut GlobeCamera,
     window: &Window,
     terrain_datasource: &mut TerrainDataSource,
-    ancestorMeetsSse: bool,
+    ancestorMeetsSse: &mut bool,
     all_traversal_quad_details: &mut ResMut<AllTraversalQuadDetails>,
     root_traversal_details: &mut ResMut<RootTraversalDetails>,
     queue_params_set: &mut ParamSet<(
@@ -404,7 +389,6 @@ fn visitTile(
 ) {
     tile_quad_tree.debug.tilesVisited += 1;
 
-    let mut ancestorMeetsSse = ancestorMeetsSse;
     tile_quad_tree
         .replacement_queue
         .markTileRendered(quadtree_tile_query, quadtree_tile_entity);
@@ -420,6 +404,7 @@ fn visitTile(
         state,
         location,
         parent,
+        terrain_datasource_data,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     // info!("visitTile key={:?}", key);
     if key.level > tile_quad_tree.debug.maxDepthVisited {
@@ -459,7 +444,7 @@ fn visitTile(
     } else {
         TileSelectionResult::NONE
     };
-    if meetsSse || ancestorMeetsSse {
+    if meetsSse || *ancestorMeetsSse {
         // This tile (or an ancestor) is the one we want to render this frame, but we'll do different things depending
         // on the state of this tile and on what we did _last_ frame.
 
@@ -539,7 +524,7 @@ fn visitTile(
         如果我们上一帧在渲染15层，但是这一帧渲染14层和最近的可渲染层<=14是0。渲染0层肯定是不合适的，所以我们继续渲染15层，即使他的SSE比需要的更好。
         所以要继续遍历。
          */
-        ancestorMeetsSse = true;
+        *ancestorMeetsSse = true;
 
         // Load this blocker tile with high priority, but only if this tile (not just an ancestor) meets the SSE.
         if (meetsSse) {
@@ -547,7 +532,7 @@ fn visitTile(
         }
     }
 
-    if terrain_datasource.canRefine(&globe_surface_tile, key) {
+    if terrain_datasource.canRefine(&terrain_datasource_data, key) {
         let mut allAreUpsampled = true;
         if let TileNode::Internal(v) = southwestChild {
             if let Ok(state) = quadtree_tile_query.get_component::<QuadtreeTileOtherState>(v) {
@@ -818,7 +803,7 @@ fn visitIfVisible(
     globe_camera: &mut GlobeCamera,
     window: &Window,
     terrain_datasource: &mut TerrainDataSource,
-    ancestorMeetsSse: bool,
+    ancestorMeetsSse: &mut bool,
     all_traversal_quad_details: &mut ResMut<AllTraversalQuadDetails>,
     root_traversal_details: &mut ResMut<RootTraversalDetails>,
     queue_params_set: &mut ParamSet<(
@@ -873,6 +858,7 @@ fn visitIfVisible(
         state,
         location,
         parent,
+        terrain_datasource_data,
     ) = quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let mut entity_mut = commands.entity(entity);
 
@@ -928,6 +914,7 @@ pub type GlobeSurfaceTileQuery<'a> = (
     &'a mut QuadtreeTileLoadState,
     &'a Quadrant,
     &'a QuadtreeTileParent,
+    &'a TerrainDataSourceData,
 );
 
 fn screenSpaceError(
@@ -971,7 +958,10 @@ fn make_new_quadtree_tile(
     location: Quadrant,
     parent: QuadtreeTileParent,
 ) -> TileNode {
-    let mut entity_mut = commands.spawn(QuadtreeTile::new(key, rectangle, location, parent));
+    let mut entity_mut = commands.spawn((
+        QuadtreeTile::new(key, rectangle, location, parent),
+        TerrainDataSourceData::default(),
+    ));
     let entity = entity_mut.id();
     let node_id = TileNode::Internal(entity);
     entity_mut.insert((TileReplacementState::new(entity), node_id.clone()));
@@ -1060,7 +1050,7 @@ fn visitVisibleChildrenNearToFar(
     globe_camera: &mut GlobeCamera,
     window: &Window,
     terrain_datasource: &mut TerrainDataSource,
-    ancestorMeetsSse: bool,
+    ancestorMeetsSse: &mut bool,
     queue_params_set: &mut ParamSet<(
         Query<Entity, With<TileToRender>>,
         Query<Entity, With<TileToUpdateHeight>>,
@@ -1365,7 +1355,7 @@ fn visitVisibleChildrenNearToFar(
             southwest_entity,
         );
     }
-    let (_, _, _, _, _, key, _, _, _, location, _) =
+    let (_, _, _, _, _, key, _, _, _, location, _, terrain_datasource_data) =
         quadtree_tile_query.get_mut(quadtree_tile_entity).unwrap();
     let quadDetailsCombine = { all_traversal_quad_details.get_mut(level).combine() };
     let traversalDetails = get_traversal_details(
@@ -1541,7 +1531,7 @@ fn quad_tile_state_end_system(
         &mut XYZDataSource,
     )>,
     mut tile_quad_tree: ResMut<TileQuadTree>,
-    mut datasource_query: Query<&mut TerrainDataSource>,
+    mut terrain_datasource: ResMut<TerrainDataSource>,
     mut asset_server: Res<AssetServer>,
     mut images: ResMut<Assets<Image>>,
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
@@ -1552,7 +1542,6 @@ fn quad_tile_state_end_system(
     let mut globe_camera = globe_camera_query
         .get_single_mut()
         .expect("GlobeCamera不存在");
-    let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
     for (
         entity,
         mut globe_surface_tile,
@@ -1565,6 +1554,7 @@ fn quad_tile_state_end_system(
         mut state,
         location,
         parent,
+        terrain_datasource_data,
     ) in &mut quadtree_tile_query
     {
         let mut terrainOnly = if let Some(v) = globe_surface_tile.boundingVolumeSourceTile {
@@ -1573,7 +1563,7 @@ fn quad_tile_state_end_system(
             false
         } || other_state._lastSelectionResult
             == TileSelectionResult::CULLED_BUT_NEEDED;
-        // let terrainStateBefore = globe_surface_tile.terrain_state.clone();
+        // let terrainStateBefore = terrain_datasource_data.state.clone();
 
         if terrainOnly {
             return;
@@ -1583,21 +1573,15 @@ fn quad_tile_state_end_system(
         let wasAlreadyRenderable = other_state.renderable;
 
         // The terrain is renderable as soon as we have a valid vertex array.
-        other_state.renderable = globe_surface_tile.has_mesh();
+        other_state.renderable = terrain_datasource_data.has_mesh();
 
         // But it's not done loading until it's in the READY state.
-        let isTerrainDoneLoading = globe_surface_tile.terrain_state == TerrainState::READY;
+        let isTerrainDoneLoading = terrain_datasource_data.state == TerrainDataSourceState::READY;
 
         // If this tile's terrain and imagery are just upsampled from its parent, mark the tile as
         // upsampled only.  We won't refine a tile if its four children are upsampled only.
-        other_state.upsampledFromParent = globe_surface_tile.terrainData.is_some()
-            && globe_surface_tile
-                .terrainData
-                .as_ref()
-                .expect("globe_surface_tile.terrainData")
-                .lock()
-                .expect("globe_surface_tile.terrainData.lock")
-                .wasCreatedByUpsampling();
+        other_state.upsampledFromParent = terrain_datasource_data.has_terrain_data()
+            && terrain_datasource_data.wasCreatedByUpsampling();
 
         let isImageryDoneLoading = {
             //GlobeSurfaceTile.prototype.processImagery
@@ -1696,7 +1680,7 @@ fn quad_tile_state_end_system(
         if (wasAlreadyRenderable) {
             other_state.renderable = true;
         }
-        // if terrainOnly && terrainStateBefore != globe_surface_tile.terrain_state {
+        // if terrainOnly && terrainStateBefore != terrain_datasource_data.state {
         //     if computeTileVisibility(
         //         // commands,
         //         // ellipsoid,
@@ -1718,7 +1702,10 @@ fn quad_tile_state_end_system(
     }
 }
 fn quadtree_tile_load_state_done_system(
-    mut quadtree_tile_query: Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
+    mut quadtree_tile_query: Query<
+        GlobeSurfaceTileQuery,
+        (With<TileToLoad>, Without<TileRendered>),
+    >,
     mut commands: Commands,
     mut terrain_materials: ResMut<Assets<TerrainMeshMaterial>>,
     asset_server: Res<AssetServer>,
@@ -1736,6 +1723,7 @@ fn quadtree_tile_load_state_done_system(
         mut state,
         location,
         parent,
+        terrain_datasource_data,
     ) in &mut quadtree_tile_query
     {
         if *state == QuadtreeTileLoadState::DONE {
@@ -1745,7 +1733,7 @@ fn quadtree_tile_load_state_done_system(
             let g: f32 = rng.gen();
             let b: f32 = rng.gen();
             commands.spawn(MaterialMeshBundle {
-                mesh: meshes.add(globe_surface_tile.get_mesh().unwrap()),
+                mesh: meshes.add(terrain_datasource_data.get_mesh().unwrap()),
                 material: terrain_materials.add(TerrainMeshMaterial {
                     color: Color::rgba(r, g, b, 1.0),
                     image: Some(asset_server.load("icon.png")),
@@ -1760,7 +1748,10 @@ fn quadtree_tile_load_state_done_system(
                 // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
                 ..Default::default()
             });
-            commands.entity(entity).remove::<TileToLoad>();
+            commands
+                .entity(entity)
+                .remove::<TileToLoad>()
+                .insert(TileRendered);
         }
     }
 }
@@ -1771,13 +1762,15 @@ fn quad_tile_state_init_system(
         &mut ImageryLayer,
         &mut XYZDataSource,
     )>,
-    mut datasource_query: Query<&mut TerrainDataSource>,
+    mut terrain_datasource: ResMut<TerrainDataSource>,
     // mut query: Query<GlobeSurfaceTileQuery, With<TileToLoad>>,
     query_immut: Query<(Entity, &Rectangle, &TileKey, &QuadtreeTileParent), With<TileToLoad>>,
-    mut globe_surface_tile_query: Query<(&mut GlobeSurfaceTile), With<TileToLoad>>,
+    mut globe_surface_tile_query: Query<
+        (&mut GlobeSurfaceTile, &mut TerrainDataSourceData),
+        With<TileToLoad>,
+    >,
     mut state_query: Query<(&mut QuadtreeTileLoadState), With<TileToLoad>>,
 ) {
-    let Ok(mut terrain_datasource) = datasource_query.get_single_mut()else{return;};
     for (entity, rectangle, key, parent) in query_immut.iter() {
         let state = state_query
             .get_component::<QuadtreeTileLoadState>(entity)
@@ -1792,20 +1785,12 @@ fn quad_tile_state_init_system(
                         key.clone()
                     };
                     let parentSurfaceTile =
-                        globe_surface_tile_query.get_component_mut::<GlobeSurfaceTile>(e);
+                        globe_surface_tile_query.get_component_mut::<TerrainDataSourceData>(e);
                     if parentSurfaceTile.is_ok() {
                         // let parentKey = quadtree_tile_query.get_component::<TileKey>(e).unwrap();
                         let parentSurfaceTile = parentSurfaceTile.unwrap();
-                        if parentSurfaceTile.terrainData.is_some() {
-                            available = Some(
-                                parentSurfaceTile
-                                    .terrainData
-                                    .as_ref()
-                                    .unwrap()
-                                    .lock()
-                                    .unwrap()
-                                    .isChildAvailable(parentKey.x, parentKey.y, key.x, key.y),
-                            );
+                        if parentSurfaceTile.has_terrain_data() {
+                            available = Some(parentSurfaceTile.isChildAvailable(&parentKey, &key));
                         }
                     }
                 }
@@ -1813,10 +1798,10 @@ fn quad_tile_state_init_system(
 
             if let Some(v) = available {
                 if v == false {
-                    let mut globe_surface_tile = globe_surface_tile_query
-                        .get_component_mut::<GlobeSurfaceTile>(entity)
+                    let mut terrain_datasource_data = globe_surface_tile_query
+                        .get_component_mut::<TerrainDataSourceData>(entity)
                         .expect("entity have GlobeSurfaceTile component");
-                    globe_surface_tile.terrain_state = TerrainState::FAILED;
+                    terrain_datasource_data.state = TerrainDataSourceState::FAILED;
                 }
             }
 
@@ -1855,28 +1840,22 @@ fn terrain_state_machine_system(
         ),
         With<TileToLoad>,
     >,
-    mut globe_surface_tile_query: Query<(&GlobeSurfaceTile), With<TileToLoad>>,
+    mut globe_surface_tile_query: Query<(&TerrainDataSourceData), With<TileToLoad>>,
 ) {
     for (entity, parent, mut state, key) in &mut quadtree_tile_query {
         if *state == QuadtreeTileLoadState::LOADING {
-            let globe_surface_tile = globe_surface_tile_query
-                .get_component::<GlobeSurfaceTile>(entity)
+            let terrain_datasource_data = globe_surface_tile_query
+                .get_component::<TerrainDataSourceData>(entity)
                 .unwrap();
-            if globe_surface_tile.terrain_state == TerrainState::FAILED
+            if terrain_datasource_data.state == TerrainDataSourceState::FAILED
                 && parent.0 != TileNode::None
             {
                 if let TileNode::Internal(v) = parent.0 {
                     let parent_globe_surface_tile = globe_surface_tile_query
-                        .get_component_mut::<GlobeSurfaceTile>(v)
+                        .get_component_mut::<TerrainDataSourceData>(v)
                         .unwrap();
-                    let parentReady = parent_globe_surface_tile.terrainData.is_some()
-                        && parent_globe_surface_tile
-                            .terrainData
-                            .as_ref()
-                            .unwrap()
-                            .lock()
-                            .unwrap()
-                            .canUpsample();
+                    let parentReady = parent_globe_surface_tile.has_terrain_data()
+                        && parent_globe_surface_tile.canUpsample();
                     if (!parentReady) {
                         //TODO 在下一帧能为其父节点执行processStateMachine
                         // processStateMachine(
@@ -1896,129 +1875,6 @@ fn terrain_state_machine_system(
                     }
                 }
             }
-        }
-    }
-}
-fn upsample_system(
-    mut datasource_query: Query<(&mut TerrainDataSource)>,
-    mut job_spawner: JobSpawner,
-    mut finished_jobs: FinishedJobs,
-    mut query: Query<
-        (
-            Entity,
-            &mut GlobeSurfaceTile,
-            &QuadtreeTileParent,
-            &mut QuadtreeTileLoadState,
-            &TileKey,
-        ),
-        With<TileToLoad>,
-    >,
-) {
-    let Ok(terrain_datasource) = datasource_query.get_single() else {
-        return;
-    };
-    // let mut quadtree_tile_query = params_set.p0();
-    for (entity, globe_surface_tile, parent, mut state, key) in query.iter() {
-        if globe_surface_tile.terrain_state == TerrainState::FAILED {
-            if let TileNode::None = parent.0 {
-                let mut state = query
-                    .get_component_mut::<QuadtreeTileLoadState>(entity)
-                    .unwrap();
-                *state = QuadtreeTileLoadState::FAILED;
-                return;
-            }
-
-            if let TileNode::Internal(v) = parent.0 {
-                let (terrain_data, parent_key) = {
-                    // let mut world = params_set.p1();
-                    let parent_globe_surface_tile =
-                        query.get_component::<GlobeSurfaceTile>(v).unwrap();
-                    if parent_globe_surface_tile.terrainData.is_none() {
-                        continue;
-                    }
-                    let parent_key = query.get_component::<TileKey>(v).unwrap();
-                    (
-                        parent_globe_surface_tile
-                            .terrainData
-                            .as_ref()
-                            .unwrap()
-                            .clone(),
-                        parent_key.clone(),
-                    )
-                };
-
-                job_spawner.spawn(UpsampleJob {
-                    terrain_data: terrain_data,
-                    tiling_scheme: terrain_datasource.tiling_scheme.clone(),
-                    parent_key: parent_key,
-                    key: key.clone(),
-                    entity: entity,
-                });
-                // globe_surface_tile.terrain_state = TerrainState::RECEIVING;
-            }
-        }
-    }
-    while let Some(result) = finished_jobs.take_next::<UpsampleJob>() {
-        if let Ok(res) = result {
-            let mut globe_surface_tile = query
-                .get_component_mut::<GlobeSurfaceTile>(res.entity)
-                .unwrap();
-            if let Some(new_terrain_data) = res.terrain_data {
-                globe_surface_tile.terrainData = Some(Arc::new(Mutex::new(new_terrain_data)));
-                globe_surface_tile.terrain_state = TerrainState::RECEIVED;
-            } else {
-                globe_surface_tile.terrain_state = TerrainState::FAILED;
-            }
-        }
-    }
-}
-fn request_tile_geometry_system(
-    mut quadtree_tile_query: Query<(&TileKey, &mut GlobeSurfaceTile), With<TileToLoad>>,
-    mut datasource_query: Query<&mut TerrainDataSource>,
-) {
-    let Ok(terrain_datasource) = datasource_query.get_single()else{return;};
-    for (key, mut globe_surface_tile) in &mut quadtree_tile_query {
-        if globe_surface_tile.terrain_state == TerrainState::UNLOADED {
-            globe_surface_tile.terrain_state = TerrainState::RECEIVING;
-            let value = terrain_datasource
-                .requestTileGeometry()
-                .expect("terrain_datasource.requestTileGeometry");
-            globe_surface_tile.terrainData = Some(Arc::new(Mutex::new(value)));
-            globe_surface_tile.terrain_state = TerrainState::RECEIVED;
-        }
-    }
-}
-
-fn transform_system(
-    mut quadtree_tile_query: Query<(Entity, &TileKey, &mut GlobeSurfaceTile), With<TileToLoad>>,
-    mut datasource_query: Query<&mut TerrainDataSource>,
-    indicesAndEdgesCache: Res<IndicesAndEdgesCacheArc>,
-    mut job_spawner: JobSpawner,
-    mut finished_jobs: FinishedJobs,
-) {
-    let Ok(terrain_datasource) = datasource_query.get_single()else{return;};
-    for (entity, key, mut globe_surface_tile) in &mut quadtree_tile_query {
-        if globe_surface_tile.terrain_state == TerrainState::RECEIVED {
-            job_spawner.spawn(CreateTileJob {
-                terrain_data: globe_surface_tile.terrainData.as_ref().unwrap().clone(),
-                key: key.clone(),
-                tiling_scheme: terrain_datasource.tiling_scheme.clone(),
-                indicesAndEdgesCache: indicesAndEdgesCache.get_cloned_cache(),
-                entity: entity,
-            });
-            globe_surface_tile.terrain_state = TerrainState::TRANSFORMING;
-        }
-        if globe_surface_tile.terrain_state == TerrainState::TRANSFORMED {
-            globe_surface_tile.terrain_state = TerrainState::READY;
-        }
-        if globe_surface_tile.terrain_state == TerrainState::READY {}
-    }
-    while let Some(result) = finished_jobs.take_next::<CreateTileJob>() {
-        if let Ok(res) = result {
-            let mut globe_surface_tile = quadtree_tile_query
-                .get_component_mut::<GlobeSurfaceTile>(res.entity)
-                .unwrap();
-            globe_surface_tile.terrain_state = TerrainState::TRANSFORMED;
         }
     }
 }

@@ -11,10 +11,8 @@ use houtu_scene::Rectangle;
 use crate::plugins::camera::GlobeCamera;
 
 use super::{
-    imagery_layer::{ImageryLayer, XYZDataSource},
-    reproject_texture::ReprojectTextureTaskQueue,
-    tile_quad_tree::IndicesAndEdgesCacheArc,
-    TileKey,
+    imagery_layer::ImageryLayer, indices_and_edges_cache::IndicesAndEdgesCacheArc,
+    reproject_texture::ReprojectTextureTaskQueue, xyz_datasource::XYZDataSource, TileKey,
 };
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

@@ -28,9 +28,12 @@ use crate::plugins::{camera::GlobeCamera, tileset::imagery};
 use super::{
     globe_surface_tile::GlobeSurfaceTile,
     imagery::{Imagery, ImageryState, TileImagery},
+    indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_tile::TileToLoad,
     reproject_texture::{self, ParamsUniforms, ReprojectTextureTask, ReprojectTextureTaskQueue},
-    tile_quad_tree::{GlobeSurfaceTileQuery, IndicesAndEdgesCacheArc},
+    terrain_datasource::TerrainDataSource,
+    tile_quad_tree::GlobeSurfaceTileQuery,
+    xyz_datasource::XYZDataSource,
     TileKey,
 };
 #[derive(Debug, Component)]
@@ -616,41 +619,6 @@ impl ImageryLayer {
         }
     }
 }
-#[derive(Component)]
-pub struct XYZDataSource {
-    pub ready: bool,
-    pub rectangle: Rectangle,
-    pub tiling_scheme: GeographicTilingScheme,
-    pub tile_width: u32,
-    pub tile_height: u32,
-    pub minimumLevel: u32,
-    pub maximumLevel: u32,
-}
-impl Default for XYZDataSource {
-    fn default() -> Self {
-        Self {
-            ready: true,
-            rectangle: Rectangle::MAX_VALUE.clone(),
-            tiling_scheme: GeographicTilingScheme::default(),
-            tile_height: 256,
-            tile_width: 256,
-            minimumLevel: 0,
-            maximumLevel: 31,
-        }
-    }
-}
-impl XYZDataSource {
-    pub fn requestImage(
-        &self,
-        key: &TileKey,
-        asset_server: &Res<AssetServer>,
-    ) -> Option<Handle<Image>> {
-        return Some(asset_server.load(format!(
-            "https://maps.omniscale.net/v2/houtu-b8084b0b/style.default/{}/{}/{}.png",
-            key.level, key.x, key.y,
-        )));
-    }
-}
 
 #[derive(Bundle)]
 pub struct ImageryLayerBundle {
@@ -666,87 +634,18 @@ impl ImageryLayerBundle {
             datasource: XYZDataSource::default(),
         }
     }
-    pub fn spawn(commands: &mut Commands) {}
 }
-#[derive(Component)]
-pub struct TerrainDataSource {
-    pub tiling_scheme: GeographicTilingScheme,
-    _levelZeroMaximumGeometricError: f64,
-    pub ready: bool,
-    pub rectangle: Rectangle,
-}
-impl TerrainDataSource {
-    pub fn new() -> Self {
-        let tiling_scheme = GeographicTilingScheme::default();
-        let _levelZeroMaximumGeometricError = get_levelZeroMaximumGeometricError(&tiling_scheme);
 
-        Self {
-            tiling_scheme: tiling_scheme,
-            _levelZeroMaximumGeometricError: _levelZeroMaximumGeometricError,
-            ready: true,
-            rectangle: Rectangle::MAX_VALUE.clone(),
-        }
-    }
-    pub fn getTileDataAvailable(&self, key: &TileKey) -> Option<bool> {
-        return None;
-    }
-    pub fn loadTileDataAvailability(&self, key: &TileKey) -> Option<bool> {
-        return None;
-    }
-    pub fn getLevelMaximumGeometricError(&self, level: u32) -> f64 {
-        return self._levelZeroMaximumGeometricError / (1 << level) as f64;
-    }
-    pub fn canRefine(&self, globe_surface_tile: &GlobeSurfaceTile, key: &TileKey) -> bool {
-        if globe_surface_tile.terrainData.is_some() {
-            return true;
-        }
-        let new_key = TileKey::new(key.x * 2, key.y * 2, key.level + 1);
-        let childAvailable = self.getTileDataAvailable(&new_key);
-        return childAvailable != None;
-    }
-
-    pub fn requestTileGeometry(&self) -> Option<HeightmapTerrainData> {
-        let width = 16;
-        let height = 16;
-        return Some(HeightmapTerrainData::new(
-            vec![0.; width * height],
-            width as u32,
-            height as u32,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        ));
-    }
-}
-fn getEstimatedLevelZeroGeometricErrorForAHeightmap(
-    ellipsoid: &Ellipsoid,
-    tile_image_width: u32,
-    numberOfTilesAtLevelZero: u32,
-) -> f64 {
-    return ((ellipsoid.maximumRadius * 2. * PI * 0.25)
-        / (tile_image_width as f64 * numberOfTilesAtLevelZero as f64));
-}
-fn get_levelZeroMaximumGeometricError(tiling_scheme: &GeographicTilingScheme) -> f64 {
-    return getEstimatedLevelZeroGeometricErrorForAHeightmap(
-        &tiling_scheme.ellipsoid,
-        64,
-        tiling_scheme.get_number_of_tiles_at_level(0),
-    );
-}
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(reproject_texture::Plugin);
+
         app.add_startup_system(setup);
     }
 }
 fn setup(mut commands: Commands) {
     //terrain datasource
-    commands.spawn(TerrainDataSource::new());
     //测试的imagerylayer
     let mut entity_mut = commands.spawn_empty();
     let imagery_layer_entity = entity_mut.id();

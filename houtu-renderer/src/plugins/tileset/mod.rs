@@ -7,8 +7,8 @@ mod create_terrain_mesh_job;
 mod globe_surface_tile;
 mod imagery;
 mod imagery_layer;
+mod indices_and_edges_cache;
 mod quadtree_tile;
-mod renderer;
 mod reproject_texture;
 mod terrain_datasource;
 mod terrian_material;
@@ -18,6 +18,7 @@ mod tile_replacement_queue;
 mod tile_selection_result;
 mod traversal_details;
 mod upsample_job;
+mod xyz_datasource;
 pub use tile_key::TileKey;
 
 pub struct Plugin;

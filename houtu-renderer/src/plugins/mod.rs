@@ -6,6 +6,7 @@ pub mod globe;
 // pub mod cnquadtree;
 pub mod helpers;
 pub mod pan_orbit_camera;
+pub mod quadtree;
 pub mod tileset;
 pub mod viewer;
 pub mod wmts;

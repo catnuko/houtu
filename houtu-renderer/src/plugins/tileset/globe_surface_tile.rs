@@ -274,8 +274,8 @@ pub fn update_tile_bounding_region(
             (mesh.minimum_height, mesh.maximum_height)
         };
         let tile_bounding_region = globe_surface_tile.tile_bounding_region.as_mut().unwrap();
-        tile_bounding_region.minimum_height = minimum_height;
-        tile_bounding_region.maximum_height = maximum_height;
+        tile_bounding_region.minimum_height = minimum_height.unwrap();
+        tile_bounding_region.maximum_height = maximum_height.unwrap();
         has_bounding_volumes_from_mesh = true;
     } else {
         // No accurate min/max heights available, so we're stuck with min/max heights from an ancestor tile.
@@ -311,8 +311,8 @@ pub fn update_tile_bounding_region(
                 }
             };
 
-            minimum_height = min;
-            maximum_height = max;
+            minimum_height = min.unwrap();
+            maximum_height = max.unwrap();
             ancestor_tile_node = parent_node.clone();
             source_tile = None;
         }

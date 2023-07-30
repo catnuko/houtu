@@ -601,6 +601,7 @@ pub fn visitTile(
 
             return;
         }
+
         // SSE is not good enough, so refine.
         // SSE不太好，所以细分
         let mut other_state = quadtree_tile_query

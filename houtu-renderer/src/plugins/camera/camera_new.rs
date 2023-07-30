@@ -293,7 +293,7 @@ impl GlobeCamera {
         self.updateMembers();
         return self._rightWC;
     }
-    pub fn get_transform(&mut self) -> DMat4 {
+    pub fn get_transform(&self) -> DMat4 {
         return self._transform;
     }
     pub fn get_inverse_transform(&mut self) -> DMat4 {

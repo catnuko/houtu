@@ -6,7 +6,7 @@ use houtu_scene::{
 };
 
 pub trait DataSource {
-    fn get_tiling_scehme(&self) -> &dyn TilingScheme;
+    fn get_tiling_scheme(&self) -> &dyn TilingScheme;
     fn is_ready(&self) -> bool;
     fn computeTileLoadPriority(
         &self,
@@ -43,7 +43,7 @@ impl GlobeSurfaceTileDataSource {
     }
 }
 impl DataSource for GlobeSurfaceTileDataSource {
-    fn get_tiling_scehme(&self) -> &dyn TilingScheme {
+    fn get_tiling_scheme(&self) -> &dyn TilingScheme {
         return self.tiling_scheme as &dyn TilingScheme;
     }
     fn is_ready(&self) -> bool {

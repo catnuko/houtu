@@ -30,11 +30,11 @@ pub enum ImageryState {
 pub struct Imagery {
     pub key: TileKey,
     pub state: ImageryState,
-    pub imageUrl: Option<String>,
+    pub image_url: Option<String>,
     pub texture: Option<Handle<Image>>,
     pub rectangle: Rectangle,
     pub imagery_layer: Entity,
-    referenceCount: u32,
+    reference_count: u32,
     pub parent: Option<TileKey>,
 }
 impl Imagery {
@@ -46,11 +46,11 @@ impl Imagery {
             key: key,
             state: ImageryState::UNLOADED,
             texture: None,
-            imageUrl: None,
+            image_url: None,
 
             rectangle: Rectangle::MAX_VALUE.clone(),
             imagery_layer: imagery_layer_entity,
-            referenceCount: 0,
+            reference_count: 0,
             parent,
         }
     }
@@ -71,10 +71,10 @@ impl Imagery {
         self.texture = Some(new_texture);
     }
     pub fn add_reference(&mut self) {
-        self.referenceCount += 1;
+        self.reference_count += 1;
     }
     pub fn release_reference(&mut self) {
-        self.referenceCount -= 1;
+        self.reference_count -= 1;
     }
     pub fn create_placeholder(imagery_layer: Entity, parent: Option<TileKey>) -> Self {
         let mut me = Self::new(
@@ -140,7 +140,7 @@ impl Imagery {
 }
 #[derive(Component)]
 pub struct TileImagery {
-    pub textureCoordinateRectangle: Option<DVec4>,
+    pub texture_coordinate_rectangle: Option<DVec4>,
     pub texture_translation_and_scale: Option<DVec4>,
     pub use_web_mercator_t: bool,
     pub loading_imagery: Option<(Entity, TileKey)>,
@@ -150,11 +150,11 @@ impl TileImagery {
     pub fn new(
         imagery_layer: Entity,
         imagery_key: TileKey,
-        textureCoordinateRectangle: Option<DVec4>,
+        texture_coordinate_rectangle: Option<DVec4>,
         use_web_mercator_t: bool,
     ) -> Self {
         Self {
-            textureCoordinateRectangle,
+            texture_coordinate_rectangle,
             use_web_mercator_t,
             texture_translation_and_scale: None,
             ready_imagery: None,

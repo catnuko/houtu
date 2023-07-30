@@ -4,19 +4,18 @@ use bevy::prelude::*;
 
 use super::{quadtree_tile_storage::QuadtreeTileStorage, tile_key::TileKey};
 
-pub struct TileReplacementQueue<'a> {
+pub struct TileReplacementQueue {
     list: LinkedList<TileKey>,
     last_before_start_of_frame: Option<TileKey>,
     count: usize,
-    storage: &'a mut QuadtreeTileStorage,
+    // storage: &'a mut QuadtreeTileStorage,
 }
-impl<'a> TileReplacementQueue<'a> {
-    pub fn new(storage: &'a mut QuadtreeTileStorage) -> Self {
+impl TileReplacementQueue {
+    pub fn new() -> Self {
         Self {
             list: LinkedList::new(),
             last_before_start_of_frame: None,
             count: 0,
-            storage: storage,
         }
     }
     pub fn clear(&mut self) {
@@ -39,7 +38,7 @@ impl<'a> TileReplacementQueue<'a> {
             self.last_before_start_of_frame = None;
         }
     }
-    pub fn trimTiles(&mut self, maximum_tiles: u32) {
+    pub fn trimTiles(&mut self, storage: &mut QuadtreeTileStorage, maximum_tiles: u32) {
         // let mut tile_to_trim = self.get_tail();
         let mut keep_trimming = true;
         let mut count = self.count;
@@ -53,12 +52,12 @@ impl<'a> TileReplacementQueue<'a> {
             keep_trimming = self.get_tail() != self.last_before_start_of_frame;
 
             let tile_key = self.get_tail().unwrap().clone();
-            let mut tile = self.storage.get(&tile_key).unwrap();
+            let mut tile = storage.get(&tile_key).unwrap();
             let previous = tile.replacement_previous;
 
             if tile.eligible_for_unloading() {
                 let entity = tile_key.clone();
-                self.remove(&entity);
+                self.remove(storage, &entity);
             }
             if let Some(entity) = previous {
                 if let Some(v) = self.get_tail() {
@@ -70,8 +69,8 @@ impl<'a> TileReplacementQueue<'a> {
             count = self.count;
         }
     }
-    fn remove(&mut self, entity: &TileKey) {
-        let mut item = self.storage.get_mut(entity).unwrap();
+    fn remove(&mut self, storage: &mut QuadtreeTileStorage, entity: &TileKey) {
+        let mut item = storage.get_mut(entity).unwrap();
         {
             if self.last_before_start_of_frame.is_some()
                 && self.last_before_start_of_frame.unwrap() == item.key
@@ -80,7 +79,7 @@ impl<'a> TileReplacementQueue<'a> {
             }
         }
         let head_mut = self.get_head();
-        let mut item = self.storage.get_mut(entity).unwrap();
+        let mut item = storage.get_mut(entity).unwrap();
         if head_mut == Some(item.key) {
             if let Some(t) = item.replacement_next {
                 if let Some(v) = head_mut {
@@ -100,7 +99,7 @@ impl<'a> TileReplacementQueue<'a> {
         }
 
         let tail_mut = self.get_tail();
-        let mut item = self.storage.get_mut(entity).unwrap();
+        let mut item = storage.get_mut(entity).unwrap();
         if tail_mut.is_some() && tail_mut == Some(item.key) {
             if let Some(t) = item.replacement_previous {
                 if let Some(v) = tail_mut {
@@ -120,9 +119,9 @@ impl<'a> TileReplacementQueue<'a> {
         }
         self.count -= 1;
     }
-    pub fn mark_tile_rendered(&mut self, entity: TileKey) {
+    pub fn mark_tile_rendered(&mut self, storage: &mut QuadtreeTileStorage, entity: TileKey) {
         let head_mut = self.get_head();
-        let mut item = self.storage.get_mut(&entity).unwrap();
+        let mut item = storage.get_mut(&entity).unwrap();
         if head_mut.is_some() && head_mut.unwrap() == item.key {
             if self.last_before_start_of_frame.is_some()
                 && self.last_before_start_of_frame.unwrap() == item.key
@@ -138,7 +137,7 @@ impl<'a> TileReplacementQueue<'a> {
 
         self.count += 1;
         let head_mut = self.get_head();
-        let mut item = self.storage.get_mut(&entity).unwrap();
+        let mut item = storage.get_mut(&entity).unwrap();
         if head_mut.is_none() {
             item.replacement_next = None;
             item.replacement_previous = None;
@@ -158,11 +157,11 @@ impl<'a> TileReplacementQueue<'a> {
         }
 
         if item.replacement_next.is_some() || item.replacement_previous.is_some() {
-            self.remove(&entity);
+            self.remove(storage, &entity);
         }
 
         let head_mut = self.get_head();
-        let mut item = self.storage.get_mut(&entity).unwrap();
+        let mut item = storage.get_mut(&entity).unwrap();
         item.replacement_previous = None;
         if let Some(v) = head_mut {
             item.replacement_next = Some(v.clone());

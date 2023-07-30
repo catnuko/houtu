@@ -1,6 +1,11 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, primitive};
 
-use bevy::{core::FrameCount, prelude::Resource, window::Window};
+use bevy::{
+    core::FrameCount,
+    prelude::{Res, ResMut, Resource},
+    time::Time,
+    window::Window,
+};
 use houtu_scene::{
     Cartographic, Ellipsoid, EllipsoidalOccluder, GeographicTilingScheme, Matrix4, Rectangle,
 };
@@ -10,20 +15,21 @@ use crate::plugins::camera::GlobeCamera;
 use super::{
     globe_surface_tile::GlobeSurfaceTile,
     globe_surface_tile_provider::{GlobeSurfaceTileProvider, TileVisibility},
+    imagery_layer_storage::ImageryLayerStorage,
     quadtree_primitive_debug::QuadtreePrimitiveDebug,
     quadtree_tile::{Quadrant, QuadtreeTile, QuadtreeTileLoadState},
     quadtree_tile_storage::QuadtreeTileStorage,
-    terrain_provider::TerrainProvider,
+    terrain_provider::{self, TerrainProvider},
     tile_key::TileKey,
     tile_replacement_queue::TileReplacementQueue,
     tile_selection_result::TileSelectionResult,
     traversal_details::{AllTraversalQuadDetails, RootTraversalDetails, TraversalDetails},
 };
-
+#[derive(Resource)]
 pub struct QuadtreePrimitive {
     pub tile_cache_size: u32,
     pub maximum_screen_space_error: f64,
-    pub load_queue_time_slice: u32,
+    pub load_queue_time_slice: f64,
     pub loading_descendant_limit: u32,
     pub preload_ancestors: bool,
     pub preload_siblings: bool,
@@ -41,7 +47,7 @@ pub struct QuadtreePrimitive {
     pub tile_load_queue_low: Vec<TileKey>,
     pub tiles_to_render: Vec<TileKey>,
     pub tile_to_update_heights: Vec<TileKey>,
-    pub tile_replacement_queue: TileReplacementQueue<'static>,
+    pub tile_replacement_queue: TileReplacementQueue,
     pub tile_provider: GlobeSurfaceTileProvider,
 }
 pub enum QueueType {
@@ -56,7 +62,7 @@ impl QuadtreePrimitive {
             tile_cache_size: 100,
             loading_descendant_limit: 20,
             preload_ancestors: true,
-            load_queue_time_slice: 5,
+            load_queue_time_slice: 5.0 / 1000.0,
             tiles_invalidated: false,
             maximum_screen_space_error: 2.0,
             preload_siblings: false,
@@ -73,7 +79,7 @@ impl QuadtreePrimitive {
             tiles_to_render: vec![],
             tile_to_update_heights: vec![],
             storage: storage,
-            tile_replacement_queue: TileReplacementQueue::new(&mut storage),
+            tile_replacement_queue: TileReplacementQueue::new(),
             tile_provider: GlobeSurfaceTileProvider::new(),
         }
     }
@@ -90,8 +96,9 @@ impl QuadtreePrimitive {
         self.tile_replacement_queue.clear();
         self.clear_tile_load_queue();
     }
-    fn create_level_zero_tiles(&mut self, tiling_scheme: &GeographicTilingScheme) {
-        self.storage.create_level_zero_tiles(tiling_scheme);
+    fn create_level_zero_tiles(&mut self) {
+        let tiling_scheme = self.get_tiling_scheme().clone();
+        self.storage.create_level_zero_tiles(&tiling_scheme);
     }
     pub fn beginFrame(&mut self) {
         if self.tiles_invalidated {
@@ -104,7 +111,8 @@ impl QuadtreePrimitive {
         }
         self.tile_replacement_queue.markStartOfRenderFrame();
     }
-    fn queue_tile_load(&mut self, queue_type: QueueType, tile: &mut QuadtreeTile) {
+    fn queue_tile_load(&mut self, queue_type: QueueType, tile_key: TileKey) {
+        let tile = self.storage.get_mut(&tile_key).unwrap();
         tile.load_priority = self.tile_provider.compute_tile_load_priority();
         match queue_type {
             QueueType::High => self.tile_load_queue_high.push(tile.key),
@@ -114,12 +122,14 @@ impl QuadtreePrimitive {
     }
     pub fn render(
         &mut self,
-        root_traversal_details: &mut RootTraversalDetails,
-        tiling_scheme: &GeographicTilingScheme,
         globe_camera: &mut GlobeCamera,
+        frame_count: &FrameCount,
+        window: &Window,
+        all_traversal_quad_details: &mut AllTraversalQuadDetails,
+        root_traversal_details: &mut RootTraversalDetails,
     ) {
         if self.storage.root_len() == 0 {
-            self.create_level_zero_tiles(tiling_scheme);
+            self.create_level_zero_tiles();
             let len = self.storage.root_len();
             if root_traversal_details.0.len() < len {
                 root_traversal_details.0 = vec![TraversalDetails::default(); len];
@@ -149,16 +159,130 @@ impl QuadtreePrimitive {
         self.camera_reference_frame_origin_cartographic =
             Ellipsoid::WGS84.cartesianToCartographic(&camera_frame_origin);
         for key in self.storage.root.clone().iter() {
+            self.tile_replacement_queue
+                .mark_tile_rendered(&mut self.storage, *key);
             let tile_mut = self.storage.get_mut(key).unwrap();
-            self.tile_replacement_queue.mark_tile_rendered(tile_mut.key);
             if !tile_mut.renderable {
-                self.queue_tile_load(QueueType::High, tile_mut);
+                let cloned = tile_mut.key.clone();
+                self.queue_tile_load(QueueType::High, cloned);
                 self.debug.tiles_waiting_for_children += 1;
             } else {
+                let mut ancestor_meets_sse = false;
+                let occluders = self.occluders.clone();
+                visit_if_visible(
+                    self,
+                    key.clone(),
+                    frame_count,
+                    &occluders,
+                    &mut ancestor_meets_sse,
+                    globe_camera,
+                    window,
+                    all_traversal_quad_details,
+                    root_traversal_details,
+                );
             }
         }
     }
-    pub fn endFrame() {}
+    pub fn endFrame(
+        &mut self,
+        frame_count: &FrameCount,
+        time: &Res<Time>,
+        camera: &mut GlobeCamera,
+        imagery_layer_storage: &mut ImageryLayerStorage,
+    ) {
+        process_tile_load_queue(self, frame_count, time, camera, imagery_layer_storage);
+        update_tile_load_progress_system(self);
+    }
+}
+
+fn process_tile_load_queue(
+    primitive: &mut QuadtreePrimitive,
+    frame_count: &FrameCount,
+    time: &Res<Time>,
+    camera: &mut GlobeCamera,
+    imagery_layer_storage: &mut ImageryLayerStorage,
+) {
+    if (primitive.tile_load_queue_high.len() == 0
+        && primitive.tile_load_queue_medium.len() == 0
+        && primitive.tile_load_queue_low.len() == 0)
+    {
+        return;
+    }
+
+    // Remove any tiles that were not used this frame beyond the number
+    // we're allowed to keep.
+    let size = primitive.tile_cache_size;
+    primitive
+        .tile_replacement_queue
+        .trimTiles(&mut primitive.storage, size);
+
+    let end_time = time.elapsed_seconds_f64() + primitive.load_queue_time_slice;
+
+    let mut did_some_loading = false;
+    process_single_priority_load_queue(
+        primitive,
+        frame_count,
+        &mut did_some_loading,
+        end_time,
+        time,
+        QueueType::High,
+        camera,
+        imagery_layer_storage,
+    );
+    process_single_priority_load_queue(
+        primitive,
+        frame_count,
+        &mut did_some_loading,
+        end_time,
+        time,
+        QueueType::Medium,
+        camera,
+        imagery_layer_storage,
+    );
+    process_single_priority_load_queue(
+        primitive,
+        frame_count,
+        &mut did_some_loading,
+        end_time,
+        time,
+        QueueType::Low,
+        camera,
+        imagery_layer_storage,
+    );
+}
+
+fn process_single_priority_load_queue(
+    primitive: &mut QuadtreePrimitive,
+    frame_count: &FrameCount,
+    did_some_loading: &mut bool,
+    end_time: f64,
+    time: &Res<Time>,
+    queue_type: QueueType,
+    camera: &mut GlobeCamera,
+    imagery_layer_storage: &mut ImageryLayerStorage,
+) {
+    let load_queue = match queue_type {
+        QueueType::High => &primitive.tile_load_queue_high,
+        QueueType::Medium => &primitive.tile_load_queue_medium,
+        QueueType::Low => &primitive.tile_load_queue_low,
+    };
+    for i in load_queue.iter() {
+        primitive
+            .tile_replacement_queue
+            .mark_tile_rendered(&mut primitive.storage, *i);
+        primitive.tile_provider.load_tile(
+            &mut primitive.storage,
+            &primitive.occluders,
+            camera,
+            *i,
+            imagery_layer_storage,
+        );
+        *did_some_loading = true;
+        let seconds = time.elapsed_seconds_f64();
+        if !(seconds < end_time || !*did_some_loading) {
+            break;
+        }
+    }
 }
 fn visit_if_visible(
     primitive: &mut QuadtreePrimitive,
@@ -171,12 +295,11 @@ fn visit_if_visible(
     all_traversal_quad_details: &mut AllTraversalQuadDetails,
     root_traversal_details: &mut RootTraversalDetails,
 ) {
-    let tile = primitive.storage.get_mut(&tile_key).unwrap();
     if primitive.tile_provider.computeTileVisibility(
         &mut primitive.storage,
         ellipsoidal_occluder,
         globe_camera,
-        tile,
+        tile_key,
     ) != TileVisibility::NONE
     {
         return visitTile(
@@ -195,7 +318,8 @@ fn visit_if_visible(
 
     primitive
         .tile_replacement_queue
-        .mark_tile_rendered(tile_key);
+        .mark_tile_rendered(&mut primitive.storage, tile_key);
+    let tile = primitive.storage.get_mut(&tile_key).unwrap();
     let traversal_details = get_traversal_details(
         all_traversal_quad_details,
         root_traversal_details,
@@ -205,13 +329,16 @@ fn visit_if_visible(
     traversal_details.all_are_renderable = true;
     traversal_details.any_were_rendered_last_frame = false;
     traversal_details.not_yet_renderable_count = 0;
-    if contains_needed_position(primitive, &tile.rectangle) {
+    let rectangle = tile.rectangle.clone();
+    if contains_needed_position(primitive, &rectangle) {
+        let tile = primitive.storage.get_mut(&tile_key).unwrap();
         if tile.data.vertex_array.is_none() {
-            primitive.queue_tile_load(QueueType::Medium, tile);
+            primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
         }
         let last_frame = primitive.last_selection_frame_number;
+        let tile = primitive.storage.get_mut(&tile_key).unwrap();
         let last_frame_selection_result = if tile.last_selection_result_frame == last_frame {
-            tile.last_selection_result
+            tile.last_selection_result.clone()
         } else {
             TileSelectionResult::NONE
         };
@@ -222,14 +349,15 @@ fn visit_if_visible(
             primitive.tile_to_update_heights.push(tile.key);
         }
         tile.last_selection_result = TileSelectionResult::CULLED_BUT_NEEDED;
-    } else if primitive.preload_siblings || tile.key.level == 0 {
-        // Load culled level zero tiles with low priority.
-        // For all other levels, only load culled tiles if preload_siblings is enabled.
-        primitive.queue_tile_load(QueueType::Low, tile);
+    } else if primitive.preload_siblings || tile_key.level == 0 {
+        let tile = primitive.storage.get_mut(&tile_key).unwrap();
         tile.last_selection_result = TileSelectionResult::CULLED;
+        primitive.queue_tile_load(QueueType::Low, tile_key.clone());
     } else {
+        let tile = primitive.storage.get_mut(&tile_key).unwrap();
         tile.last_selection_result = TileSelectionResult::CULLED;
     }
+    let tile = primitive.storage.get_mut(&tile_key).unwrap();
     tile.last_selection_result_frame = Some(frame_count.0);
 }
 fn visitTile(
@@ -243,14 +371,16 @@ fn visitTile(
     all_traversal_quad_details: &mut AllTraversalQuadDetails,
     root_traversal_details: &mut RootTraversalDetails,
 ) {
+    let tiling_scheme = primitive.get_tiling_scheme().clone();
+    primitive.storage.subdivide(&tile_key, &tiling_scheme);
     primitive.debug.tiles_visited += 1;
     primitive
         .tile_replacement_queue
-        .mark_tile_rendered(tile_key);
+        .mark_tile_rendered(&mut primitive.storage, tile_key);
     if tile_key.level > primitive.debug.max_depth_visited {
         primitive.debug.max_depth_visited = tile_key.level;
     }
-    let tile = primitive.storage.get_mut(&tile_key).unwrap();
+    let tile = primitive.storage.get(&tile_key).unwrap();
 
     let meets_sse = screen_space_error(
         &primitive.tile_provider,
@@ -259,20 +389,6 @@ fn visitTile(
         window,
         &ellipsoidal_occluder.ellipsoid,
     ) < primitive.maximum_screen_space_error;
-    let tiling_scheme = primitive.get_tiling_scheme().clone();
-    primitive.storage.subdivide(&tile_key, &tiling_scheme);
-    let south_west_child = primitive
-        .storage
-        .get_children_mut(&tile_key, Quadrant::Southwest);
-    // let south_east_child = primitive
-    //     .storage
-    //     .get_children_mut(&tile.key, Quadrant::Southeast);
-    // let north_west_child = primitive
-    //     .storage
-    //     .get_children_mut(&tile.key, Quadrant::Northwest);
-    // let north_east_child = primitive
-    //     .storage
-    //     .get_children_mut(&tile.key, Quadrant::Northeast);
 
     let last_frame = primitive.last_selection_frame_number;
     let last_frame_selection_result = if tile.last_selection_result_frame == last_frame {
@@ -306,15 +422,15 @@ fn visitTile(
         }
         if renderable {
             if meets_sse {
-                primitive.queue_tile_load(QueueType::Medium, tile);
+                primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
             }
             primitive.tiles_to_render.push(tile_key);
 
+            let tile = primitive.storage.get_mut(&tile_key).unwrap();
             traversal_details.all_are_renderable = tile.renderable;
             traversal_details.any_were_rendered_last_frame =
                 last_frame_selection_result == TileSelectionResult::RENDERED;
             traversal_details.not_yet_renderable_count = if tile.renderable { 0 } else { 1 };
-
             tile.last_selection_result_frame = Some(frame_count.0);
             tile.last_selection_result = TileSelectionResult::RENDERED;
 
@@ -329,12 +445,15 @@ fn visitTile(
 
         // Load this blocker tile with high priority, but only if this tile (not just an ancestor) meets the SSE.
         if meets_sse {
-            primitive.queue_tile_load(QueueType::High, tile);
+            primitive.queue_tile_load(QueueType::High, tile_key.clone());
         }
     }
+    let tile = primitive.storage.get_mut(&tile_key).unwrap();
     if primitive.tile_provider.can_refine(tile) {
         let mut all_are_upsampled = {
-            let mut v = south_west_child.upsampled_from_parent;
+            let mut v = false;
+            let south_west_child = primitive.storage.get(&tile_key.southwest()).unwrap();
+            v = v && south_west_child.upsampled_from_parent;
             let south_east_child = primitive.storage.get(&tile_key.southeast()).unwrap();
             v = v && south_east_child.upsampled_from_parent;
             let north_west_child = primitive.storage.get(&tile_key.northwest()).unwrap();
@@ -345,19 +464,20 @@ fn visitTile(
         };
         if all_are_upsampled {
             primitive.tiles_to_render.push(tile_key);
-            primitive.queue_tile_load(QueueType::Medium, tile);
+            primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
             primitive
                 .tile_replacement_queue
-                .mark_tile_rendered(tile_key.southwest());
+                .mark_tile_rendered(&mut primitive.storage, tile_key.southwest());
             primitive
                 .tile_replacement_queue
-                .mark_tile_rendered(tile_key.southeast());
+                .mark_tile_rendered(&mut primitive.storage, tile_key.southeast());
             primitive
                 .tile_replacement_queue
-                .mark_tile_rendered(tile_key.northwest());
+                .mark_tile_rendered(&mut primitive.storage, tile_key.northwest());
             primitive
                 .tile_replacement_queue
-                .mark_tile_rendered(tile_key.northeast());
+                .mark_tile_rendered(&mut primitive.storage, tile_key.northeast());
+            let tile = primitive.storage.get_mut(&tile_key).unwrap();
 
             traversal_details.all_are_renderable = tile.renderable;
             traversal_details.any_were_rendered_last_frame =
@@ -374,6 +494,7 @@ fn visitTile(
 
             return;
         }
+        let tile = primitive.storage.get_mut(&tile_key).unwrap();
 
         tile.last_selection_result_frame = Some(frame_count.0);
         tile.last_selection_result = TileSelectionResult::REFINED;
@@ -382,11 +503,11 @@ fn visitTile(
         let load_index_medium = primitive.tile_load_queue_medium.len();
         let load_index_high = primitive.tile_load_queue_high.len();
         let tiles_to_update_heights_index = primitive.tile_to_update_heights.len();
+        let location = tile.location.clone();
         visitVisibleChildrenNearToFar(
             primitive,
             tile_key,
-            tile.location,
-            traversal_details,
+            location,
             globe_camera,
             ellipsoidal_occluder,
             frame_count,
@@ -400,6 +521,12 @@ fn visitTile(
             tile_key.northeast(),
         );
         if first_rendered_descendant_index != primitive.tiles_to_render.len() {
+            let traversal_details = get_traversal_details(
+                all_traversal_quad_details,
+                root_traversal_details,
+                &location,
+                &tile_key,
+            );
             let all_are_renderable = traversal_details.all_are_renderable;
             let any_were_rendered_last_frame = traversal_details.any_were_rendered_last_frame;
             let not_yet_renderable_count = traversal_details.not_yet_renderable_count;
@@ -409,7 +536,7 @@ fn visitTile(
                 for i in first_rendered_descendant_index..new_len {
                     let work_tile_key = primitive.tiles_to_render.get(i).unwrap();
                     let mut work_tile = primitive.storage.get_mut(&work_tile_key);
-                    while work_tile.is_some() && work_tile.unwrap().key != tile_key {
+                    while work_tile.is_some() && work_tile.as_ref().unwrap().key != tile_key {
                         let in_work_tile = work_tile.unwrap();
                         in_work_tile.last_selection_result = TileSelectionResult::from_u8(
                             TileSelectionResult::kick(&in_work_tile.last_selection_result),
@@ -427,9 +554,11 @@ fn visitTile(
                     .tile_to_update_heights
                     .splice(first_rendered_descendant_index..new_len, []);
                 primitive.tiles_to_render.push(tile_key);
+                let tile = primitive.storage.get_mut(&tile_key).unwrap();
                 tile.last_selection_result = TileSelectionResult::RENDERED;
                 let was_rendered_last_frame =
                     last_frame_selection_result == TileSelectionResult::RENDERED;
+                let renderable = tile.renderable;
                 if !was_rendered_last_frame
                     && not_yet_renderable_count > primitive.loading_descendant_limit
                 {
@@ -443,13 +572,13 @@ fn visitTile(
                     primitive
                         .tile_load_queue_low
                         .splice(load_index_high..new_len, []);
-                    primitive.queue_tile_load(QueueType::Medium, tile);
-                    traversal_details.not_yet_renderable_count =
-                        if tile.renderable { 0 } else { 1 };
+                    let renderable = tile.renderable;
+                    primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
+                    traversal_details.not_yet_renderable_count = if renderable { 0 } else { 1 };
                     queued_for_load = true;
                 }
 
-                traversal_details.all_are_renderable = tile.renderable;
+                traversal_details.all_are_renderable = renderable;
                 traversal_details.any_were_rendered_last_frame = was_rendered_last_frame;
 
                 if !was_rendered_last_frame {
@@ -460,7 +589,7 @@ fn visitTile(
                 primitive.debug.tiles_waiting_for_children += 1;
             }
             if primitive.preload_ancestors && !queued_for_load {
-                primitive.queue_tile_load(QueueType::Low, tile);
+                primitive.queue_tile_load(QueueType::Low, tile_key.clone());
             }
         }
         return;
@@ -469,12 +598,13 @@ fn visitTile(
     tile.last_selection_result = TileSelectionResult::RENDERED;
 
     primitive.tiles_to_render.push(tile_key);
-    primitive.queue_tile_load(QueueType::High, tile);
+    let renderable = tile.renderable;
+    primitive.queue_tile_load(QueueType::High, tile_key.clone());
 
-    traversal_details.all_are_renderable = tile.renderable;
+    traversal_details.all_are_renderable = renderable;
     traversal_details.any_were_rendered_last_frame =
         last_frame_selection_result == TileSelectionResult::RENDERED;
-    traversal_details.not_yet_renderable_count = if tile.renderable { 0 } else { 1 };
+    traversal_details.not_yet_renderable_count = if renderable { 0 } else { 1 };
 }
 fn contains_needed_position(primitive: &mut QuadtreePrimitive, rectangle: &Rectangle) -> bool {
     return primitive.camera_position_cartographic.is_some()
@@ -490,7 +620,7 @@ fn contains_needed_position(primitive: &mut QuadtreePrimitive, rectangle: &Recta
 }
 fn screen_space_error(
     tile_provider: &GlobeSurfaceTileProvider,
-    tile: &mut QuadtreeTile,
+    tile: &QuadtreeTile,
     globe_camera: &mut GlobeCamera,
     window: &Window,
     ellipsoid: &Ellipsoid,
@@ -510,7 +640,7 @@ fn visitVisibleChildrenNearToFar(
     primitive: &mut QuadtreePrimitive,
     tile_key: TileKey,
     location: Quadrant,
-    traversal_details: &mut TraversalDetails,
+    // traversal_details: &mut TraversalDetails,
     globe_camera: &mut GlobeCamera,
     ellipsoidal_occluder: &EllipsoidalOccluder,
     frame_count: &FrameCount,
@@ -743,4 +873,46 @@ pub fn get_traversal_details<'a>(
         Quadrant::Northeast => &mut all_traversal_quad_details.get_mut(key.level).northeast,
         Quadrant::Root(i) => root_traversal_details.0.get_mut(*i).unwrap(),
     };
+}
+pub struct TileLoadEvent(pub u32);
+fn update_tile_load_progress_system(primitive: &mut QuadtreePrimitive) {
+    let p0_count = primitive.tiles_to_render.len();
+    let p1_count = primitive.tile_to_update_heights.len();
+    let p2_count = primitive.tile_load_queue_high.len();
+    let p3_count = primitive.tile_load_queue_medium.len();
+    let p4_count = primitive.tile_load_queue_low.len();
+    let current_load_queue_length = (p2_count + p3_count + p4_count) as u32;
+    if primitive.last_tile_load_queue_length != current_load_queue_length
+        || primitive.tiles_invalidated
+    {
+        primitive.last_tile_load_queue_length = current_load_queue_length;
+        // tile_load_event_writer.send(TileLoadEvent(current_load_queue_length));
+    }
+    let debug = &mut primitive.debug;
+    if debug.enable_debug_output && !debug.suspend_lod_update {
+        debug.max_depth = primitive
+            .tiles_to_render
+            .iter()
+            .map(|key| key.level)
+            .max()
+            .unwrap_or(0);
+        debug.tiles_rendered = p0_count as u32;
+
+        if (debug.tiles_visited != debug.last_tiles_visited
+            || debug.tiles_rendered != debug.last_tiles_rendered
+            || debug.tiles_culled != debug.last_tiles_culled
+            || debug.max_depth != debug.last_max_depth
+            || debug.tiles_waiting_for_children != debug.last_tiles_waiting_for_children
+            || debug.max_depth_visited != debug.last_max_depth_visited)
+        {
+            println!("Visited {}, Rendered: {}, Culled: {}, Max Depth Rendered: {}, Max Depth Visited: {}, Waiting for children: {}",debug.tiles_visited,debug.tiles_rendered,debug.tiles_culled,debug.max_depth,debug.max_depth_visited,debug.tiles_waiting_for_children);
+
+            debug.last_tiles_visited = debug.tiles_visited;
+            debug.last_tiles_rendered = debug.tiles_rendered;
+            debug.last_tiles_culled = debug.tiles_culled;
+            debug.last_max_depth = debug.max_depth;
+            debug.last_tiles_waiting_for_children = debug.tiles_waiting_for_children;
+            debug.last_max_depth_visited = debug.max_depth_visited;
+        }
+    }
 }

@@ -1,9 +1,14 @@
-use bevy::utils::{HashMap, Uuid};
+use std::array::IntoIter;
+
+use bevy::{
+    prelude::Resource,
+    utils::{HashMap, Uuid},
+};
 
 use super::{imagery_layer::ImageryLayer, imagery_provider::ImageryProvider};
-
+#[derive(Resource)]
 pub struct ImageryLayerStorage {
-    map: HashMap<Uuid, ImageryLayer>,
+    pub map: HashMap<Uuid, ImageryLayer>,
 }
 impl ImageryLayerStorage {
     pub fn new() -> Self {

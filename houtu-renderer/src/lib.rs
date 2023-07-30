@@ -12,7 +12,7 @@ mod z_index;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
 use houtu_scene::Ellipsoid;
-use plugins::{helpers, pan_orbit_camera};
+use plugins::{helpers, pan_orbit_camera, quadtree};
 // use plugins::quadtree;
 use z_index::ZIndex;
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
@@ -52,6 +52,7 @@ impl Plugin for RendererPlugin {
             .add_plugin(plugins::camera::CameraPlugin)
             // .add_plugin(plugins::tileset::Plugin)
             // .add_plugin(plugins::scene::ScenePlugin)
+            .add_plugin(quadtree::Plugin)
             .add_startup_system(setup);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }

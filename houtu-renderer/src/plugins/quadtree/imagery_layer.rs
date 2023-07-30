@@ -66,6 +66,7 @@ pub struct ImageryLayer {
     // pub skeleton_placeholder: TileImagery,
     pub imagery_cache: HashMap<TileKey, ShareMutImagery>,
     pub imagery_provider: Box<dyn ImageryProvider>,
+    pub show: bool,
 }
 impl ImageryLayer {
     pub fn new(imagery_provider: Box<dyn ImageryProvider>) -> Self {
@@ -89,6 +90,7 @@ impl ImageryLayer {
             // skeleton_placeholder: TileImagery::create_placeholder(imagery_layer_id, None),
             imagery_cache: HashMap::new(),
             imagery_provider: imagery_provider,
+            show: true,
         }
     }
     fn getLevelWithMaximumTexelSpacing(
@@ -119,15 +121,13 @@ impl ImageryLayer {
     fn is_base_layer(&self) -> bool {
         return self.is_base_layer;
     }
-    pub fn _createTileImagerySkeletons<TP: TerrainProvider>(
+    pub fn _createTileImagerySkeletons(
         &mut self,
-        globe_surface_tile: &mut GlobeSurfaceTile,
-        rectangle: &Rectangle,
-        key: &TileKey,
-        terrain_provider: &mut TP,
-        imagery_layer_id: Entity,
+        tile: &mut QuadtreeTile,
+        // key: &TileKey,
+        terrain_provider: &Box<dyn TerrainProvider>,
     ) -> bool {
-        let mut insertion_point = globe_surface_tile.imagery.len();
+        let mut insertion_point = tile.data.imagery.len();
         if !self.ready || !self.imagery_provider.get_ready() {
             let key = TileKey {
                 x: 0,
@@ -135,7 +135,7 @@ impl ImageryLayer {
                 level: 0,
             };
             let imagery = self.add_imagery(&key).unwrap();
-            globe_surface_tile.add(imagery.clone(), None, false);
+            tile.data.add(imagery.clone(), None, false);
             return true;
         }
 
@@ -146,7 +146,7 @@ impl ImageryLayer {
             .get_rectangle()
             .intersection(&self._rectangle)
             .expect("多边形相交没结果");
-        let mut intersection_rectangle = rectangle.intersection(&imagery_bounds);
+        let mut intersection_rectangle = tile.rectangle.intersection(&imagery_bounds);
 
         if intersection_rectangle.is_none() {
             // There is no overlap between this terrain tile and this imagery
@@ -157,7 +157,7 @@ impl ImageryLayer {
             }
 
             let base_imagery_rectangle = imagery_bounds;
-            let base_terrain_rectangle = rectangle;
+            let base_terrain_rectangle = &tile.rectangle;
             let mut new_rectangle = Rectangle::default();
 
             if base_terrain_rectangle.south >= base_imagery_rectangle.north {
@@ -189,10 +189,10 @@ impl ImageryLayer {
         }
 
         let mut latitude_closest_to_equator = 0.0;
-        if rectangle.south > 0.0 {
-            latitude_closest_to_equator = rectangle.south;
-        } else if rectangle.north < 0.0 {
-            latitude_closest_to_equator = rectangle.north;
+        if tile.rectangle.south > 0.0 {
+            latitude_closest_to_equator = tile.rectangle.south;
+        } else if tile.rectangle.north < 0.0 {
+            latitude_closest_to_equator = tile.rectangle.north;
         }
 
         // Compute the required level in the imagery tiling scheme.
@@ -201,7 +201,7 @@ impl ImageryLayer {
         // images attached to a terrain tile than there are available texture units.  So that's for the future.
         let error_ratio = 1.0;
         let target_geometric_error =
-            error_ratio * terrain_provider.get_level_maximum_geometric_error(key.level);
+            error_ratio * terrain_provider.get_level_maximum_geometric_error(tile.key.level);
         let mut imagery_level = self
             .getLevelWithMaximumTexelSpacing(target_geometric_error, latitude_closest_to_equator);
         imagery_level = 0.max(imagery_level);
@@ -216,10 +216,10 @@ impl ImageryLayer {
 
         let imagery_tiling_scheme = self.imagery_provider.get_tiling_scheme();
         let mut north_west_tile_coordinates = imagery_tiling_scheme
-            .position_to_tile_x_y(&rectangle.north_west(), imagery_level)
+            .position_to_tile_x_y(&tile.rectangle.north_west(), imagery_level)
             .expect("north_west_tile_coordinates");
         let mut south_east_tile_coordinates = imagery_tiling_scheme
-            .position_to_tile_x_y(&rectangle.south_east(), imagery_level)
+            .position_to_tile_x_y(&tile.rectangle.south_east(), imagery_level)
             .expect("south_east_tile_coordinates");
 
         // If the southeast corner of the rectangle lies very close to the north or west side
@@ -229,21 +229,21 @@ impl ImageryLayer {
         // of the northwest tile, we don't actually need the northernmost or westernmost tiles.
 
         // We define "very close" as being within 1/512 of the width of the tile.
-        let mut very_close_x = rectangle.compute_width() / 512.0;
-        let mut very_close_y = rectangle.compute_height() / 512.0;
+        let mut very_close_x = tile.rectangle.compute_width() / 512.0;
+        let mut very_close_y = tile.rectangle.compute_height() / 512.0;
 
         let north_west_tile_rectangle = imagery_tiling_scheme.tile_x_y_to_rectange(
             north_west_tile_coordinates.x,
             north_west_tile_coordinates.y,
             imagery_level,
         );
-        if north_west_tile_rectangle.south - rectangle.north.abs() < very_close_y
+        if north_west_tile_rectangle.south - tile.rectangle.north.abs() < very_close_y
             && north_west_tile_coordinates.y < south_east_tile_coordinates.y
         {
             north_west_tile_coordinates.y += 1;
         }
 
-        if (north_west_tile_rectangle.east - rectangle.west).abs() < very_close_x
+        if (north_west_tile_rectangle.east - tile.rectangle.west).abs() < very_close_x
             && north_west_tile_coordinates.x < south_east_tile_coordinates.x
         {
             north_west_tile_coordinates.x += 1;
@@ -254,12 +254,12 @@ impl ImageryLayer {
             south_east_tile_coordinates.y,
             imagery_level,
         );
-        if (south_east_tile_rectangle.north - rectangle.south).abs() < very_close_y
+        if (south_east_tile_rectangle.north - tile.rectangle.south).abs() < very_close_y
             && south_east_tile_coordinates.y > north_west_tile_coordinates.y
         {
             south_east_tile_coordinates.y -= 1;
         }
-        if (south_east_tile_rectangle.west - rectangle.east).abs() < very_close_x
+        if (south_east_tile_rectangle.west - tile.rectangle.east).abs() < very_close_x
             && south_east_tile_coordinates.x > north_west_tile_coordinates.x
         {
             south_east_tile_coordinates.x -= 1;
@@ -268,7 +268,7 @@ impl ImageryLayer {
         // Create TileImagery instances for each imagery tile overlapping this terrain tile.
         // We need to do all texture coordinate computations in the imagery tile's tiling scheme.
 
-        let terrain_rectangle = rectangle.clone();
+        let terrain_rectangle = tile.rectangle.clone();
         let mut imagery_rectangle = imagery_tiling_scheme.tile_x_y_to_rectange(
             north_west_tile_coordinates.x,
             north_west_tile_coordinates.y,
@@ -403,7 +403,7 @@ impl ImageryLayer {
                 let tex_coords_rectangle = DVec4::new(min_u, min_v, max_u, max_v);
                 let key = TileKey::new(i, j, imagery_level);
                 let imagery = self.add_imagery(&key).unwrap();
-                globe_surface_tile.add(
+                tile.data.add(
                     imagery.clone(),
                     Some(tex_coords_rectangle),
                     use_web_mercator_t,

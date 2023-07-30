@@ -30,6 +30,9 @@ impl TileImagery {
         }
     }
 
+    pub fn process_state_machine(&self) -> bool {
+        false
+    }
     // pub fn process_state_machine(
     //     &mut self,
     //     skip_loading: bool,

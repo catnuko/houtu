@@ -1,6 +1,13 @@
-use bevy::prelude::*;
+use bevy::{core::FrameCount, prelude::*, window::PrimaryWindow};
 
-use self::{quadtree_primitive::QuadtreePrimitive, render_context::RenderContext};
+use self::{
+    imagery_layer_storage::ImageryLayerStorage,
+    quadtree_primitive::QuadtreePrimitive,
+    render_context::RenderContext,
+    traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
+};
+
+use super::camera::GlobeCamera;
 
 mod credit;
 mod ellipsoid_terrain_provider;
@@ -27,6 +34,41 @@ mod traversal_details;
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(RenderContext::new());
+        app.insert_resource(QuadtreePrimitive::new());
+        app.insert_resource(ImageryLayerStorage::new());
+        app.insert_resource(RootTraversalDetails::new());
+        app.insert_resource(AllTraversalQuadDetails::new());
+        app.add_system(render_system);
     }
+}
+fn render_system(
+    mut primitive: ResMut<QuadtreePrimitive>,
+    mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
+    mut globe_camera_query: Query<(&mut GlobeCamera)>,
+    frame_count: Res<FrameCount>,
+    primary_query: Query<&Window, With<PrimaryWindow>>,
+    mut all_traversal_quad_details: ResMut<AllTraversalQuadDetails>,
+    mut root_traversal_details: ResMut<RootTraversalDetails>,
+    time: Res<Time>,
+) {
+    let Ok(window) = primary_query.get_single() else {
+        return;
+    };
+    let mut globe_camera = globe_camera_query
+        .get_single_mut()
+        .expect("GlobeCamera不存在");
+    primitive.beginFrame();
+    primitive.render(
+        &mut globe_camera,
+        &frame_count,
+        window,
+        &mut all_traversal_quad_details,
+        &mut root_traversal_details,
+    );
+    primitive.endFrame(
+        &frame_count,
+        &time,
+        &mut globe_camera,
+        &mut imagery_layer_storage,
+    );
 }

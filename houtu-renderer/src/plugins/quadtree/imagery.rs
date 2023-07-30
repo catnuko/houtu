@@ -14,7 +14,7 @@ use crate::plugins::camera::GlobeCamera;
 
 use super::{imagery_layer::ImageryLayer, tile_key::TileKey};
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum ImageryState {
     UNLOADED = 0,
     TRANSITIONING = 1,
@@ -61,6 +61,16 @@ impl ShareMutImagery {
     #[inline]
     pub fn set_state(&mut self, state: ImageryState) {
         self.lock().state = state;
+    }
+    #[inline]
+    pub fn get_state(&self) -> ImageryState {
+        let v = self.as_ref().lock();
+        return v.state.clone();
+    }
+    #[inline]
+    pub fn get_imagery_layer_id(&self) -> Uuid {
+        let v = self.as_ref().lock();
+        return v.imagery_layer_id.clone();
     }
 }
 pub struct Imagery {

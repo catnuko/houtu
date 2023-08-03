@@ -44,7 +44,6 @@ pub struct GlobeSurfaceTile {
     pub clipped_by_boundaries: bool,
     pub mesh: Option<TerrainMesh>,
     pub bounding_volume_source_tile: Option<Entity>,
-    pub vertex_array: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,
 }
 impl GlobeSurfaceTile {
@@ -57,7 +56,6 @@ impl GlobeSurfaceTile {
             bounding_volume_is_from_mesh: false,
             mesh: None,
             bounding_volume_source_tile: None,
-            vertex_array: None,
             imagery: Vec::new(),
         }
     }

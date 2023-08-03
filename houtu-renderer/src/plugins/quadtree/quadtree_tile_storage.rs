@@ -45,8 +45,12 @@ impl QuadtreeTileStorage {
     pub fn get_mut(&mut self, k: &TileKey) -> Option<&mut QuadtreeTile> {
         return self.map.get_mut(k);
     }
-    pub fn get_children_mut(&mut self, k: &TileKey, location: Quadrant) -> &mut QuadtreeTile {
-        let parent = self.get(k).unwrap();
+    pub fn get_children_mut(
+        &mut self,
+        parent_key: &TileKey,
+        location: Quadrant,
+    ) -> &mut QuadtreeTile {
+        let parent = self.get(parent_key).unwrap();
         let southeast = parent.southeast.clone().unwrap();
         let southwest = parent.southwest.clone().unwrap();
         let northeast = parent.northeast.clone().unwrap();
@@ -56,7 +60,7 @@ impl QuadtreeTileStorage {
             Quadrant::Southwest => self.get_mut(&southwest).unwrap(),
             Quadrant::Northeast => self.get_mut(&northeast).unwrap(),
             Quadrant::Northwest => self.get_mut(&northwest).unwrap(),
-            _ => panic!("no children for tile {:?}", k),
+            _ => panic!("no children for tile {:?}", parent_key),
         };
     }
     fn make_new_root_tile(
@@ -72,6 +76,7 @@ impl QuadtreeTileStorage {
         k: &TileKey,
         tiling_scheme: &GeographicTilingScheme,
     ) -> &mut QuadtreeTile {
+        bevy::log::info!("new root tile,key is {:?}", k);
         let tile = self.make_new_root_tile(k, tiling_scheme);
         self.add(tile);
         return self.get_mut(k).unwrap();
@@ -102,6 +107,7 @@ impl QuadtreeTileStorage {
                 panic!("error")
             }
         }
+
         let parent = self.get_mut(parent_key).unwrap();
 
         let tile = QuadtreeTile::new(
@@ -129,6 +135,10 @@ impl QuadtreeTileStorage {
         return self.get_mut(&child_key).unwrap();
     }
     pub fn subdivide(&mut self, parent_key: &TileKey, tiling_scheme: &GeographicTilingScheme) {
+        let parent = self.get(parent_key).unwrap();
+        if parent.southwest.is_some() {
+            return;
+        }
         self.new_children_tile(parent_key, tiling_scheme, Quadrant::Southeast);
         self.new_children_tile(parent_key, tiling_scheme, Quadrant::Southwest);
         self.new_children_tile(parent_key, tiling_scheme, Quadrant::Northwest);

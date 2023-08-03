@@ -16,6 +16,9 @@ impl ImageryLayerStorage {
             map: HashMap::new(),
         }
     }
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
     pub fn add(&mut self, imagery_layer: ImageryLayer) {
         self.map.insert(imagery_layer.id.clone(), imagery_layer);
     }

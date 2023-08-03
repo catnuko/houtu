@@ -1,6 +1,7 @@
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use bevy::prelude::Entity;
 use houtu_scene::Rectangle;
 
 use super::globe_surface_tile::GlobeSurfaceTile;
@@ -33,6 +34,7 @@ pub struct QuadtreeTile {
     pub replacement_next: Option<TileKey>,
     pub data: GlobeSurfaceTile,
     pub state: QuadtreeTileLoadState,
+    pub entity: Option<Entity>,
 }
 impl QuadtreeTile {
     pub fn new(
@@ -41,6 +43,7 @@ impl QuadtreeTile {
         parent: Option<TileKey>,
         rectangle: Rectangle,
     ) -> Self {
+        bevy::log::info!("new quadtree tile,{:?}", key);
         Self {
             location: location,
             parent: parent,
@@ -59,7 +62,8 @@ impl QuadtreeTile {
             replacement_next: None,
             replacement_previous: None,
             data: GlobeSurfaceTile::new(),
-            state: QuadtreeTileLoadState::DONE,
+            state: QuadtreeTileLoadState::START,
+            entity: None,
         }
     }
     pub fn eligible_for_unloading(&self) -> bool {

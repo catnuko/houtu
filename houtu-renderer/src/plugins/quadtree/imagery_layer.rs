@@ -30,7 +30,8 @@ use crate::plugins::{
 
 use super::{
     globe_surface_tile::GlobeSurfaceTile,
-    imagery::{ImageryState, ShareMutImagery},
+    imagery::{Imagery, ImageryState, ShareMutImagery},
+    imagery_layer_storage::ImageryLayerStorage,
     imagery_provider::ImageryProvider,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_tile::QuadtreeTile,
@@ -439,7 +440,7 @@ impl ImageryLayer {
 
     pub fn calculate_texture_translation_and_scale(
         &mut self,
-        tile: &QuadtreeTile,
+        tile_rectangle: Rectangle,
         tile_imagery: &TileImagery,
     ) -> DVec4 {
         let mut imagery_rectangle = tile_imagery
@@ -447,7 +448,7 @@ impl ImageryLayer {
             .as_ref()
             .unwrap()
             .get_reactangle();
-        let mut quand_tile_rectangle = tile.rectangle.clone();
+        let mut quand_tile_rectangle = tile_rectangle;
 
         if tile_imagery.use_web_mercator_t {
             let tiling_scheme = self.imagery_provider.get_tiling_scheme();
@@ -469,17 +470,16 @@ impl ImageryLayer {
         );
     }
     pub fn reproject_texture(
-        imagery: &ShareMutImagery,
+        imagery: &Imagery,
         need_geographic_projection: bool,
-        images: &mut ResMut<Assets<Image>>,
+        images: &mut Assets<Image>,
         width: u32,
         height: u32,
-        render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
-        indices_and_edges_cache: &mut IndicesAndEdgesCacheArc,
-        render_device: &Res<RenderDevice>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
     ) {
-        let imagery = imagery.lock();
         info!("reproject texture key={:?}", imagery.key);
         let output_texture = images.add(Image {
             texture_descriptor: TextureDescriptor {
@@ -573,23 +573,20 @@ impl ImageryLayer {
         };
         render_world_queue.push(task);
     }
-    pub fn finish_reproject_texture_system(
-        mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
-        // mut imagery_layer_query: Query<(&mut ImageryLayer)>,
-        mut ctx: ResMut<RenderContext>,
-    ) {
-        let (_, receiver) = render_world_queue.status_channel.clone();
-        for i in 0..render_world_queue.count() {
-            let Ok((imagery_layer_id,key))  =receiver.try_recv()else{continue;};
-            let task = render_world_queue.get(&key).expect("task");
-            let mut imagery_layer = ctx
-                .imagery_layer_storage
-                .get_mut(&imagery_layer_id)
-                .unwrap();
-            let mut imagery = imagery_layer.get_imagery_mut(&key).unwrap();
-            imagery.set_texture(task.output_texture.clone());
-            imagery.set_state(ImageryState::READY);
-        }
-    }
+
     pub fn destroy(&mut self) {}
+}
+pub fn finish_reproject_texture_system(
+    mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
+    mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
+) {
+    let (_, receiver) = render_world_queue.status_channel.clone();
+    for i in 0..render_world_queue.count() {
+        let Ok((imagery_layer_id,key))  =receiver.try_recv()else{continue;};
+        let task = render_world_queue.get(&key).expect("task");
+        let mut imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
+        let mut imagery = imagery_layer.get_imagery_mut(&key).unwrap();
+        imagery.set_texture(task.output_texture.clone());
+        imagery.set_state(ImageryState::READY);
+    }
 }

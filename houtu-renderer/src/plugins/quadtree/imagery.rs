@@ -12,7 +12,11 @@ use std::{rc::Rc, sync::Arc};
 
 use crate::plugins::camera::GlobeCamera;
 
-use super::{imagery_layer::ImageryLayer, tile_key::TileKey};
+use super::{
+    imagery_layer::ImageryLayer, imagery_provider::ImageryProvider,
+    indices_and_edges_cache::IndicesAndEdgesCacheArc, reproject_texture::ReprojectTextureTaskQueue,
+    tile_key::TileKey,
+};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum ImageryState {
@@ -73,6 +77,11 @@ impl ShareMutImagery {
         return v.imagery_layer_id.clone();
     }
 }
+impl PartialEq for Imagery {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
 pub struct Imagery {
     pub key: TileKey,
     pub state: ImageryState,
@@ -94,6 +103,54 @@ impl Imagery {
             imagery_layer_id: imagery_layer_id,
             reference_count: 0,
             parent,
+        }
+    }
+    pub fn process_state_machine(
+        &mut self,
+        asset_server: &AssetServer,
+        need_geographic_projection: bool,
+        skip_loading: bool,
+        images: &mut Assets<Image>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        render_device: &RenderDevice,
+        globe_camera: &GlobeCamera,
+        imagery_provider: &Box<dyn ImageryProvider>,
+    ) {
+        if self.state == ImageryState::UNLOADED && !skip_loading {
+            self.state = ImageryState::TRANSITIONING;
+            let request = imagery_provider.request_image(&self.key, asset_server);
+            if let Some(v) = request {
+                self.texture = Some(v);
+                self.state = ImageryState::RECEIVED;
+            } else {
+                self.state = ImageryState::UNLOADED;
+            }
+        }
+
+        if self.state == ImageryState::RECEIVED {
+            self.state = ImageryState::TRANSITIONING;
+            self.state = ImageryState::TEXTURE_LOADED;
+        }
+
+        // If the imagery is already ready, but we need a geographic version and don't have it yet,
+        // we still need to do the reprojection step. imagery can happen if the Web Mercator version
+        // is fine initially, but the geographic one is needed later.
+        let needsReprojection = self.state == ImageryState::READY && need_geographic_projection;
+
+        if self.state == ImageryState::TEXTURE_LOADED || needsReprojection {
+            self.state = ImageryState::TRANSITIONING;
+            ImageryLayer::reproject_texture(
+                self,
+                need_geographic_projection,
+                images,
+                256,
+                256,
+                render_world_queue,
+                indices_and_edges_cache,
+                render_device,
+                globe_camera,
+            );
         }
     }
     #[inline]
@@ -126,52 +183,4 @@ impl Imagery {
         me.state = ImageryState::PLACEHOLDER;
         me
     }
-    // pub fn process_state_machine(
-    //     &mut self,
-    //     asset_server: &Res<AssetServer>,
-    //     imagery_datasource: &XYZDataSource,
-    //     need_geographic_projection: bool,
-    //     skip_loading: bool,
-    //     images: &mut ResMut<Assets<Image>>,
-    //     render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
-    //     indices_and_edges_cache: &mut IndicesAndEdgesCacheArc,
-    //     render_device: &Res<RenderDevice>,
-    //     globe_camera: &GlobeCamera,
-    // ) {
-    //     if self.state == ImageryState::UNLOADED && !skip_loading {
-    //         self.state = ImageryState::TRANSITIONING;
-    //         let request = imagery_datasource.requestImage(&self.key, asset_server);
-    //         if let Some(v) = request {
-    //             self.texture = Some(v);
-    //             self.state = ImageryState::RECEIVED;
-    //         } else {
-    //             self.state = ImageryState::UNLOADED;
-    //         }
-    //     }
-
-    //     if self.state == ImageryState::RECEIVED {
-    //         self.state = ImageryState::TRANSITIONING;
-    //         self.state = ImageryState::TEXTURE_LOADED;
-    //     }
-
-    //     // If the imagery is already ready, but we need a geographic version and don't have it yet,
-    //     // we still need to do the reprojection step. self can happen if the Web Mercator version
-    //     // is fine initially, but the geographic one is needed later.
-    //     let needsReprojection = self.state == ImageryState::READY && need_geographic_projection;
-
-    //     if self.state == ImageryState::TEXTURE_LOADED || needsReprojection {
-    //         self.state = ImageryState::TRANSITIONING;
-    //         ImageryLayer::reproject_texture(
-    //             self,
-    //             need_geographic_projection,
-    //             images,
-    //             256,
-    //             256,
-    //             render_world_queue,
-    //             indices_and_edges_cache,
-    //             render_device,
-    //             globe_camera,
-    //         );
-    //     }
-    // }
 }

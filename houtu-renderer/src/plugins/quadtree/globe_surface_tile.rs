@@ -2,18 +2,28 @@ use std::sync::{Arc, Mutex};
 
 use bevy::{
     math::{DVec3, DVec4},
-    prelude::{Handle, Image},
+    prelude::{AssetServer, Assets, Handle, Image, ResMut},
+    render::renderer::RenderDevice,
 };
+use houtu_jobs::{FinishedJobs, JobSpawner};
 use houtu_scene::{HeightmapTerrainData, TerrainMesh, TileBoundingRegion};
 
+use crate::plugins::camera::GlobeCamera;
+
 use super::{
+    create_terrain_mesh_job::CreateTileJob,
     imagery::{ImageryState, ShareMutImagery},
+    imagery_layer::ImageryLayer,
     imagery_layer_storage::{self, ImageryLayerStorage},
+    indices_and_edges_cache::IndicesAndEdgesCacheArc,
+    quadtree_primitive::QuadtreePrimitive,
     quadtree_tile::{QuadtreeTile, QuadtreeTileLoadState},
     quadtree_tile_storage::QuadtreeTileStorage,
+    reproject_texture::ReprojectTextureTaskQueue,
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
     tile_key::{self, TileKey},
+    upsample_job::UpsampleJob,
 };
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TerrainState {
@@ -36,7 +46,6 @@ pub struct GlobeSurfaceTile {
     pub terrain_state: TerrainState,
     pub bounding_volume_is_from_mesh: bool,
     pub clipped_by_boundaries: bool,
-    pub mesh: Option<TerrainMesh>,
     pub bounding_volume_source_tile: Option<TileKey>,
     pub vertex_array: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,
@@ -51,7 +60,6 @@ impl GlobeSurfaceTile {
             terrain_state: TerrainState::default(),
             clipped_by_boundaries: false,
             bounding_volume_is_from_mesh: false,
-            mesh: None,
             bounding_volume_source_tile: None,
             vertex_array: None,
             imagery: Vec::new(),
@@ -97,6 +105,10 @@ impl GlobeSurfaceTile {
             false
         }
     }
+    pub fn set_terrain_data(&mut self, new_terrain_data: HeightmapTerrainData) {
+        self.terrain_data = Some(Arc::new(Mutex::new(new_terrain_data)));
+        self.terrain_state = TerrainState::RECEIVED;
+    }
     pub fn has_terrain_data(&self) -> bool {
         return self.terrain_data.is_some();
     }
@@ -104,14 +116,21 @@ impl GlobeSurfaceTile {
         storage: &mut QuadtreeTileStorage,
         tile_key: TileKey,
         imagery_layer_storage: &mut ImageryLayerStorage,
+        skip_loading: bool,
+        asset_server: &AssetServer,
+        images: &mut Assets<Image>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        render_device: &RenderDevice,
+        globe_camera: &GlobeCamera,
     ) -> bool {
         let tile = storage.get_mut(&tile_key).unwrap();
 
         let mut is_upsampled_only = tile.upsampled_from_parent;
         let mut is_any_tile_loaded = false;
         let mut is_done_loading = true;
-        let tile_imagery_collection = &tile.data.imagery;
-        for tile_imagery in tile_imagery_collection.iter() {
+        for i in 0..tile.data.imagery.len() {
+            let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
             if tile_imagery.loading_imagery.is_none() {
                 is_upsampled_only = false;
                 continue;
@@ -130,7 +149,25 @@ impl GlobeSurfaceTile {
                     is_upsampled_only = false;
                 }
             }
-            let this_tile_done_loading = tile_imagery.process_state_machine();
+            let imagery_layer_id = tile_imagery
+                .loading_imagery
+                .as_ref()
+                .unwrap()
+                .get_imagery_layer_id();
+            let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
+            let this_tile_done_loading = TileImagery::process_state_machine(
+                tile,
+                i,
+                skip_loading,
+                imagery_layer,
+                asset_server,
+                images,
+                render_world_queue,
+                indices_and_edges_cache,
+                render_device,
+                globe_camera,
+            );
+            let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
             is_done_loading = is_done_loading && this_tile_done_loading;
             is_any_tile_loaded = is_any_tile_loaded
                 || this_tile_done_loading
@@ -152,11 +189,30 @@ impl GlobeSurfaceTile {
         terrain_provider: &Box<dyn TerrainProvider>,
         imagery_layer_storage: &mut ImageryLayerStorage,
         terrainOnly: bool,
+        job_spawner: &mut JobSpawner,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        asset_server: &AssetServer,
+        images: &mut Assets<Image>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        render_device: &RenderDevice,
+        globe_camera: &GlobeCamera,
     ) {
         initialize(storage, tile_key, terrain_provider, imagery_layer_storage);
         let tile = storage.get_mut(&tile_key).unwrap();
         if tile.state == QuadtreeTileLoadState::LOADING {
-            processTerrainStateMachine(storage, tile_key, terrain_provider, imagery_layer_storage);
+            processTerrainStateMachine(
+                storage,
+                tile_key,
+                terrain_provider,
+                imagery_layer_storage,
+                job_spawner,
+                indices_and_edges_cache,
+                asset_server,
+                images,
+                render_world_queue,
+                render_device,
+                globe_camera,
+            );
         }
         if terrainOnly {
             return;
@@ -164,7 +220,7 @@ impl GlobeSurfaceTile {
         let tile = storage.get_mut(&tile_key).unwrap();
 
         let was_already_renderable = tile.renderable;
-        tile.renderable = tile.data.vertex_array.is_some();
+        tile.renderable = tile.data.has_mesh();
         let is_terrain_done_loading = tile.data.terrain_state == TerrainState::READY;
         tile.upsampled_from_parent = tile.data.terrain_data.is_some()
             && tile
@@ -175,8 +231,18 @@ impl GlobeSurfaceTile {
                 .lock()
                 .unwrap()
                 .was_created_by_upsampling();
-        let is_imagery_done_loading =
-            GlobeSurfaceTile::processImagery(storage, tile_key, imagery_layer_storage);
+        let is_imagery_done_loading = GlobeSurfaceTile::processImagery(
+            storage,
+            tile_key,
+            imagery_layer_storage,
+            false,
+            asset_server,
+            images,
+            render_world_queue,
+            indices_and_edges_cache,
+            render_device,
+            globe_camera,
+        );
         let tile = storage.get_mut(&tile_key).unwrap();
         if is_terrain_done_loading && is_imagery_done_loading {
             tile.state = QuadtreeTileLoadState::DONE;
@@ -191,6 +257,13 @@ fn processTerrainStateMachine(
     tile_key: TileKey,
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    job_spawner: &mut JobSpawner,
+    indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+    asset_server: &AssetServer,
+    images: &mut Assets<Image>,
+    render_world_queue: &mut ReprojectTextureTaskQueue,
+    render_device: &RenderDevice,
+    globe_camera: &GlobeCamera,
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.data.terrain_state == TerrainState::FAILED && tile.parent.is_some() {
@@ -212,16 +285,83 @@ fn processTerrainStateMachine(
                 terrain_provider,
                 imagery_layer_storage,
                 true,
+                job_spawner,
+                indices_and_edges_cache,
+                asset_server,
+                images,
+                render_world_queue,
+                render_device,
+                globe_camera,
             );
         }
     }
     let tile = storage.get_mut(&tile_key).unwrap();
-    if tile.data.terrain_state == TerrainState::FAILED {}
-    if tile.data.terrain_state == TerrainState::UNLOADED {}
-    if tile.data.terrain_state == TerrainState::RECEIVED {}
-    if tile.data.terrain_state == TerrainState::TRANSFORMED {}
+    if tile.data.terrain_state == TerrainState::FAILED {
+        if tile.parent.is_some() {
+            let parent_key = tile.parent.unwrap().clone();
+            let parent = storage.get(&parent_key).unwrap();
+            if parent.data.terrain_data.is_some() {
+                job_spawner.spawn(UpsampleJob {
+                    terrain_data: parent.data.get_cloned_terrain_data(),
+                    tiling_scheme: terrain_provider.get_tiling_scheme().clone(),
+                    parent_key: parent_key,
+                    key: tile_key,
+                })
+            }
+        } else {
+            tile.state = QuadtreeTileLoadState::FAILED;
+        }
+    }
+    let tile = storage.get_mut(&tile_key).unwrap();
+    if tile.data.terrain_state == TerrainState::UNLOADED {
+        tile.data.terrain_state = TerrainState::RECEIVING;
+        let value = terrain_provider
+            .request_tile_geometry()
+            .expect("terrain_datasource.request_tile_geometry");
+        tile.data.set_terrain_data(value);
+    }
+    let tile = storage.get_mut(&tile_key).unwrap();
+    if tile.data.terrain_state == TerrainState::RECEIVING {}
+    let tile = storage.get_mut(&tile_key).unwrap();
+    if tile.data.terrain_state == TerrainState::RECEIVED {
+        job_spawner.spawn(CreateTileJob {
+            terrain_data: tile.data.get_cloned_terrain_data(),
+            key: tile_key,
+            tiling_scheme: terrain_provider.get_tiling_scheme().clone(),
+            indices_and_edges_cache: indices_and_edges_cache.get_cloned_cache(),
+        });
+        tile.data.terrain_state = TerrainState::TRANSFORMING;
+    }
+    let tile = storage.get_mut(&tile_key).unwrap();
+    if tile.data.terrain_state == TerrainState::TRANSFORMING {}
+    if tile.data.terrain_state == TerrainState::TRANSFORMED {
+        tile.data.terrain_state = TerrainState::READY;
+        bevy::log::info!("terrain state of tile {:?} is ready", tile.key);
+    }
+    if tile.data.terrain_state == TerrainState::READY {}
 }
+pub fn process_terrain_state_machine_system(
+    mut finished_jobs: FinishedJobs,
+    mut primitive: ResMut<QuadtreePrimitive>,
+) {
+    while let Some(result) = finished_jobs.take_next::<CreateTileJob>() {
+        if let Ok(res) = result {
+            let mut tile = primitive.storage.get_mut(&res.key).unwrap();
+            tile.data.terrain_state = TerrainState::TRANSFORMED;
+        }
+    }
+    while let Some(result) = finished_jobs.take_next::<UpsampleJob>() {
+        if let Ok(res) = result {
+            let mut tile = primitive.storage.get_mut(&res.key).unwrap();
 
+            if let Some(new_terrain_data) = res.terrain_data {
+                tile.data.set_terrain_data(new_terrain_data);
+            } else {
+                tile.data.terrain_state = TerrainState::FAILED;
+            }
+        }
+    }
+}
 fn initialize(
     storage: &mut QuadtreeTileStorage,
     tile_key: TileKey,

@@ -1,10 +1,20 @@
 use std::borrow::Borrow;
 
-use bevy::{math::DVec4, prelude::Image};
+use bevy::{
+    math::DVec4,
+    prelude::{AssetServer, Assets, Image},
+    render::renderer::RenderDevice,
+};
+
+use crate::plugins::camera::GlobeCamera;
 
 use super::{
     imagery::{Imagery, ImageryState, ShareMutImagery},
     imagery_layer::ImageryLayer,
+    indices_and_edges_cache::IndicesAndEdgesCacheArc,
+    quadtree_tile::QuadtreeTile,
+    quadtree_tile_storage::QuadtreeTileStorage,
+    reproject_texture::ReprojectTextureTaskQueue,
     tile_key::TileKey,
 };
 
@@ -30,139 +40,116 @@ impl TileImagery {
         }
     }
 
-    pub fn process_state_machine(&self) -> bool {
-        false
+    pub fn process_state_machine(
+        tile: &mut QuadtreeTile,
+        tile_imagery_index: usize,
+        skip_loading: bool,
+        imagery_layer: &mut ImageryLayer,
+        asset_server: &AssetServer,
+        images: &mut Assets<Image>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        render_device: &RenderDevice,
+        globe_camera: &GlobeCamera,
+    ) -> bool {
+        let tile_imagery = tile.data.imagery.get_mut(tile_imagery_index).unwrap();
+        let loading_imagery_cloned = tile_imagery.loading_imagery.as_mut().unwrap().clone();
+        let mut loading_imagery = loading_imagery_cloned.lock();
+        loading_imagery.process_state_machine(
+            asset_server,
+            !tile_imagery.use_web_mercator_t,
+            skip_loading,
+            images,
+            render_world_queue,
+            indices_and_edges_cache,
+            render_device,
+            globe_camera,
+            &imagery_layer.imagery_provider,
+        );
+        // let tile = storage.get_mut(&tile_key).unwrap();
+        if loading_imagery.state == ImageryState::READY {
+            bevy::log::info!("imagery of tile {:?} is ready", tile.key);
+
+            if tile_imagery.ready_imagery.is_some() {
+                // tile_imagery.ready_imagery.release_reference();
+            }
+            tile_imagery.ready_imagery = tile_imagery.loading_imagery.clone();
+            tile_imagery.loading_imagery = None;
+            tile_imagery.texture_translation_and_scale = Some(
+                imagery_layer
+                    .calculate_texture_translation_and_scale(tile.rectangle.clone(), tile_imagery),
+            );
+            return true; // done loading
+        }
+
+        let mut ancestor = loading_imagery
+            .parent
+            .as_ref()
+            .and_then(|x| Some(x.clone()));
+
+        let mut closest_ancestor_that_needs_loading: Option<ShareMutImagery> = None;
+        while ancestor.is_some()
+            && ancestor.as_ref().unwrap().clone().lock().state != ImageryState::READY
+            || (!tile_imagery.use_web_mercator_t
+                && ancestor.as_ref().unwrap().clone().lock().texture.is_none())
+        {
+            let ancestor_cloned = tile_imagery.loading_imagery.as_mut().unwrap().clone();
+            let ancestor_imagery = ancestor_cloned.lock();
+            if ancestor_imagery.state != ImageryState::FAILED
+                && ancestor_imagery.state != ImageryState::INVALID
+            {
+                if closest_ancestor_that_needs_loading.is_none() {
+                    closest_ancestor_that_needs_loading = ancestor.clone();
+                }
+            }
+            ancestor = ancestor_imagery
+                .parent
+                .as_ref()
+                .and_then(|x| Some(x.clone()));
+        }
+        if (tile_imagery.ready_imagery.is_some()
+            && ancestor.is_some()
+            && tile_imagery.ready_imagery.as_ref().unwrap().lock().key
+                != ancestor.as_ref().unwrap().lock().key)
+            || (tile_imagery.ready_imagery.is_none() && ancestor.is_none())
+        {
+            if tile_imagery.ready_imagery.is_some() {
+                //readsy_imagery减少引用
+            }
+            tile_imagery.ready_imagery = ancestor.as_ref().and_then(|x| Some(x.clone()));
+            if ancestor.is_some() {
+                //ancestor增加引用
+                tile_imagery.texture_translation_and_scale =
+                    Some(imagery_layer.calculate_texture_translation_and_scale(
+                        tile.rectangle.clone(),
+                        tile_imagery,
+                    ));
+            }
+        }
+        let loading_imagery = tile_imagery.loading_imagery.as_ref().unwrap().lock();
+        if loading_imagery.state == ImageryState::FAILED
+            || loading_imagery.state == ImageryState::INVALID
+        {
+            if closest_ancestor_that_needs_loading.is_some() {
+                closest_ancestor_that_needs_loading
+                    .as_mut()
+                    .unwrap()
+                    .lock()
+                    .process_state_machine(
+                        asset_server,
+                        !tile_imagery.use_web_mercator_t,
+                        skip_loading,
+                        images,
+                        render_world_queue,
+                        indices_and_edges_cache,
+                        render_device,
+                        globe_camera,
+                        &imagery_layer.imagery_provider,
+                    );
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
-    // pub fn process_state_machine(
-    //     &mut self,
-    //     skip_loading: bool,
-    //     imagery_layer: &mut ImageryLayer,
-    //     imagery_datasource: &XYZDataSource,
-    //     quad_tile_rectangle: &Rectangle,
-    //     asset_server: &Res<AssetServer>,
-    //     images: &mut ResMut<Assets<Image>>,
-    //     render_world_queue: &mut ResMut<ReprojectTextureTaskQueue>,
-    //     indices_and_edges_cache: &mut IndicesAndEdgesCacheArc,
-    //     render_device: &Res<RenderDevice>,
-    //     globe_camera: &GlobeCamera,
-    // ) -> bool {
-    //     let loading_imagery = self
-    //         .get_loading_imagery_mut(imagery_layer)
-    //         .expect("imagery.loading_imagery");
-    //     // let imagery_layer = loading_imagery.imagery_layer;
-
-    //     loading_imagery.process_state_machine(
-    //         asset_server,
-    //         imagery_datasource,
-    //         !self.use_web_mercator_t,
-    //         skip_loading,
-    //         images,
-    //         render_world_queue,
-    //         indices_and_edges_cache,
-    //         render_device,
-    //         globe_camera,
-    //     );
-
-    //     if loading_imagery.state == ImageryState::READY {
-    //         if self.ready_imagery.is_some() {
-    //             // self.ready_imagery.release_reference();
-    //         }
-    //         self.ready_imagery = self.loading_imagery;
-    //         self.loading_imagery = None;
-    //         self.texture_translation_and_scale =
-    //             Some(imagery_layer.calculate_texture_translation_and_scale(
-    //                 self,
-    //                 quad_tile_rectangle,
-    //                 &imagery_datasource.tiling_scheme,
-    //             ));
-    //         return true; // done loading
-    //     }
-    //     let v = if let Some(parent_key) = loading_imagery.parent.and_then(|f| Some(f.clone())) {
-    //         let mut ancestor = imagery_layer.get_imagery(&parent_key);
-    //         // Find some ancestor imagery we can use while self imagery is still loading.
-    //         let mut closest_ancestor_that_needs_loading: Option<&Imagery> = None;
-    //         while ancestor.is_some()
-    //             && (ancestor.unwrap().state != ImageryState::READY
-    //                 || (!self.use_web_mercator_t && ancestor.unwrap().texture.is_none()))
-    //         {
-    //             if ancestor.unwrap().state != ImageryState::FAILED
-    //                 && ancestor.unwrap().state != ImageryState::INVALID
-    //             {
-    //                 // ancestor is still loading
-    //                 if closest_ancestor_that_needs_loading.is_none() && ancestor.is_some() {
-    //                     closest_ancestor_that_needs_loading = ancestor
-    //                 }
-    //             }
-    //             ancestor = if let Some(v) = ancestor {
-    //                 v.get_parent(imagery_layer)
-    //             } else {
-    //                 None
-    //             };
-    //         }
-    //         Some((
-    //             ancestor,
-    //             closest_ancestor_that_needs_loading.and_then(|x| Some(x.key.clone())),
-    //         ))
-    //     } else {
-    //         None
-    //     };
-    //     if v.is_none() {
-    //         return false;
-    //     }
-    //     let (ancestor, closest_ancestor_that_needs_loading) = v.unwrap();
-
-    //     if match (self.ready_imagery, ancestor) {
-    //         (Some(a), Some(b)) => a.1 == b.key,
-    //         _ => false,
-    //     } {
-    //         if self.ready_imagery.is_some() {
-    //             // self.ready_imagery.release_reference();
-    //         }
-
-    //         self.ready_imagery = Some((imagery_layer.entity, ancestor.unwrap().key.clone()));
-
-    //         if ancestor.is_some() {
-    //             // ancestor.add_reference();
-    //             self.texture_translation_and_scale =
-    //                 Some(imagery_layer.calculate_texture_translation_and_scale(
-    //                     self,
-    //                     quad_tile_rectangle,
-    //                     &imagery_datasource.tiling_scheme,
-    //                 ));
-    //         }
-    //     }
-    //     let loading_imagery = self
-    //         .get_loading_imagery_mut(imagery_layer)
-    //         .expect("imagery.loading_imagery");
-    //     if loading_imagery.state == ImageryState::FAILED
-    //         || loading_imagery.state == ImageryState::INVALID
-    //     {
-    //         // The imagery tile is failed or invalid, so we'd like to use an ancestor instead.
-    //         if closest_ancestor_that_needs_loading.is_some() {
-    //             // Push the ancestor's load process along a bit.  self is necessary because some ancestor imagery
-    //             // tiles may not be attached directly to a terrain tile.  Such tiles will never load if
-    //             // we don't do it here.
-    //             let closest_ancestor_that_needs_loading = imagery_layer
-    //                 .get_imagery_mut(closest_ancestor_that_needs_loading.as_ref().unwrap());
-    //             closest_ancestor_that_needs_loading
-    //                 .unwrap()
-    //                 .process_state_machine(
-    //                     asset_server,
-    //                     imagery_datasource,
-    //                     !self.use_web_mercator_t,
-    //                     skip_loading,
-    //                     images,
-    //                     render_world_queue,
-    //                     indices_and_edges_cache,
-    //                     render_device,
-    //                     globe_camera,
-    //                 );
-    //             return false; // not done loading
-    //         }
-    //         // self imagery tile is failed or invalid, and we have the "best available" substitute.
-    //         return true; // done loading
-    //     }
-
-    //     return false; // not done loading
-    // }
 }

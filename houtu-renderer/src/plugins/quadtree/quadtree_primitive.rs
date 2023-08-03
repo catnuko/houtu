@@ -2,10 +2,12 @@ use std::{cmp::Ordering, primitive};
 
 use bevy::{
     core::FrameCount,
-    prelude::{Res, ResMut, Resource},
+    prelude::{AssetServer, Assets, Image, Res, ResMut, Resource},
+    render::renderer::RenderDevice,
     time::Time,
     window::Window,
 };
+use houtu_jobs::JobSpawner;
 use houtu_scene::{
     Cartographic, Ellipsoid, EllipsoidalOccluder, GeographicTilingScheme, Matrix4, Rectangle,
 };
@@ -16,9 +18,11 @@ use super::{
     globe_surface_tile::GlobeSurfaceTile,
     globe_surface_tile_provider::{GlobeSurfaceTileProvider, TileVisibility},
     imagery_layer_storage::ImageryLayerStorage,
+    indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive_debug::QuadtreePrimitiveDebug,
     quadtree_tile::{Quadrant, QuadtreeTile, QuadtreeTileLoadState},
     quadtree_tile_storage::QuadtreeTileStorage,
+    reproject_texture::ReprojectTextureTaskQueue,
     terrain_provider::{self, TerrainProvider},
     tile_key::TileKey,
     tile_replacement_queue::TileReplacementQueue,
@@ -41,7 +45,7 @@ pub struct QuadtreePrimitive {
     pub camera_position_cartographic: Option<Cartographic>,
     pub camera_reference_frame_origin_cartographic: Option<Cartographic>,
     pub debug: QuadtreePrimitiveDebug,
-    storage: QuadtreeTileStorage,
+    pub storage: QuadtreeTileStorage,
     pub tile_load_queue_high: Vec<TileKey>,
     pub tile_load_queue_medium: Vec<TileKey>,
     pub tile_load_queue_low: Vec<TileKey>,
@@ -90,7 +94,7 @@ impl QuadtreePrimitive {
         self.tile_load_queue_high.clear();
         self.tile_load_queue_medium.clear();
         self.tile_load_queue_low.clear();
-        self.clear_tile_load_queue();
+        self.debug.reset();
     }
     fn invalidate_all_tiles(&mut self) {
         self.tile_replacement_queue.clear();
@@ -128,6 +132,10 @@ impl QuadtreePrimitive {
         all_traversal_quad_details: &mut AllTraversalQuadDetails,
         root_traversal_details: &mut RootTraversalDetails,
     ) {
+        if self.debug.suspend_lod_update {
+            return;
+        }
+        self.tiles_to_render.clear();
         if self.storage.root_len() == 0 {
             self.create_level_zero_tiles();
             let len = self.storage.root_len();
@@ -189,8 +197,26 @@ impl QuadtreePrimitive {
         time: &Res<Time>,
         camera: &mut GlobeCamera,
         imagery_layer_storage: &mut ImageryLayerStorage,
+        job_spawner: &mut JobSpawner,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        asset_server: &AssetServer,
+        images: &mut Assets<Image>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        render_device: &RenderDevice,
     ) {
-        process_tile_load_queue(self, frame_count, time, camera, imagery_layer_storage);
+        process_tile_load_queue(
+            self,
+            frame_count,
+            time,
+            camera,
+            imagery_layer_storage,
+            job_spawner,
+            indices_and_edges_cache,
+            asset_server,
+            images,
+            render_world_queue,
+            render_device,
+        );
         update_tile_load_progress_system(self);
     }
 }
@@ -201,6 +227,12 @@ fn process_tile_load_queue(
     time: &Res<Time>,
     camera: &mut GlobeCamera,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    job_spawner: &mut JobSpawner,
+    indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+    asset_server: &AssetServer,
+    images: &mut Assets<Image>,
+    render_world_queue: &mut ReprojectTextureTaskQueue,
+    render_device: &RenderDevice,
 ) {
     if (primitive.tile_load_queue_high.len() == 0
         && primitive.tile_load_queue_medium.len() == 0
@@ -228,6 +260,12 @@ fn process_tile_load_queue(
         QueueType::High,
         camera,
         imagery_layer_storage,
+        job_spawner,
+        indices_and_edges_cache,
+        asset_server,
+        images,
+        render_world_queue,
+        render_device,
     );
     process_single_priority_load_queue(
         primitive,
@@ -238,6 +276,12 @@ fn process_tile_load_queue(
         QueueType::Medium,
         camera,
         imagery_layer_storage,
+        job_spawner,
+        indices_and_edges_cache,
+        asset_server,
+        images,
+        render_world_queue,
+        render_device,
     );
     process_single_priority_load_queue(
         primitive,
@@ -248,6 +292,12 @@ fn process_tile_load_queue(
         QueueType::Low,
         camera,
         imagery_layer_storage,
+        job_spawner,
+        indices_and_edges_cache,
+        asset_server,
+        images,
+        render_world_queue,
+        render_device,
     );
 }
 
@@ -260,6 +310,12 @@ fn process_single_priority_load_queue(
     queue_type: QueueType,
     camera: &mut GlobeCamera,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    job_spawner: &mut JobSpawner,
+    indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+    asset_server: &AssetServer,
+    images: &mut Assets<Image>,
+    render_world_queue: &mut ReprojectTextureTaskQueue,
+    render_device: &RenderDevice,
 ) {
     let load_queue = match queue_type {
         QueueType::High => &primitive.tile_load_queue_high,
@@ -273,9 +329,15 @@ fn process_single_priority_load_queue(
         primitive.tile_provider.load_tile(
             &mut primitive.storage,
             &primitive.occluders,
-            camera,
             *i,
             imagery_layer_storage,
+            job_spawner,
+            indices_and_edges_cache,
+            asset_server,
+            images,
+            render_world_queue,
+            render_device,
+            camera,
         );
         *did_some_loading = true;
         let seconds = time.elapsed_seconds_f64();
@@ -416,9 +478,10 @@ fn visitTile(
         let mut renderable =
             one_rendered_last_frame || two_culled_or_not_visited || three_completely_loaded;
         if !renderable {
-            renderable = primitive
-                .tile_provider
-                .can_render_without_losing_detail(tile);
+            // renderable = primitive
+            //     .tile_provider
+            //     .can_render_without_losing_detail(tile,,primitive);
+            renderable = false;
         }
         if renderable {
             if meets_sse {

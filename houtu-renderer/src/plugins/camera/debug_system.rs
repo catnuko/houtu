@@ -45,6 +45,18 @@ pub fn debug_system(
         for event in mouse_event_reader.iter() {
             match event {
                 MouseEvent::LeftClick(position) => {
+                    let camera_llh = globe_camera.get_position_cartographic();
+                    println!(
+                        "camera lonlatheight: {},{},{}",
+                        camera_llh.longitude.to_degrees(),
+                        camera_llh.latitude.to_degrees(),
+                        camera_llh.height
+                    );
+                    let camera_cartesian3 = globe_camera.get_position_wc();
+                    println!(
+                        "camera cartesian3: {},{},{}",
+                        camera_cartesian3.x, camera_cartesian3.y, camera_cartesian3.z
+                    );
                     println!("window positon: x={},y={}", position.x, position.y);
                     let cartesian = globe_camera.pickEllipsoid(&position, &window_size);
                     if cartesian.is_some() {
@@ -58,7 +70,9 @@ pub fn debug_system(
                             let cartogaphic = cartographic.unwrap();
                             println!(
                                 "cartogaphic: lon={},lat={},height={}",
-                                cartogaphic.longitude, cartogaphic.latitude, cartogaphic.height
+                                cartogaphic.longitude.to_degrees(),
+                                cartogaphic.latitude.to_degrees(),
+                                cartogaphic.height
                             );
                         }
                     }

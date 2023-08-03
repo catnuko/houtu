@@ -9,6 +9,7 @@ mod jobs;
 mod plugins;
 mod systems;
 mod z_index;
+use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
 use houtu_scene::Ellipsoid;

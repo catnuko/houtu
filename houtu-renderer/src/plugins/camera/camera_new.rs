@@ -77,7 +77,9 @@ impl GlobeCameraFrustum {
     pub fn sse_denominator(&self) -> f64 {
         self._sseDenominator
     }
-
+    pub fn get_off_center_frustum(&self) -> &PerspectiveOffCenterFrustum {
+        return &self._offCenterFrustum;
+    }
     fn update_self(&mut self) {
         self._sseDenominator = (2.0 * (0.5 * self.fov)).tan();
         self.fovy = {

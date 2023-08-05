@@ -1,7 +1,8 @@
-use bevy::math::{DVec3, DVec4};
+use bevy::math::{DMat4, DVec3, DVec4};
 
-use crate::{Cartesian3, CullingVolume};
+use crate::{Cartesian3, CullingVolume, Matrix4};
 
+#[derive(Clone)]
 pub struct PerspectiveOffCenterFrustum {
     pub left: f64,
     _left: f64,
@@ -16,6 +17,8 @@ pub struct PerspectiveOffCenterFrustum {
     pub far: f64,
     _far: f64,
     _cullingVolume: CullingVolume,
+    pub perspective_matrix: DMat4,
+    pub infinite_perspective: DMat4,
 }
 impl PerspectiveOffCenterFrustum {
     pub fn new() -> Self {
@@ -33,7 +36,49 @@ impl PerspectiveOffCenterFrustum {
             far: -1.0,
             _far: -1.0,
             _cullingVolume: CullingVolume::new(None),
+            infinite_perspective: DMat4::ZERO,
+            perspective_matrix: DMat4::ZERO,
         }
+    }
+    fn update_self(&mut self) {
+        let t = self.top;
+        let b = self.bottom;
+        let r = self.right;
+        let l = self.left;
+        let n = self.near;
+        let f = self.far;
+
+        if (t != self._top
+            || b != self._bottom
+            || l != self._left
+            || r != self._right
+            || n != self._near
+            || f != self._far)
+        {
+            //>>includeStart('debug', pragmas.debug);
+            if (self.near <= 0.0 || self.near > self.far) {
+                panic!("near must be greater than zero and less than far.");
+            }
+            //>>includeEnd('debug');
+
+            self._left = l;
+            self._right = r;
+            self._top = t;
+            self._bottom = b;
+            self._near = n;
+            self._far = f;
+            self.perspective_matrix = DMat4::compute_perspective_off_center(l, r, b, t, n, f);
+            self.infinite_perspective =
+                DMat4::compute_infinite_perspective_off_center(l, r, b, t, n);
+        }
+    }
+    pub fn get_projection_matrix(&mut self) -> &DMat4 {
+        self.update_self();
+        return &self.perspective_matrix;
+    }
+    pub fn get_infinite_perspective(&mut self) -> &DMat4 {
+        self.update_self();
+        return &self.infinite_perspective;
     }
     pub fn computeCullingVolume(
         &mut self,

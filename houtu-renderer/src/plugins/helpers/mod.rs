@@ -12,27 +12,18 @@ use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid, HeadingPitchRoll};
 use self::ui_state::UiState;
 mod camera;
 mod font;
+mod genera;
 mod ui_state;
 pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EguiPlugin)
             .add_plugin(DebugLinesPlugin::with_depth_test(true))
-            .insert_resource(UiState {
-                label: "test".to_string(),
-                show_xyz: true,
-                show_frustum: false,
-                show_frustum_planes: false,
-                show_performance: false,
-                show_wireframe: false,
-                suspend_lod_update: false,
-                show_tile_coordinates: false,
-                debug_camera_position: false,
-                debug_camera_dur: false,
-            })
+            .insert_resource(UiState::default())
             .add_startup_system(font::config_ctx)
-            .add_system(camera::debug_camera_system)
+            .add_system(camera::debug_system)
             .add_system(ui_example_system)
+            .add_system(genera::debug_system)
             .add_startup_system(setup);
     }
 }
@@ -55,38 +46,20 @@ fn ui_example_system(mut contexts: EguiContexts, mut state: ResMut<UiState>) {
                 // }
                 ui.end_row();
                 ui.checkbox(&mut state.show_frustum, "Show frustums");
-                if state.show_frustum {
-                    println!("show frustums");
-                }
                 ui.end_row();
 
-                ui.checkbox(&mut state.show_frustum_planes, "Show frustums");
-                if state.show_frustum_planes {
-                    println!("show frustum planes");
-                }
+                ui.checkbox(&mut state.show_frustum_planes, "Show frustum planes");
                 ui.end_row();
                 ui.checkbox(&mut state.show_performance, "Show performance");
-                if state.show_performance {
-                    println!("show performance");
-                }
                 ui.end_row();
             });
             ui.collapsing("Terrain", |ui| {
                 ui.checkbox(&mut state.show_wireframe, "Wireframe");
-                if state.show_wireframe {
-                    println!("show wireframe");
-                }
                 ui.end_row();
 
                 ui.checkbox(&mut state.suspend_lod_update, "Suspend LOD update");
-                if state.suspend_lod_update {
-                    println!("Suspend LOD update");
-                }
                 ui.end_row();
                 ui.checkbox(&mut state.show_tile_coordinates, "Show tile coordinates");
-                if state.show_tile_coordinates {
-                    println!("Show tile coordinates");
-                }
                 ui.end_row();
             });
             ui.collapsing("Camera", |ui| {

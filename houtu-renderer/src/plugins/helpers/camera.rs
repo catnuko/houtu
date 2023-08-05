@@ -12,7 +12,7 @@ use crate::plugins::camera::{GlobeCamera, MouseEvent};
 
 use super::ui_state::UiState;
 
-pub fn debug_camera_system(
+pub fn debug_system(
     primary_query: Query<&Window, With<PrimaryWindow>>,
     state: Res<UiState>,
     mut mouse_event_reader: EventReader<MouseEvent>,

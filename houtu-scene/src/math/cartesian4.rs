@@ -4,7 +4,7 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use bevy::math::DVec4;
+use bevy::math::{DMat4, DVec4};
 
 use crate::{ellipsoid::Ellipsoid, math::*};
 pub trait Cartesian4 {
@@ -30,6 +30,7 @@ impl Cartesian4 for DVec4 {
         result.w = self.w / scalar;
         return result;
     }
+
     fn equals(&self, right: DVec4) -> bool {
         return self.eq(&right);
     }

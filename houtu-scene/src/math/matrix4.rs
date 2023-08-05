@@ -162,7 +162,14 @@ pub trait Matrix4 {
     fn multiply_by_point_as_vector(&self, cartesian: &DVec3) -> DVec3;
     fn from_raw_list(slice: [f64; 16]) -> DMat4;
     fn to_mat4_32(&self) -> Mat4;
-
+    fn compute_perspective_off_center(
+        left: f64,
+        right: f64,
+        bottom: f64,
+        top: f64,
+        near: f64,
+        far: f64,
+    ) -> DMat4;
     fn compute_orthographic_off_center(
         left: f64,
         right: f64,
@@ -171,8 +178,85 @@ pub trait Matrix4 {
         near: f64,
         far: f64,
     ) -> DMat4;
+    fn compute_infinite_perspective_off_center(
+        left: f64,
+        right: f64,
+        bottom: f64,
+        top: f64,
+        near: f64,
+    ) -> DMat4;
 }
 impl Matrix4 for DMat4 {
+    fn compute_infinite_perspective_off_center(
+        left: f64,
+        right: f64,
+        bottom: f64,
+        top: f64,
+        near: f64,
+    ) -> DMat4 {
+        let mut result: [f64; 16] = [0.; 16];
+
+        let column0Row0 = (2.0 * near) / (right - left);
+        let column1Row1 = (2.0 * near) / (top - bottom);
+        let column2Row0 = (right + left) / (right - left);
+        let column2Row1 = (top + bottom) / (top - bottom);
+        let column2Row2 = -1.0;
+        let column2Row3 = -1.0;
+        let column3Row2 = -2.0 * near;
+
+        result[0] = column0Row0;
+        result[1] = 0.0;
+        result[2] = 0.0;
+        result[3] = 0.0;
+        result[4] = 0.0;
+        result[5] = column1Row1;
+        result[6] = 0.0;
+        result[7] = 0.0;
+        result[8] = column2Row0;
+        result[9] = column2Row1;
+        result[10] = column2Row2;
+        result[11] = column2Row3;
+        result[12] = 0.0;
+        result[13] = 0.0;
+        result[14] = column3Row2;
+        result[15] = 0.0;
+        return DMat4::from_raw_list(result);
+    }
+    fn compute_perspective_off_center(
+        left: f64,
+        right: f64,
+        bottom: f64,
+        top: f64,
+        near: f64,
+        far: f64,
+    ) -> DMat4 {
+        let mut result: [f64; 16] = [0.; 16];
+        let column0Row0 = (2.0 * near) / (right - left);
+        let column1Row1 = (2.0 * near) / (top - bottom);
+        let column2Row0 = (right + left) / (right - left);
+        let column2Row1 = (top + bottom) / (top - bottom);
+        let column2Row2 = -(far + near) / (far - near);
+        let column2Row3 = -1.0;
+        let column3Row2 = (-2.0 * far * near) / (far - near);
+
+        result[0] = column0Row0;
+        result[1] = 0.0;
+        result[2] = 0.0;
+        result[3] = 0.0;
+        result[4] = 0.0;
+        result[5] = column1Row1;
+        result[6] = 0.0;
+        result[7] = 0.0;
+        result[8] = column2Row0;
+        result[9] = column2Row1;
+        result[10] = column2Row2;
+        result[11] = column2Row3;
+        result[12] = 0.0;
+        result[13] = 0.0;
+        result[14] = column3Row2;
+        result[15] = 0.0;
+        return DMat4::from_raw_list(result);
+    }
     fn from_raw_list(slice: [f64; 16]) -> DMat4 {
         return make_matrix4_from_raw(slice);
     }

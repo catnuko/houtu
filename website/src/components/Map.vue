@@ -1,8 +1,6 @@
 <script setup>
-window.CESIUM_BASE_URL = '/Cesium';
+// window.CESIUM_BASE_URL = '/Cesium';
 import { onBeforeUnmount, onMounted } from 'vue';
-import * as Cesium from 'cesium'
-import "cesium/Build/Cesium/Widgets/widgets.css";
 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1MmIxYWJmNy0yZDA1LTRiYmQtYmI3Ny1iMGIwNTk5NWQyMWYiLCJpZCI6Mjk5MjQsImlhdCI6MTU5OTIwMDkxOX0.aUw9ehdKoobH0GEq5lp3s3Uk9_QSMZVvFFrsLsAACqc"
 const { Cartesian2, Cartesian3, Cartographic, Camera, Scene, defaultValue, GeographicProjection, TweenCollection, MapMode2D, SceneMode, Rectangle } = Cesium
 const CesiumMath = Cesium.Math

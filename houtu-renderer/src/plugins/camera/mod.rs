@@ -16,12 +16,10 @@ use bevy::{
 mod camera_event_aggregator;
 mod camera_new;
 mod camera_old;
-mod debug_system;
 mod egui;
 mod pan_orbit;
-use self::{
-    camera_new::CameraControlPlugin, debug_system::debug_system, pan_orbit::pan_orbit_camera,
-};
+use self::{camera_new::CameraControlPlugin, pan_orbit::pan_orbit_camera};
+pub use camera_event_aggregator::MouseEvent;
 pub use camera_new::GlobeCamera;
 use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
 use houtu_scene::{Projection, *};
@@ -32,7 +30,6 @@ impl bevy::app::Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Msaa::default())
             .add_plugin(CameraControlPlugin)
-            .add_plugin(debug_system::Plugin)
             .add_startup_system(setup)
             .add_system(pan_orbit_camera);
     }
@@ -54,8 +51,8 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
             projection: bevy::prelude::Projection::Perspective(PerspectiveProjection {
                 fov: (60.0 as f32).to_radians(),
                 aspect_ratio: primary.width() / primary.height(),
-                near: 1.,
-                far: 500000000.0,
+                near: 0.1,
+                far: 10000000000.0,
             }),
             // transform: Transform::from_translation(Vec3 {
             //     x: x + 10000000.,
@@ -71,8 +68,8 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
 }
 #[derive(Component)]
 pub struct GlobeCameraControl {
-    pub drawingBufferWidth: u32,
-    pub drawingBufferHeight: u32,
+    pub drawing_buffer_width: u32,
+    pub drawing_buffer_height: u32,
     pub pixelRatio: f64,
     pub minimumZoomDistance: f64,
     pub maximumZoomDistance: f64,
@@ -125,8 +122,8 @@ impl Default for GlobeCameraControl {
         let ellipsoid = Ellipsoid::WGS84;
         Self {
             pixelRatio: 1.0,
-            drawingBufferWidth: 0,
-            drawingBufferHeight: 0,
+            drawing_buffer_width: 0,
+            drawing_buffer_height: 0,
             _cameraUnderground: false,
             _zoomFactor: 5.0,
             maximumMovementRatio: 1.0,

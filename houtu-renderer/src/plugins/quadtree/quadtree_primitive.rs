@@ -382,6 +382,12 @@ fn visit_if_visible(
         .tile_replacement_queue
         .mark_tile_rendered(&mut primitive.storage, tile_key);
     let tile = primitive.storage.get_mut(&tile_key).unwrap();
+    // bevy::log::info!(
+    //     "{:?},{:?},{:?}",
+    //     tile_key,
+    //     tile.state,
+    //     tile.data.terrain_state
+    // );
     let traversal_details = get_traversal_details(
         all_traversal_quad_details,
         root_traversal_details,

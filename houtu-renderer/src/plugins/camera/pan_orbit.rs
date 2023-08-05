@@ -21,8 +21,6 @@ use houtu_scene::{
 use std::f64::consts::{PI, TAU};
 use std::ops::Neg;
 pub fn pan_orbit_camera(
-    mut mouse_motion: EventReader<MouseMotion>,
-    mut scroll_events: EventReader<MouseWheel>,
     primary_query: Query<&Window, With<PrimaryWindow>>,
     mut event_start_position_wrap: ResMut<EventStartPositionWrap>,
     mut aggregator: ResMut<Aggregator>,
@@ -62,19 +60,20 @@ pub fn pan_orbit_camera(
             globe_camera_control.update(&mut globe_camera);
             match event {
                 ControlEvent::Zoom(data) => {
+                    //zoom3D函数的内容
                     let startPosition =
                         aggregator.getStartMousePosition("WHEEL", &event_start_position_wrap);
                     let movement = &data.movement;
-                    let mut windowPosition;
+                    let mut window_position;
                     if globe_camera_control._cameraUnderground {
-                        windowPosition = startPosition.clone();
+                        window_position = startPosition.clone();
                     } else {
-                        windowPosition = DVec2::ZERO;
-                        windowPosition.x = window_size.x / 2.0;
-                        windowPosition.y = window_size.y / 2.0;
+                        window_position = DVec2::ZERO;
+                        window_position.x = window_size.x / 2.0;
+                        window_position.y = window_size.y / 2.0;
                     }
 
-                    // let ray = globe_camera.getPickRay(&windowPosition, &window_size);
+                    // let ray = globe_camera.getPickRay(&window_position, &window_size);
 
                     let height = Ellipsoid::WGS84
                         .cartesianToCartographic(&globe_camera.position)
@@ -149,7 +148,7 @@ pub fn pan_orbit_camera(
                     let pickedPosition;
 
                     if !sameStartPosition {
-                        pickedPosition = globe_camera.pickEllipsoid(&startPosition, &window_size);
+                        pickedPosition = globe_camera.pick_ellipsoid(&startPosition, &window_size);
 
                         globe_camera_control._zoomMouseStart = startPosition.clone();
                         if pickedPosition.is_some() {
@@ -196,7 +195,7 @@ pub fn pan_orbit_camera(
                             centerPixel.y = window_size.y / 2.;
                             //TODO: pickEllipsoid取代globe.pick，此刻还没加载地形和模型，所以暂时这么做
                             let centerPosition =
-                                globe_camera.pickEllipsoid(&centerPixel, &window_size);
+                                globe_camera.pick_ellipsoid(&centerPixel, &window_size);
                             // If centerPosition is not defined, it means the globe does not cover the center position of screen
                             // 如果centerPosition没定义，意味着屏幕的中心点处没有地球，开启zoomOnVector
                             if centerPosition.is_none() {
@@ -274,7 +273,8 @@ pub fn pan_orbit_camera(
                                         .normalize()
                                         .multiply_by_scalar(center.magnitude() - distance);
                                     cameraPosition = cameraPosition.normalize();
-                                    cameraPosition.multiply_by_scalar(remainingDistance);
+                                    cameraPosition =
+                                        cameraPosition.multiply_by_scalar(remainingDistance);
 
                                     // Pan
                                     let mut pMid = DVec3::ZERO;
@@ -293,7 +293,6 @@ pub fn pan_orbit_camera(
                                     center = center + cMid;
 
                                     // Update camera
-
                                     // Set new position
                                     globe_camera.position = cameraPosition;
 
@@ -436,10 +435,10 @@ fn tilt3DOnEllipsoid(
         return;
     }
 
-    let mut windowPosition = DVec2::ZERO;
-    windowPosition.x = window_size[0] / 2.;
-    windowPosition.y = window_size[1] / 2.;
-    let ray = camera.getPickRay(&windowPosition, window_size);
+    let mut window_position = DVec2::ZERO;
+    window_position.x = window_size[0] / 2.;
+    window_position.y = window_size[1] / 2.;
+    let ray = camera.getPickRay(&window_position, window_size);
 
     let center;
     let intersection = IntersectionTests::rayEllipsoid(&ray, Some(&ellipsoid));
@@ -473,7 +472,7 @@ fn tilt3DOnEllipsoid(
     controller._rotateFactor = 1.0;
     controller._rotateRateRangeAdjustment = 1.0;
 
-    let oldTransform = camera.get_transform().clone();
+    let old_transform = camera.get_transform().clone();
     camera._setTransform(&transform);
 
     rotate3D(
@@ -487,7 +486,7 @@ fn tilt3DOnEllipsoid(
         None,
     );
 
-    camera._setTransform(&oldTransform);
+    camera._setTransform(&old_transform);
     controller._ellipsoid = oldEllipsoid;
 
     let radius = oldEllipsoid.maximum_radius;
@@ -603,7 +602,7 @@ fn spin3D(
         .unwrap()
         .height;
     let globe = false;
-    let spin3DPick = camera.pickEllipsoid(&movement.startPosition, window_size);
+    let spin3DPick = camera.pick_ellipsoid(&movement.startPosition, window_size);
     if spin3DPick.is_some() {
         pan3D(controller, camera, startPosition, movement, window_size);
         controller._rotateStartPosition = spin3DPick.unwrap();
@@ -638,16 +637,16 @@ fn rotate3D(
     startPosition: &DVec2,
     movement: &MovementState,
     window_size: &DVec2,
-    constrainedAxis: Option<DVec3>,
+    constrained_axis: Option<DVec3>,
     rotateOnlyVertical: Option<bool>,
     rotateOnlyHorizontal: Option<bool>,
 ) {
     let rotateOnlyVertical = rotateOnlyVertical.unwrap_or(false);
     let rotateOnlyHorizontal = rotateOnlyHorizontal.unwrap_or(false);
 
-    let oldAxis = camera.constrainedAxis;
-    if constrainedAxis.is_some() {
-        camera.constrainedAxis = constrainedAxis;
+    let oldAxis = camera.constrained_axis;
+    if constrained_axis.is_some() {
+        camera.constrained_axis = constrained_axis;
     }
 
     let rho = camera.position.magnitude();
@@ -679,7 +678,7 @@ fn rotate3D(
         camera.rotate_up(Some(deltaTheta));
     }
 
-    camera.constrainedAxis = oldAxis;
+    camera.constrained_axis = oldAxis;
 }
 
 fn pan3D(
@@ -692,8 +691,8 @@ fn pan3D(
     let startMousePosition = movement.startPosition.clone();
     let endMousePosition = movement.endPosition.clone();
 
-    let p0 = camera.pickEllipsoid(&startMousePosition, window_size);
-    let p1 = camera.pickEllipsoid(&endMousePosition, window_size);
+    let p0 = camera.pick_ellipsoid(&startMousePosition, window_size);
+    let p1 = camera.pick_ellipsoid(&endMousePosition, window_size);
 
     if p0.is_none() || p1.is_none() {
         controller._rotating = true;
@@ -712,10 +711,10 @@ fn pan3D(
     let mut p0 = p0.unwrap();
     let mut p1 = p1.unwrap();
 
-    p0 = camera.worldToCameraCoordinates(&p0);
-    p1 = camera.worldToCameraCoordinates(&p1);
+    p0 = camera.world_to_camera_coordinates(&p0);
+    p1 = camera.world_to_camera_coordinates(&p1);
 
-    if camera.constrainedAxis.is_none() {
+    if camera.constrained_axis.is_none() {
         p0 = p0.normalize();
         p1 = p1.normalize();
         let dot = p0.dot(p1);
@@ -727,7 +726,7 @@ fn pan3D(
             camera.rotate(axis, Some(angle));
         }
     } else {
-        let basis0 = camera.constrainedAxis.unwrap();
+        let basis0 = camera.constrained_axis.unwrap();
         let mut basis1 = basis0.most_orthogonal_axis();
         basis1 = basis1.cross(basis0);
         basis1 = basis1.normalize();
@@ -856,24 +855,24 @@ fn look3D(
     if rotationAxis != DVec3::ZERO {
         let direction = camera.direction;
         let negativeRotationAxis = rotationAxis.neg();
-        let northParallel = direction.equals_epsilon(rotationAxis, Some(EPSILON2), None);
-        let southParallel = direction.equals_epsilon(negativeRotationAxis, Some(EPSILON2), None);
-        if !northParallel && !southParallel {
+        let north_parallel = direction.equals_epsilon(rotationAxis, Some(EPSILON2), None);
+        let south_parallel = direction.equals_epsilon(negativeRotationAxis, Some(EPSILON2), None);
+        if !north_parallel && !south_parallel {
             dot = direction.dot(rotationAxis);
-            let mut angleToAxis = acos_clamped(dot);
-            if angle > 0. && angle > angleToAxis {
-                angle = angleToAxis - EPSILON4;
+            let mut angle_to_axis = acos_clamped(dot);
+            if angle > 0. && angle > angle_to_axis {
+                angle = angle_to_axis - EPSILON4;
             }
 
             dot = direction.dot(negativeRotationAxis);
-            angleToAxis = acos_clamped(dot);
-            if angle < 0. && -angle > angleToAxis {
-                angle = -angleToAxis + EPSILON4;
+            angle_to_axis = acos_clamped(dot);
+            if angle < 0. && -angle > angle_to_axis {
+                angle = -angle_to_axis + EPSILON4;
             }
 
             let tangent = rotationAxis.cross(direction);
             camera.look(&tangent, Some(angle));
-        } else if (northParallel && angle < 0.) || (southParallel && angle > 0.) {
+        } else if (north_parallel && angle < 0.) || (south_parallel && angle > 0.) {
             camera.look(&camera.right.clone(), Some(-angle));
         }
     } else {
@@ -923,54 +922,3 @@ fn strafe(
 
     camera.position = camera.position + direction;
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::plugins::camera::camera_event_aggregator::{ControlEventData, MouseEvent};
-
-//     use super::*;
-//     fn create_app() -> App {
-//         let mut app = App::new();
-//         app.add_plugins(DefaultPlugins.build().set(WindowPlugin {
-//             primary_window: Some(Window {
-//                 title: "houtu!".into(),
-//                 // resolution: WindowResolution::new(900., 900.0 / 0.660105980317941),
-//                 ..default()
-//             }),
-//             ..default()
-//         }))
-//         .add_plugin(crate::plugins::camera::CameraPlugin);
-//         return app;
-//     }
-//     #[test]
-//     fn zoom_in_3d() {
-//         let mut app = create_app();
-//         let setup = |mut control_event_writer: EventWriter<ControlEvent>,
-//                      primary_query: Query<&Window, With<PrimaryWindow>>,
-//                      mut events: EventWriter<MouseEvent>| {
-//             let Ok(primary) = primary_query.get_single() else {
-//                             return;
-//                         };
-//             let window_size = DVec2 {
-//                 x: primary.width() as f64,
-//                 y: primary.height() as f64,
-//             };
-//             // control_event_writer.send(ControlEvent::Zoom(ControlEventData {
-//             //     movement: MovementState {
-//             //         startPosition: DVec2 {
-//             //             x: primary.width() / 2.0,
-//             //             y: primary.height()() / 4.0,
-//             //         },
-//             //         endPosition: DVec2 {
-//             //             x: primary.width() / 2.0,
-//             //             y: primary.height() / 2.0,
-//             //         },
-//             //         inertiaEnabled: false,
-//             //     },
-//             //     startPosition:
-//             // }))
-//         };
-//         app.add_startup_system(setup);
-//         app.update();
-//     }
-// }

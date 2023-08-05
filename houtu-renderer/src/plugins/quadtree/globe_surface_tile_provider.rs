@@ -144,7 +144,6 @@ impl GlobeSurfaceTileProvider {
                 None
             }
         };
-
         surface_tile.clipped_by_boundaries = false;
         if let None = bounding_volume {
             return TileVisibility::PARTIAL;
@@ -354,6 +353,9 @@ fn computeDistanceToTile(
     );
     let tile = storage.get_mut(&tile_key).unwrap();
     tile.distance = distance;
+    if distance < 1.0 {
+        println!("too small");
+    }
     return distance;
 }
 

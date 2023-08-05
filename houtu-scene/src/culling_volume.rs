@@ -12,6 +12,9 @@ impl CullingVolume {
             planes: planes.unwrap_or([DVec4::ZERO; 6]),
         }
     }
+    pub fn get_planes(&self) -> &[DVec4; 6] {
+        return &self.planes;
+    }
     pub fn from_cartesian4() {}
     pub fn computeVisibility(&self, boundingVolume: &Box<&dyn BoundingVolume>) -> Intersect {
         let mut intersecting = false;

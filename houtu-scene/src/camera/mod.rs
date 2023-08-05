@@ -34,7 +34,7 @@ pub struct Camera {
     pub timeSinceMoved: f64,
     pub _lastMovedTimestamp: f64,
     pub defaultLookAmount: f64,
-    pub defaultRotateAmount: f64,
+    pub default_rotate_amount: f64,
     pub defaultZoomAmount: f64,
     pub defaultMoveAmount: f64,
     pub maximumZoomFactor: f64,
@@ -51,7 +51,7 @@ impl Default for Camera {
             _lastMovedTimestamp: 0.0,
             defaultMoveAmount: 100000.0,
             defaultLookAmount: PI / 60.0,
-            defaultRotateAmount: PI / 3600.0,
+            default_rotate_amount: PI / 3600.0,
             defaultZoomAmount: 100000.0,
             maximumZoomFactor: 1.5,
             percentageChanged: 0.5,
@@ -86,11 +86,11 @@ impl Default for Camera {
 
 impl Camera {
     pub fn get_positionWC(&mut self) -> DVec3 {
-        self.updateViewMatrix();
+        self.update_view_matrix();
         return self._positionWC;
     }
-    pub fn updateMembers(&mut self) {}
-    pub fn updateViewMatrix(&mut self) {
+    pub fn update_members(&mut self) {}
+    pub fn update_view_matrix(&mut self) {
         self._viewMatrix =
             DMat4::compute_view(&self.position, &self.direction, &self.up, &self.right);
         self._viewMatrix = self._viewMatrix * self._actualInvTransform;

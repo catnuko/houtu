@@ -331,6 +331,7 @@ fn processTerrainStateMachine(
             indices_and_edges_cache: indices_and_edges_cache.get_cloned_cache(),
         });
         tile.data.terrain_state = TerrainState::TRANSFORMING;
+        bevy::log::info!("{:?} is creating mesh", tile.key);
     }
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.data.terrain_state == TerrainState::TRANSFORMING {}

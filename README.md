@@ -15,8 +15,9 @@
 
 ## 截图
 
-第二层瓦片网格
-![瓦片网格](./website/public/assets/jietu5.png)
+四叉树调度
+
+![瓦片网格](./website/public/assets/tutieshi_640x344_11s.gif)
 
 ## 🚀特性
 三维webgis史上最强工具组合rust+ecs+wasm+webgpu+cesium

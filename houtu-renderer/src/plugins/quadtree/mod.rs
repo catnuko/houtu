@@ -111,6 +111,7 @@ fn real_render_system(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     rendered_query: Query<(Entity, &TileRendered)>,
+    mut images: ResMut<Assets<Image>>,
 ) {
     //清除已经渲染但不需要渲染的瓦片
     for (entity, tile_rendered) in rendered_query.iter() {
@@ -147,6 +148,10 @@ fn real_render_system(
                     material: terrain_materials.add(TerrainMeshMaterial {
                         color: Color::rgba(r, g, b, 1.0),
                         image: Some(asset_server.load("icon.png")),
+                        // image:Some( asset_server.load(format!(
+                        //         "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
+                        //         key.level, key.x, key.y,
+                        //     ))),
                     }),
                     // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
                     ..Default::default()
@@ -158,3 +163,23 @@ fn real_render_system(
         }
     }
 }
+//                 commands.spawn((
+//                     MaterialMeshBundle {
+//                         mesh: mesh,
+//                         material: terrain_materials.add(TerrainMeshMaterial {
+//                             color: Color::rgba(r, g, b, 1.0),
+//                             image: Some(asset_server.load("icon.png")),
+//                             // image: asset_server.load(format!("https://t5.tianditu.gov.cn/img_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILECOL={}&TILEROW={}&TILEMATRIX={}&tk=b931d6faa76fc3fbe622bddd6522e57b",x,y,level)),
+//                             // image: asset_server.load(format!("tile/{}/{}/{}.png", level, y, x,)),
+//                             // image:Some( asset_server.load(format!(
+//                             //     "https://maps.omniscale.net/v2/houtu-b8084b0b/style.default/{}/{}/{}.png",
+//                             //     tile.level, tile.x, tile.y,
+//                             // ))),
+//                             // image: None,
+//                         }),
+//                         // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
+//                         ..Default::default()
+//                     },
+//                     TileKey::new(tile.y, tile.x, tile.level),
+//                     // TileState::START,
+//                 ));

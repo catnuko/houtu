@@ -12,8 +12,9 @@ use egui::EguiWantsFocus;
 use houtu_scene::{
     acos_clamped, equals_epsilon, to_mat4_32, zero_to_two_pi, BoundingRectangle, Cartesian3,
     Cartographic, CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection,
-    HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4, PerspectiveOffCenterFrustum, Projection,
-    Quaternion, Rectangle, Transforms, EPSILON10, EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
+    HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4, PerspectiveFrustum,
+    PerspectiveOffCenterFrustum, Projection, Quaternion, Rectangle, Transforms, EPSILON10,
+    EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
 };
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::f64::NEG_INFINITY;
@@ -43,65 +44,6 @@ impl Plugin for CameraControlPlugin {
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[system_set(base)]
 pub struct PanOrbitCameraSystemSet;
-
-pub struct GlobeCameraFrustum {
-    fov: f64,
-    fovy: f64,
-    near: f64,
-    far: f64,
-    xOffset: f64,
-    yOffset: f64,
-    aspect_ratio: f64,
-    _sseDenominator: f64,
-    _offCenterFrustum: PerspectiveOffCenterFrustum,
-}
-// 0.660105980317941
-impl Default for GlobeCameraFrustum {
-    fn default() -> Self {
-        let mut me = Self {
-            fov: (60.0 as f64).to_radians(),
-            near: 1.0,
-            far: 500000000.0,
-            xOffset: 0.0,
-            yOffset: 0.0,
-            aspect_ratio: 1.,
-            _sseDenominator: 0.,
-            fovy: 0.,
-            _offCenterFrustum: PerspectiveOffCenterFrustum::new(),
-        };
-        me.update_self();
-        return me;
-    }
-}
-impl GlobeCameraFrustum {
-    pub fn sse_denominator(&self) -> f64 {
-        self._sseDenominator
-    }
-    pub fn get_off_center_frustum(&self) -> &PerspectiveOffCenterFrustum {
-        return &self._offCenterFrustum;
-    }
-    fn update_self(&mut self) {
-        self._sseDenominator = (2.0 * (0.5 * self.fov)).tan();
-        self.fovy = {
-            if self.aspect_ratio <= 1.0 {
-                self.fov
-            } else {
-                ((self.fov * 0.5).tan() / self.aspect_ratio).atan() * 2.0
-            }
-        };
-        self._offCenterFrustum.top = self.near * (0.5 * self.fovy).tan();
-        self._offCenterFrustum.bottom = -self._offCenterFrustum.top;
-        self._offCenterFrustum.right = self.aspect_ratio * self._offCenterFrustum.top;
-        self._offCenterFrustum.left = -self._offCenterFrustum.right;
-        self._offCenterFrustum.near = self.near;
-        self._offCenterFrustum.far = self.far;
-
-        self._offCenterFrustum.right += self.xOffset;
-        self._offCenterFrustum.left += self.xOffset;
-        self._offCenterFrustum.top += self.yOffset;
-        self._offCenterFrustum.bottom += self.yOffset;
-    }
-}
 
 #[derive(Component)]
 pub struct GlobeCamera {
@@ -145,7 +87,7 @@ pub struct GlobeCamera {
     pub hpr: HeadingPitchRoll,
     pub _maxCoord: DVec3,
 
-    pub frustum: GlobeCameraFrustum,
+    pub frustum: PerspectiveFrustum,
     pub inited: bool,
     pub constrained_axis: Option<DVec3>,
 
@@ -194,7 +136,7 @@ impl Default for GlobeCamera {
             _oldPositionWC: None,
             hpr: HeadingPitchRoll::default(),
             _maxCoord: max_coord,
-            frustum: GlobeCameraFrustum::default(),
+            frustum: PerspectiveFrustum::default(),
             inited: false,
             constrained_axis: None,
             viewport: BoundingRectangle::new(),
@@ -354,10 +296,7 @@ impl GlobeCamera {
         let d = self.get_direction_wc();
         let u = self.get_up_wc();
 
-        return &self
-            .frustum
-            ._offCenterFrustum
-            .computeCullingVolume(&p, &d, &u);
+        return &self.frustum.computeCullingVolume(&p, &d, &u);
     }
     pub fn get_roll(&mut self) -> f64 {
         let ellipsoid = Ellipsoid::WGS84;
@@ -747,7 +686,7 @@ impl GlobeCamera {
         let width = window_size.x as f64;
         let height = window_size.y as f64;
         let aspect_ratio = width / height;
-        let tanPhi = (self.frustum.fovy as f64 * 0.5).tan();
+        let tanPhi = (self.frustum.get_fovy() as f64 * 0.5).tan();
         let tanTheta = aspect_ratio * tanPhi;
         let near = self.frustum.near as f64;
 
@@ -844,7 +783,7 @@ impl GlobeCamera {
             self.right = right.clone();
         }
         let mut d;
-        let tanPhi = (self.frustum.fovy * 0.5).tan(); //aspectradio:0.660105980317941
+        let tanPhi = (self.frustum.get_fovy() * 0.5).tan(); //aspectradio:0.660105980317941
         let tanTheta = self.frustum.aspect_ratio * tanPhi;
 
         d = [
@@ -979,7 +918,7 @@ mod tests {
             &window_coord,
             &DVec2::new(client_width as f64, client_height as f64),
         );
-        let window_height = camera.frustum.near * (camera.frustum.fovy * 0.5).tan();
+        let window_height = camera.frustum.near * (camera.frustum.get_fovy() * 0.5).tan();
         let expected_direction = DVec3::new(0.0, -window_height, -1.0).normalize();
         assert!(ray.origin.equals(camera.position));
         assert!(ray

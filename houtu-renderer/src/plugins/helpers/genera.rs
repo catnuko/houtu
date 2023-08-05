@@ -28,11 +28,7 @@ pub fn debug_system(
                 rotation.set_column(2, &d);
                 let orientation = DQuat::from_mat3(&rotation);
 
-                let geometry = FrustumGeometry::new(
-                    globe_camera.frustum.get_off_center_frustum(),
-                    &p,
-                    &orientation,
-                );
+                let geometry = FrustumGeometry::new(globe_camera.frustum.clone(), p, orientation);
                 let entity = commands.spawn_empty().id();
                 state.frustum_planes_entity = Some(entity);
                 commands.entity(entity).insert(PbrBundle {

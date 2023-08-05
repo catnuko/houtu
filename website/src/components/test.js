@@ -103,3 +103,12 @@ var TDTURL_CONFIG={
           outlineColor: Cesium.Color.BLACK,
       },
   })
+//====================================================================
+  viewer.scene.globe._surface._debug.enableDebugOutput=true
+  let p_wc = new Cartesian3(
+    0, 0, 17020972.5
+  );
+  let d_wc = new Cartesian3(0, 0, -1)
+  let u_wc = new Cartesian3(0, 1, 0)
+  let v = viewer.camera.frustum.computeCullingVolume(p_wc, d_wc, u_wc);
+  console.log(v)

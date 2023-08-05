@@ -819,7 +819,7 @@ pub type GlobeSurfaceTileQuery<'a> = (
 fn screen_space_error(
     key: &TileKey,
     other_state: &QuadtreeTileOtherState,
-    globe_camera: &GlobeCamera,
+    globe_camera: &mut GlobeCamera,
     window: &Window,
     ellipsoid: &Ellipsoid,
     terrain_datasource: &mut TerrainDataSource,
@@ -828,7 +828,7 @@ fn screen_space_error(
 
     let distance = other_state._distance;
     let height = window.height() as f64;
-    let sse_denominator = globe_camera.frustum.sse_denominator();
+    let sse_denominator = globe_camera.frustum.get_sse_denominator();
 
     let mut error = (max_geometric_error * height) / (distance * sse_denominator);
 

@@ -7,7 +7,7 @@ use bevy::{
     },
 };
 
-use crate::{Cartesian3, Matrix3, Matrix4, PerspectiveOffCenterFrustum};
+use crate::{Cartesian3, Matrix3, Matrix4, PerspectiveFrustum, PerspectiveOffCenterFrustum};
 pub struct FrustumGeometryInfo {
     scratchXDirection: DVec3,
     scratchYDirection: DVec3,
@@ -16,16 +16,16 @@ pub struct FrustumGeometryInfo {
 }
 #[derive(Clone)]
 pub struct FrustumGeometry {
-    pub frustum: PerspectiveOffCenterFrustum,
+    pub frustum: PerspectiveFrustum,
     pub origin: DVec3,
     pub orientation: DQuat,
 }
 impl FrustumGeometry {
-    pub fn new(frustum: &PerspectiveOffCenterFrustum, origin: &DVec3, orientation: &DQuat) -> Self {
+    pub fn new(frustum: PerspectiveFrustum, origin: DVec3, orientation: DQuat) -> Self {
         Self {
-            frustum: frustum.clone(),
-            origin: origin.clone(),
-            orientation: orientation.clone(),
+            frustum: frustum,
+            origin: origin,
+            orientation: orientation,
         }
     }
     pub fn compute_near_planes(&mut self) -> FrustumGeometryInfo {
@@ -64,10 +64,10 @@ impl FrustumGeometry {
                 let w = 1.0 / corner.w;
                 corner = corner * w;
                 let mut new_corner = DVec3::new(corner.x, corner.y, corner.z) - self.origin;
-                corner = corner.normalize();
+                new_corner = new_corner.normalize();
 
                 let fac = z.dot(new_corner);
-                corner = corner * frustumSplits[i] / fac;
+                new_corner = new_corner * frustumSplits[i] / fac;
                 new_corner = new_corner + self.origin;
 
                 positions[12 * i + j * 3] = new_corner.x;
@@ -237,10 +237,26 @@ fn getAttributes(offset: usize, normals: &mut [f64; 72], st: &mut [f64; 48], nor
 mod tests {
     use std::f64::consts::PI;
 
-    use crate::math::{equals_epsilon, EPSILON14};
+    use crate::{
+        math::{equals_epsilon, EPSILON14},
+        BoundingSphere, PerspectiveFrustum,
+    };
 
     use super::*;
 
     #[test]
-    fn test() {}
+    fn test() {
+        let mut frustum = PerspectiveFrustum::default();
+        frustum.fov = 30.0f64.to_radians();
+        frustum.aspect_ratio = 1920.0 / 1080.0;
+        frustum.near = 1.0;
+        frustum.far = 3.0;
+        frustum.update_self();
+        let mut f = FrustumGeometry::new(frustum, DVec3::ZERO, DQuat::IDENTITY);
+        let info = f.get_positions();
+        let b = BoundingSphere::from_vertices(info.positions.into());
+        assert!(b.radius >= 1.0);
+        assert!(b.radius < 2.0);
+        assert!(b.center == DVec3::new(0.0, 0.0, 2.0));
+    }
 }

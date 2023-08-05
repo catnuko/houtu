@@ -136,6 +136,7 @@ impl Matrix3 for DMat3 {
         return result;
     }
 }
+//按行生成
 fn make_matrix4_from_raw(slice: [f64; 16]) -> DMat4 {
     DMat4 {
         x_axis: [slice[0], slice[4], slice[8], slice[12]].into(),
@@ -144,6 +145,7 @@ fn make_matrix4_from_raw(slice: [f64; 16]) -> DMat4 {
         w_axis: [slice[3], slice[7], slice[11], slice[15]].into(),
     }
 }
+//按行生成
 fn make_matrix3_from_raw(slice: [f64; 9]) -> DMat3 {
     DMat3 {
         x_axis: [slice[0], slice[3], slice[6]].into(),
@@ -220,7 +222,7 @@ impl Matrix4 for DMat4 {
         result[13] = 0.0;
         result[14] = column3Row2;
         result[15] = 0.0;
-        return DMat4::from_raw_list(result);
+        return DMat4::from_cols_array(&result);
     }
     fn compute_perspective_off_center(
         left: f64,
@@ -255,7 +257,7 @@ impl Matrix4 for DMat4 {
         result[13] = 0.0;
         result[14] = column3Row2;
         result[15] = 0.0;
-        return DMat4::from_raw_list(result);
+        return DMat4::from_cols_array(&result);
     }
     fn from_raw_list(slice: [f64; 16]) -> DMat4 {
         return make_matrix4_from_raw(slice);
@@ -296,7 +298,7 @@ impl Matrix4 for DMat4 {
         matrix[13] = ty;
         matrix[14] = tz;
         matrix[15] = 1.0;
-        return DMat4::from_raw_list(matrix);
+        return DMat4::from_cols_array(&matrix);
     }
     fn set_translation(&mut self, cartesian: &DVec3) {
         self.x_axis.w = cartesian.x;

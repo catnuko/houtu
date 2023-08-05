@@ -619,9 +619,10 @@ fn visitTile(
                 primitive
                     .tiles_to_render
                     .splice(first_rendered_descendant_index..new_len, []);
-                primitive
-                    .tile_to_update_heights
-                    .splice(first_rendered_descendant_index..new_len, []);
+                primitive.tile_to_update_heights.splice(
+                    tiles_to_update_heights_index..primitive.tile_to_update_heights.len(),
+                    [],
+                );
                 primitive.tiles_to_render.push(tile_key);
                 let tile = primitive.storage.get_mut(&tile_key).unwrap();
                 tile.last_selection_result = TileSelectionResult::RENDERED;
@@ -698,7 +699,7 @@ fn screen_space_error(
 
     let distance = tile.distance;
     let height = window.height() as f64;
-    let sse_denominator = globe_camera.frustum.sse_denominator();
+    let sse_denominator = globe_camera.frustum.get_sse_denominator();
 
     let mut error = (max_geometric_error * height) / (distance * sse_denominator);
 

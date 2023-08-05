@@ -76,7 +76,7 @@ impl PerspectiveOffCenterFrustum {
         self.update_self();
         return &self.perspective_matrix;
     }
-    pub fn get_infinite_perspective(&mut self) -> &DMat4 {
+    pub fn get_infinite_projection_matrix(&mut self) -> &DMat4 {
         self.update_self();
         return &self.infinite_perspective;
     }
@@ -168,7 +168,7 @@ impl PerspectiveOffCenterFrustum {
 
 #[cfg(test)]
 mod tests {
-    use crate::{equals_epsilon, Cartesian4, EPSILON10, EPSILON15};
+    use crate::{equals_epsilon, Cartesian4, EPSILON10, EPSILON15, EPSILON6};
 
     use super::*;
     fn create_frustum() -> PerspectiveOffCenterFrustum {
@@ -242,5 +242,30 @@ mod tests {
         let left_plane = planes[5];
         let expcted_result = DVec4::new(0.0, 0.0, 1.0, 2.0);
         assert!(left_plane.equals_epsilon(expcted_result, Some(EPSILON15), None));
+    }
+    #[test]
+    fn get_perspective_project_matrix() {
+        let mut frustum = create_frustum();
+        let exp = DMat4::compute_perspective_off_center(
+            frustum.left,
+            frustum.right,
+            frustum.bottom,
+            frustum.top,
+            frustum.near,
+            frustum.far,
+        );
+        assert!(exp.abs_diff_eq(frustum.get_projection_matrix().clone(), EPSILON6))
+    }
+    #[test]
+    fn get_infinite_perspective_matrix() {
+        let mut frustum = create_frustum();
+        let exp = DMat4::compute_infinite_perspective_off_center(
+            frustum.left,
+            frustum.right,
+            frustum.bottom,
+            frustum.top,
+            frustum.near,
+        );
+        assert!(exp.abs_diff_eq(frustum.get_infinite_projection_matrix().clone(), EPSILON6))
     }
 }

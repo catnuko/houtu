@@ -19,7 +19,7 @@ bevy = { version = "0.10.1", default-features = false, features = [
 bevy_reflect_derive = "0.10.1"
 bevy_easings = "0.10"
 bevy_egui = "0.20.3"
-bevy_screen_diags = "0.6.0"
+# bevy_screen_diags = "0.6.0"
 houtu-scene = { path = "../houtu-scene" }
 houtu-jobs = { path = "../houtu-jobs" }
 bevy_web_asset = { path = "../bevy_web_asset" }

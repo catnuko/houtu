@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::{Cartographic, Ellipsoid, Rectangle};
 
-pub trait TilingScheme {
+pub trait TilingScheme: Send + Sync {
     fn get_ellipsoid(&self) -> Ellipsoid;
     fn get_rectangle(&self) -> Rectangle;
     fn get_number_of_x_tiles_at_level(&self, level: u32) -> u32;

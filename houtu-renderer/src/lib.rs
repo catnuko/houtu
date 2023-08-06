@@ -1,11 +1,19 @@
 use bevy::{pbr::wireframe::WireframePlugin, prelude::*};
 
-mod plugins;
+//https://github.com/valkum/terrain_tests
+//https://github.com/Dimev/lodtree
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
 
-use plugins::{helpers, quadtree};
+mod camera;
+mod globe;
+
+mod bing_maps_imagery_provider;
+mod helpers;
+mod quadtree;
+mod wmts_imagery_provider;
+mod xyz_imagery_provider;
 // use plugins::quadtree;
 
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
@@ -40,12 +48,10 @@ impl Plugin for RendererPlugin {
             .add_plugin(WireframePlugin)
             .add_plugin(WorldInspectorPlugin::new())
             .add_plugin(houtu_jobs::Plugin)
-            // .add_plugin(quadtree::Plugin)
-            .add_plugin(plugins::globe::GlobePlugin)
-            .add_plugin(plugins::camera::CameraPlugin)
-            // .add_plugin(plugins::tileset::Plugin)
-            // .add_plugin(plugins::scene::ScenePlugin)
+            .add_plugin(globe::GlobePlugin)
+            .add_plugin(camera::CameraPlugin)
             .add_plugin(quadtree::Plugin);
+
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
 }

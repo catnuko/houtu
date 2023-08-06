@@ -1,9 +1,13 @@
 use bevy::{core::FrameCount, prelude::*, render::renderer::RenderDevice, window::PrimaryWindow};
 use houtu_jobs::JobSpawner;
+use houtu_scene::GeographicTilingScheme;
 use rand::Rng;
+
+use crate::xyz_imagery_provider::XYZImageryProvider;
 
 use self::{
     globe_surface_tile::process_terrain_state_machine_system,
+    imagery_layer::ImageryLayer,
     imagery_layer_storage::ImageryLayerStorage,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
@@ -14,34 +18,37 @@ use self::{
     traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
 };
 
-use super::camera::GlobeCamera;
+use super::{
+    camera::GlobeCamera,
+    wmts_imagery_provider::{WMTSImageryProvider, WMTSImageryProviderOptions},
+};
 
-mod create_terrain_mesh_job;
-mod credit;
-mod ellipsoid_terrain_provider;
-mod globe_surface_tile;
-mod globe_surface_tile_provider;
-mod imagery;
-mod imagery_layer;
-mod imagery_layer_storage;
-mod imagery_provider;
-mod indices_and_edges_cache;
-mod quadtree_primitive;
-mod quadtree_primitive_debug;
-mod quadtree_tile;
-mod quadtree_tile_storage;
-mod render_context;
-mod reproject_texture;
-// mod terrain_datasource;
-mod terrain_provider;
-mod terrian_material;
-mod tile_availability;
-mod tile_imagery;
-mod tile_key;
-mod tile_replacement_queue;
-mod tile_selection_result;
-mod traversal_details;
-mod upsample_job;
+pub mod create_terrain_mesh_job;
+pub mod credit;
+pub mod ellipsoid_terrain_provider;
+pub mod globe_surface_tile;
+pub mod globe_surface_tile_provider;
+pub mod imagery;
+pub mod imagery_layer;
+pub mod imagery_layer_storage;
+pub mod imagery_provider;
+pub mod indices_and_edges_cache;
+pub mod quadtree_primitive;
+pub mod quadtree_primitive_debug;
+pub mod quadtree_tile;
+pub mod quadtree_tile_storage;
+pub mod render_context;
+pub mod reproject_texture;
+// pub mod terrain_datasource;
+pub mod terrain_provider;
+pub mod terrian_material;
+pub mod tile_availability;
+pub mod tile_imagery;
+pub mod tile_key;
+pub mod tile_replacement_queue;
+pub mod tile_selection_result;
+pub mod traversal_details;
+pub mod upsample_job;
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
@@ -52,12 +59,18 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(RootTraversalDetails::new());
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(IndicesAndEdgesCacheArc::new());
+        app.add_startup_system(setup);
         app.add_system(render_system);
         app.add_system(process_terrain_state_machine_system.after(render_system));
         app.add_system(real_render_system.after(process_terrain_state_machine_system));
         app.add_system(imagery_layer::finish_reproject_texture_system);
     }
 }
+fn setup(mut imagery_layer_storage: ResMut<ImageryLayerStorage>) {
+    let xyz = XYZImageryProvider::new(Box::new(GeographicTilingScheme::default()));
+    imagery_layer_storage.add(ImageryLayer::new(Box::new(xyz)))
+}
+
 fn render_system(
     mut primitive: ResMut<QuadtreePrimitive>,
     mut imagery_layer_storage: ResMut<ImageryLayerStorage>,

@@ -8,15 +8,13 @@ use bevy::{
         render_asset::RenderAssets,
         render_graph::{self, RenderGraph},
         render_resource::*,
-        renderer::{RenderDevice},
+        renderer::RenderDevice,
         texture::BevyDefault,
         Extract, RenderApp,
     },
     utils::{HashMap, Uuid},
 };
 use std::mem;
-
-
 
 use super::tile_key::TileKey;
 
@@ -241,15 +239,44 @@ impl FromWorld for ReprojectTexturePipeline {
         }
     }
 }
-#[derive(Default)]
-struct ReprojectTextureNode;
+enum State {
+    Loading,
+    Update,
+}
+struct ReprojectTextureNode {
+    state: State,
+}
+impl Default for ReprojectTextureNode {
+    fn default() -> Self {
+        Self {
+            state: State::Loading,
+        }
+    }
+}
 impl render_graph::Node for ReprojectTextureNode {
+    fn update(&mut self, world: &mut World) {
+        let pipeline_cache = world.resource::<PipelineCache>();
+        let pipeline = world.resource::<ReprojectTexturePipeline>();
+        match self.state {
+            State::Loading => {
+                if let CachedPipelineState::Ok(_) =
+                    pipeline_cache.get_render_pipeline_state(pipeline.pipeline)
+                {
+                    self.state = State::Update;
+                }
+            }
+            State::Update => {}
+        }
+    }
     fn run(
         &self,
         _graph: &mut render_graph::RenderGraphContext,
         render_context: &mut bevy::render::renderer::RenderContext,
         world: &World,
     ) -> Result<(), render_graph::NodeRunError> {
+        if matches!(self.state, State::Loading) {
+            return Ok(());
+        }
         let pipeline_cache = world.resource::<PipelineCache>();
         let pipeline = world.resource::<ReprojectTexturePipeline>();
         let task_queue = world.resource::<ReprojectTextureTaskQueue>();

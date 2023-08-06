@@ -8,7 +8,7 @@ use bevy::{
 use houtu_jobs::{FinishedJobs, JobSpawner};
 use houtu_scene::{HeightmapTerrainData, TileBoundingRegion};
 
-use crate::plugins::camera::GlobeCamera;
+use crate::camera::GlobeCamera;
 
 use super::{
     create_terrain_mesh_job::CreateTileJob,
@@ -66,7 +66,7 @@ impl GlobeSurfaceTile {
             waterMaskTexture: None,
         }
     }
-    pub fn add(
+    pub fn add_imagery(
         &mut self,
         imagery: ShareMutImagery,
         texture_coordinate_rectangle: Option<DVec4>,

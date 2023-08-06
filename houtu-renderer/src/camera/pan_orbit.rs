@@ -1,4 +1,4 @@
-use crate::plugins::camera::globe_camra::SetViewOrientation;
+use crate::camera::globe_camra::SetViewOrientation;
 
 use super::camera_event_aggregator::{
     Aggregator, ControlEvent, EventStartPositionWrap, MovementState,

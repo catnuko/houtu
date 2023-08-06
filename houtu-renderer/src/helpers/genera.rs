@@ -4,7 +4,7 @@ use bevy::{
 };
 use houtu_scene::{Cartesian3, FrustumGeometry, Matrix3};
 
-use crate::plugins::camera::GlobeCamera;
+use crate::camera::GlobeCamera;
 
 use super::ui_state::UiState;
 pub fn debug_system(

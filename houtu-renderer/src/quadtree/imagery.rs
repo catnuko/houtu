@@ -7,9 +7,9 @@ use bevy::{
 use bevy_egui::egui::mutex::{Mutex, MutexGuard};
 use houtu_scene::Rectangle;
 
-use std::{sync::Arc};
+use std::sync::Arc;
 
-use crate::plugins::camera::GlobeCamera;
+use crate::camera::GlobeCamera;
 
 use super::{
     imagery_layer::ImageryLayer, imagery_provider::ImageryProvider,

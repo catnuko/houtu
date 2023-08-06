@@ -14,7 +14,7 @@ use bevy::{
 
 use houtu_scene::{lerp_f32, Matrix4, Rectangle, TilingScheme};
 
-use crate::plugins::{
+use crate::{
     camera::GlobeCamera,
     quadtree::reproject_texture::{ParamsUniforms, ReprojectTextureTask},
 };
@@ -85,13 +85,13 @@ impl ImageryLayer {
     ) -> u32 {
         // PERFORMANCE_IDEA: factor out the stuff that doesn't change.
         let tiling_scheme = self.imagery_provider.get_tiling_scheme();
-        let ellipsoid = tiling_scheme.ellipsoid;
+        let ellipsoid = tiling_scheme.get_ellipsoid();
         let latitude_factor = if false {
             latitude_closest_to_equator.cos()
         } else {
             1.0
         };
-        let tiling_scheme_rectangle = tiling_scheme.rectangle;
+        let tiling_scheme_rectangle = tiling_scheme.get_rectangle();
         let level_zero_maximum_texel_spacing =
             (ellipsoid.maximum_radius * tiling_scheme_rectangle.compute_width() * latitude_factor)
                 / (self.imagery_provider.get_tile_width()
@@ -120,7 +120,7 @@ impl ImageryLayer {
                 level: 0,
             };
             let imagery = self.add_imagery(&key).unwrap();
-            tile.data.add(imagery.clone(), None, false);
+            tile.data.add_imagery(imagery.clone(), None, false);
             return true;
         }
 
@@ -311,7 +311,7 @@ impl ImageryLayer {
         }
 
         let initial_min_v = min_v;
-        for i in north_west_tile_coordinates.x..south_east_tile_coordinates.x {
+        for i in north_west_tile_coordinates.x..=south_east_tile_coordinates.x {
             min_u = max_u;
 
             imagery_rectangle = if use_native {
@@ -350,7 +350,7 @@ impl ImageryLayer {
             }
 
             min_v = initial_min_v;
-            for j in north_west_tile_coordinates.y..south_east_tile_coordinates.y {
+            for j in north_west_tile_coordinates.y..=south_east_tile_coordinates.y {
                 max_v = min_v;
 
                 imagery_rectangle = if use_native {
@@ -390,7 +390,7 @@ impl ImageryLayer {
                 let tex_coords_rectangle = DVec4::new(min_u, min_v, max_u, max_v);
                 let key = TileKey::new(i, j, imagery_level);
                 let imagery = self.add_imagery(&key).unwrap();
-                tile.data.add(
+                tile.data.add_imagery(
                     imagery.clone(),
                     Some(tex_coords_rectangle),
                     use_web_mercator_t,

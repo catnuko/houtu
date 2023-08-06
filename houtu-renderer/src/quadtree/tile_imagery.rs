@@ -1,12 +1,10 @@
-
-
 use bevy::{
     math::DVec4,
     prelude::{AssetServer, Assets, Image},
     render::renderer::RenderDevice,
 };
 
-use crate::plugins::camera::GlobeCamera;
+use crate::camera::GlobeCamera;
 
 use super::{
     imagery::{ImageryState, ShareMutImagery},

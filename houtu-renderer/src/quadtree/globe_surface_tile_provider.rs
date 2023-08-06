@@ -11,7 +11,7 @@ use houtu_scene::{
     GeographicTilingScheme, Intersect, Rectangle, TileBoundingRegion, EPSILON12, EPSILON5,
 };
 
-use crate::plugins::camera::GlobeCamera;
+use crate::camera::GlobeCamera;
 
 use super::{
     ellipsoid_terrain_provider::EllipsoidTerrainProvider,

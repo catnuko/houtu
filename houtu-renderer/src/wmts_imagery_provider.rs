@@ -1,44 +1,90 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use houtu_scene::{GeographicTilingScheme, Rectangle, TileKey};
-// pub type String = &'static str;
+use houtu_scene::{GeographicTilingScheme, Rectangle, TileKey, TilingScheme};
+
+use crate::quadtree::imagery_provider::ImageryProvider;
 #[derive(Default)]
-pub struct WMTSOptions {
+pub struct WMTSImageryProviderOptions {
     pub name: Option<&'static str>,
     pub url: &'static str,
     pub layer: &'static str,
     pub style: &'static str,
     pub format: Option<&'static str>,
     pub crs: Option<&'static str>,
-    pub minimum_level: Option<u8>,
-    pub maximum_level: Option<u8>,
+    pub minimum_level: Option<u32>,
+    pub maximum_level: Option<u32>,
     pub tile_width: Option<u32>,
     pub tile_height: Option<u32>,
     pub tile_matrix_labels: Option<Vec<&'static str>>,
     pub tile_matrix_set_id: &'static str,
-    pub tiling_scheme: Option<GeographicTilingScheme>,
+    pub tiling_scheme: Option<Box<dyn TilingScheme>>,
     pub subdomains: Option<Vec<&'static str>>,
     pub rectangle: Option<Rectangle>,
 }
-#[derive(Debug, Clone, Resource)]
-pub struct WMTS {
+pub struct WMTSImageryProvider {
     pub name: String,
     pub url: String,
     pub layer: String,
     pub style: String,
     pub format: String,
     pub tile_matrix_set_id: String,
-    pub minimum_level: u8,
-    pub maximum_level: u8,
+    pub minimum_level: u32,
+    pub maximum_level: u32,
     pub tile_width: u32,
     pub tile_height: u32,
     pub tile_matrix_labels: Option<Vec<String>>,
-    pub tiling_scheme: GeographicTilingScheme,
+    pub tiling_scheme: Box<dyn TilingScheme>,
     pub subdomains: Vec<String>,
+    pub rectangle: Rectangle,
 }
-impl WMTS {
-    pub fn new(options: WMTSOptions) -> Self {
+impl ImageryProvider for WMTSImageryProvider {
+    fn get_maximum_level(&self) -> u32 {
+        self.maximum_level
+    }
+    fn get_minimum_level(&self) -> u32 {
+        self.minimum_level
+    }
+    fn get_ready(&self) -> bool {
+        true
+    }
+    fn get_tile_credits(
+        &self,
+        key: &crate::quadtree::tile_key::TileKey,
+    ) -> Option<Vec<crate::quadtree::credit::Credit>> {
+        None
+    }
+    fn get_tile_height(&self) -> u32 {
+        self.tile_height
+    }
+    fn get_tile_width(&self) -> u32 {
+        self.tile_width
+    }
+    fn request_image(
+        &self,
+        key: &crate::quadtree::tile_key::TileKey,
+        asset_server: &AssetServer,
+    ) -> Option<Handle<Image>> {
+        // asset_server.load()
+        None
+    }
+    fn load_image(&self, url: String) {}
+    fn pick_features(
+        &self,
+        key: &crate::quadtree::tile_key::TileKey,
+        longitude: f64,
+        latitude: f64,
+    ) {
+    }
+    fn get_tiling_scheme(&self) -> &Box<dyn TilingScheme> {
+        &self.tiling_scheme
+    }
+    fn get_rectangle(&self) -> &Rectangle {
+        &self.rectangle
+    }
+}
+impl WMTSImageryProvider {
+    pub fn new(options: WMTSImageryProviderOptions) -> Self {
         let subdomains: Vec<String> = {
             if let Some(real_subdomains) = options.subdomains {
                 real_subdomains.iter().map(|x| x.to_string()).collect()
@@ -46,6 +92,9 @@ impl WMTS {
                 vec!["a".to_string(), "b".to_string(), "c".to_string()]
             }
         };
+        let tiling_scheme = options
+            .tiling_scheme
+            .unwrap_or(Box::new(GeographicTilingScheme::default()));
         Self {
             name: {
                 if let Some(v) = options.name {
@@ -64,6 +113,7 @@ impl WMTS {
                     "image/jpeg".to_string()
                 }
             },
+            rectangle: options.rectangle.unwrap_or(tiling_scheme.get_rectangle()),
             // matrix_set: options.matrix_set,
             // crs: options.crs,
             tile_matrix_set_id: options.tile_matrix_set_id.to_string(),
@@ -79,9 +129,7 @@ impl WMTS {
                 }
             },
             // tile_matrix_set: options.tile_matrix_set,
-            tiling_scheme: options
-                .tiling_scheme
-                .unwrap_or(GeographicTilingScheme::default()),
+            tiling_scheme: tiling_scheme,
             subdomains: subdomains,
         }
     }

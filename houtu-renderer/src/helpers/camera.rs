@@ -1,14 +1,8 @@
-
-
-use bevy::{
-    math::{DVec2},
-    prelude::*,
-    window::PrimaryWindow,
-};
+use bevy::{math::DVec2, prelude::*, window::PrimaryWindow};
 use bevy_prototype_debug_lines::*;
-use houtu_scene::{Ellipsoid};
+use houtu_scene::Ellipsoid;
 
-use crate::plugins::camera::{GlobeCamera, MouseEvent};
+use crate::camera::{GlobeCamera, MouseEvent};
 
 use super::ui_state::UiState;
 

@@ -63,7 +63,8 @@ impl TerrainEncoding {
             let maxDim = dimensions.maximum_component().max(hDim);
 
             if maxDim < SHIFT_LEFT_12 - 1.0 {
-                quantization = TerrainQuantization::BITS12;
+                // quantization = TerrainQuantization::BITS12;
+                quantization = TerrainQuantization::NONE;
             } else {
                 quantization = TerrainQuantization::NONE;
             }

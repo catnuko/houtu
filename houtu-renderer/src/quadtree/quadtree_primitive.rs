@@ -12,7 +12,7 @@ use houtu_scene::{
     Cartographic, Ellipsoid, EllipsoidalOccluder, GeographicTilingScheme, Matrix4, Rectangle,
 };
 
-use crate::plugins::camera::GlobeCamera;
+use crate::camera::GlobeCamera;
 
 use super::{
     globe_surface_tile_provider::{GlobeSurfaceTileProvider, TileVisibility},

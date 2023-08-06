@@ -5,7 +5,7 @@ use bevy::{
 };
 
 use crate::{
-    decompress_texture_coordinates, BoundingSphere, OrientedBoundingBox, TerrainEncoding,
+    decompress_texture_coordinates, BoundingSphere, Matrix4, OrientedBoundingBox, TerrainEncoding,
     TerrainQuantization,
 };
 use bevy::prelude::*;
@@ -101,7 +101,9 @@ impl From<&TerrainMesh> for Mesh {
                     let xy = decompress_texture_coordinates(terrain_mesh.vertices[i] as f64);
                     let zh = decompress_texture_coordinates(terrain_mesh.vertices[i + 1] as f64);
                     let uv = decompress_texture_coordinates(terrain_mesh.vertices[i + 2] as f64);
-                    positions.push([xy.x as f32, xy.y as f32, zh.x as f32]);
+                    let mut p = DVec3::new(xy.x, xy.y, zh.x);
+                    p = terrain_mesh.encoding.fromScaledENU.multiply_by_point(&p);
+                    positions.push([p.x as f32, p.y as f32, p.z as f32]);
                     uvs.push([uv.x as f32, uv.y as f32]);
                 }
             });

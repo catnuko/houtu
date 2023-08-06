@@ -1,19 +1,15 @@
-
-use super::{camera_event_aggregator};
+use super::camera_event_aggregator;
 
 use bevy::math::{DMat3, DMat4, DQuat, DVec2, DVec3, DVec4};
 use bevy::prelude::*;
 
 use bevy::render::primitives::Frustum;
 
-
-
-
 use houtu_scene::{
-    acos_clamped, equals_epsilon, zero_to_two_pi, BoundingRectangle, Cartesian3,
-    Cartographic, CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection,
-    HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4, PerspectiveFrustum, Projection, Quaternion, Rectangle, Transforms, EPSILON10,
-    EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
+    acos_clamped, equals_epsilon, zero_to_two_pi, BoundingRectangle, Cartesian3, Cartographic,
+    CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection, HeadingPitchRoll,
+    IntersectionTests, Matrix3, Matrix4, PerspectiveFrustum, Projection, Quaternion, Rectangle,
+    Transforms, EPSILON10, EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
 };
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::f64::NEG_INFINITY;
@@ -24,18 +20,6 @@ impl Plugin for CameraControlPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(camera_event_aggregator::Plugin);
         app.add_system(globe_camera_setup_system);
-        // app.init_resource::<EguiWantsFocus>()
-        //     .add_system(
-        //         egui::check_egui_wants_focus
-        //             .after(EguiSet::InitContexts)
-        //             .before(PanOrbitCameraSystemSet),
-        //     )
-        //     .configure_set(
-        //         PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
-        //             prev: false,
-        //             curr: false,
-        //         })),
-        //     );
     }
 }
 
@@ -84,7 +68,7 @@ pub struct GlobeCamera {
     pub _invViewMatrix: DMat4,
 
     pub hpr: HeadingPitchRoll,
-    pub _maxCoord: DVec3,
+    pub _max_coord: DVec3,
 
     pub frustum: PerspectiveFrustum,
     pub inited: bool,
@@ -134,7 +118,7 @@ impl Default for GlobeCamera {
             _positionCartographic: Cartographic::ZERO,
             _oldPositionWC: None,
             hpr: HeadingPitchRoll::default(),
-            _maxCoord: max_coord,
+            _max_coord: max_coord,
             frustum: PerspectiveFrustum::default(),
             inited: false,
             constrained_axis: None,

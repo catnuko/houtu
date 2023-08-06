@@ -1,10 +1,10 @@
 use bevy::math::{DMat4, DVec2, DVec3, DVec4};
 
 use crate::{
-    compressTextureCoordinates,
+    compress_texture_coordinates,
     geometry::AxisAlignedBoundingBox,
     math::{Cartesian3, Matrix4, SHIFT_LEFT_12},
-    octPackFloat,
+    oct_pack_float,
     terrain_quantization::TerrainQuantization,
 };
 #[derive(Default, Clone, Debug, Copy)]
@@ -20,7 +20,7 @@ pub struct TerrainEncoding {
     pub hasWebMercatorT: bool,
     pub hasGeodeticSurfaceNormals: bool,
     pub exaggeration: f64,
-    pub exaggerationRelativeHeight: f64,
+    pub exaggeration_relative_height: f64,
     pub stride: u32,
     pub _offsetGeodeticSurfaceNormal: f64,
     pub _offsetVertexNormal: f64,
@@ -103,7 +103,7 @@ impl TerrainEncoding {
             hasWebMercatorT: hasWebMercatorTOption.unwrap_or(false),
             hasGeodeticSurfaceNormals: hasGeodeticSurfaceNormalsOption.unwrap_or(false),
             exaggeration: exaggerationOption.unwrap_or(1.0),
-            exaggerationRelativeHeight: exaggerationRelativeHeightOption.unwrap_or(0.0),
+            exaggeration_relative_height: exaggerationRelativeHeightOption.unwrap_or(0.0),
             stride: 0,
             _offsetGeodeticSurfaceNormal: 0.0,
             _offsetVertexNormal: 0.0,
@@ -162,13 +162,13 @@ impl TerrainEncoding {
             let h = ((height - self.minimum_height) / hDim).clamp(0.0, 1.0);
 
             let mut cartesian2Scratch = DVec2::new(position.x, position.y);
-            let compressed0 = compressTextureCoordinates(&cartesian2Scratch) as f32;
+            let compressed0 = compress_texture_coordinates(&cartesian2Scratch) as f32;
 
             cartesian2Scratch = DVec2::new(position.z, h);
-            let compressed1 = compressTextureCoordinates(&cartesian2Scratch) as f32;
+            let compressed1 = compress_texture_coordinates(&cartesian2Scratch) as f32;
 
             cartesian2Scratch = DVec2::new(u, v);
-            let compressed2 = compressTextureCoordinates(&cartesian2Scratch) as f32;
+            let compressed2 = compress_texture_coordinates(&cartesian2Scratch) as f32;
 
             vertexBuffer[new_bufferIndex] = compressed0;
             new_bufferIndex += 1;
@@ -179,7 +179,7 @@ impl TerrainEncoding {
 
             if self.hasWebMercatorT {
                 let cartesian2Scratch = DVec2::new(web_mercator_t.unwrap(), 0.0);
-                let compressed3 = compressTextureCoordinates(&cartesian2Scratch) as f32;
+                let compressed3 = compress_texture_coordinates(&cartesian2Scratch) as f32;
                 vertexBuffer[new_bufferIndex] = compressed3;
                 new_bufferIndex += 1;
             }
@@ -207,7 +207,7 @@ impl TerrainEncoding {
         }
 
         if self.hasVertexNormals {
-            vertexBuffer[new_bufferIndex] = octPackFloat(&normalToPack.unwrap()) as f32;
+            vertexBuffer[new_bufferIndex] = oct_pack_float(&normalToPack.unwrap()) as f32;
             new_bufferIndex += 1;
         }
 

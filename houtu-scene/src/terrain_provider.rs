@@ -225,7 +225,7 @@ pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
 //         }
 //     };
 
-//     let indicesAndEdges: IndicesAndEdges = {
+//     let indices_and_edges: IndicesAndEdges = {
 //         let indicesAndEdgesOption = byWidth.get_mut(height as usize);
 //         if indicesAndEdgesOption.is_none() {
 //             let gridVertexCount = width * height;
@@ -266,7 +266,7 @@ pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
 //             indicesAndEdgesOption.unwrap().clone()
 //         }
 //     };
-//     return indicesAndEdges;
+//     return indices_and_edges;
 // }
 // pub fn getRegularGridIndicesAndEdgeIndices(width: u32, height: u32) -> IndicesAndEdges {
 //     if width * height >= FOUR_GIGABYTES {
@@ -284,7 +284,7 @@ pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
 //         }
 //     };
 
-//     let indicesAndEdges: IndicesAndEdges = {
+//     let indices_and_edges: IndicesAndEdges = {
 //         let indicesAndEdgesOption = byWidth.get_mut(height as usize);
 //         if indicesAndEdgesOption.is_none() {
 //             let indices = getRegularGridIndices(width, height);
@@ -309,7 +309,7 @@ pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
 //             indicesAndEdgesOption.unwrap().clone()
 //         }
 //     };
-//     return indicesAndEdges;
+//     return indices_and_edges;
 // }
 
 pub fn getEdgeIndices(width: u32, height: u32) -> InnerIndicesAndEdges {
@@ -394,19 +394,19 @@ pub fn addRegularGridIndices(width: u32, height: u32, indices: &mut Vec<u32>, of
     for j in 0..(height - 1) {
         for i in 0..(width - 1) {
             let upperLeft = index;
-            let lowerLeft = upperLeft + width;
-            let lowerRight = lowerLeft + 1;
-            let upperRight = upperLeft + 1;
+            let lower_left = upperLeft + width;
+            let lowerRight = lower_left + 1;
+            let upper_right = upperLeft + 1;
 
             indices[uoffset] = upperLeft;
             uoffset += 1;
-            indices[uoffset] = lowerLeft;
+            indices[uoffset] = lower_left;
             uoffset += 1;
-            indices[uoffset] = upperRight;
+            indices[uoffset] = upper_right;
             uoffset += 1;
-            indices[uoffset] = upperRight;
+            indices[uoffset] = upper_right;
             uoffset += 1;
-            indices[uoffset] = lowerLeft;
+            indices[uoffset] = lower_left;
             uoffset += 1;
             indices[uoffset] = lowerRight;
             uoffset += 1;

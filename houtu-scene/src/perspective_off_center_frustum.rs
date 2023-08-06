@@ -105,7 +105,7 @@ impl PerspectiveOffCenterFrustum {
         let mut farCenter = direction * f;
         farCenter = position + farCenter;
 
-        //Left plane computation
+        //LEFT plane computation
         let mut normal = right.multiply_by_scalar(l);
         normal = near_center + normal;
         normal = normal - position;
@@ -119,7 +119,7 @@ impl PerspectiveOffCenterFrustum {
         plane.z = normal.z;
         plane.w = -normal.dot(position);
 
-        //Right plane computation
+        //RIGHT plane computation
         normal = up.cross((near_center + right * r - position)).normalize();
 
         plane = &mut planes[1];

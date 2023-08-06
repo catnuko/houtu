@@ -27,12 +27,12 @@ impl AxisAlignedBoundingBox {
     }
     pub fn fromPoints(positions: Vec<DVec3>) -> Self {
         let mut result = Self::default();
-        let mut minimumX = positions[0].x;
-        let mut minimumY = positions[0].y;
+        let mut minimum_x = positions[0].x;
+        let mut minimum_y = positions[0].y;
         let mut minimumZ = positions[0].z;
 
-        let mut maximumX = positions[0].x;
-        let mut maximumY = positions[0].y;
+        let mut maximum_x = positions[0].x;
+        let mut maximum_y = positions[0].y;
         let mut maximumZ = positions[0].z;
 
         let length = positions.len();
@@ -42,22 +42,22 @@ impl AxisAlignedBoundingBox {
             let y = p.y;
             let z = p.z;
 
-            minimumX = x.min(minimumX);
-            maximumX = x.max(maximumX);
-            minimumY = y.min(minimumY);
-            maximumY = y.max(maximumY);
+            minimum_x = x.min(minimum_x);
+            maximum_x = x.max(maximum_x);
+            minimum_y = y.min(minimum_y);
+            maximum_y = y.max(maximum_y);
             minimumZ = z.min(minimumZ);
             maximumZ = z.max(maximumZ);
         }
 
         let mut minimum = result.minimum;
-        minimum.x = minimumX;
-        minimum.y = minimumY;
+        minimum.x = minimum_x;
+        minimum.y = minimum_y;
         minimum.z = minimumZ;
 
         let mut maximum = result.maximum;
-        maximum.x = maximumX;
-        maximum.y = maximumY;
+        maximum.x = maximum_x;
+        maximum.y = maximum_y;
         maximum.z = maximumZ;
 
         result.center = minimum.midpoint(maximum);

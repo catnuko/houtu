@@ -1,6 +1,7 @@
 [package]
 name = "houtu-renderer"
 version = "0.1.0"
+authors = ["catnuko <catnuko6912@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -23,7 +24,6 @@ bevy_egui = "0.20.3"
 houtu-scene = { path = "../houtu-scene" }
 houtu-jobs = { path = "../houtu-jobs" }
 bevy_web_asset = { path = "../bevy_web_asset" }
-bevy_atmosphere = "0.6.0"
 bevy-inspector-egui = "0.18.3"
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["stream"] }
 futures-util = "0.3"

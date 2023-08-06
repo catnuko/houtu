@@ -27,12 +27,12 @@ pub struct HeightmapTerrainData {
     pub _buffer: Vec<f32>,
     pub _width: u32,
     pub _height: u32,
-    pub _childTileMask: i32,
+    pub _child_tile_mask: i32,
     pub _encoding: HeightmapEncoding,
     pub _structure: HeightmapTerrainStructure,
-    pub _createdByUpsampling: bool,
-    pub _waterMask: Option<Vec<u8>>,
-    pub _skirtHeight: Option<f64>,
+    pub _created_by_upsampling: bool,
+    pub _water_mask: Option<Vec<u8>>,
+    pub _skirt_height: Option<f64>,
     pub _mesh: Option<TerrainMesh>,
 }
 
@@ -41,24 +41,24 @@ impl HeightmapTerrainData {
         buffer: Vec<f32>,
         width: u32,
         height: u32,
-        childTileMask: Option<i32>,
+        child_tile_mask: Option<i32>,
         encoding: Option<HeightmapEncoding>,
         structure: Option<HeightmapTerrainStructure>,
-        createdByUpsampling: Option<bool>,
-        waterMask: Option<Vec<u8>>,
-        skirtHeight: Option<f64>,
+        created_by_upsampling: Option<bool>,
+        water_mask: Option<Vec<u8>>,
+        skirt_height: Option<f64>,
         mesh: Option<TerrainMesh>,
     ) -> Self {
         Self {
             _buffer: buffer,
             _width: width,
             _height: height,
-            _childTileMask: childTileMask.unwrap_or(15),
+            _child_tile_mask: child_tile_mask.unwrap_or(15),
             _encoding: encoding.unwrap_or(HeightmapEncoding::NONE),
             _structure: structure.unwrap_or(HeightmapTerrainStructure::default()),
-            _createdByUpsampling: createdByUpsampling.unwrap_or(false),
-            _waterMask: waterMask,
-            _skirtHeight: skirtHeight,
+            _created_by_upsampling: created_by_upsampling.unwrap_or(false),
+            _water_mask: water_mask,
+            _skirt_height: skirt_height,
             _mesh: mesh,
         }
     }
@@ -80,10 +80,10 @@ impl HeightmapTerrainData {
             bitNumber -= 2; // south child
         }
 
-        return (self._childTileMask & (1 << bitNumber)) != 0;
+        return (self._child_tile_mask & (1 << bitNumber)) != 0;
     }
     pub fn was_created_by_upsampling(&self) -> bool {
-        return self._createdByUpsampling;
+        return self._created_by_upsampling;
     }
     pub async fn createMesh<T: TilingScheme>(
         &mut self,
@@ -92,8 +92,8 @@ impl HeightmapTerrainData {
         y: u32,
         level: u32,
         exaggeration: Option<f64>,
-        exaggerationRelativeHeight: Option<f64>,
-        indicesAndEdgesCacheArc: Arc<Mutex<IndicesAndEdgesCache>>,
+        exaggeration_relative_height: Option<f64>,
+        indices_and_edges_cache_arc: Arc<Mutex<IndicesAndEdgesCache>>,
     ) {
         let result = self.create_vertice(
             tiling_scheme,
@@ -101,16 +101,16 @@ impl HeightmapTerrainData {
             y,
             level,
             exaggeration,
-            exaggerationRelativeHeight,
+            exaggeration_relative_height,
         );
 
-        let mut indices_and_edges_cache = indicesAndEdgesCacheArc.lock().unwrap();
-        let indicesAndEdges;
-        if self._skirtHeight.unwrap() > 0.0 {
-            indicesAndEdges = indices_and_edges_cache
+        let mut indices_and_edges_cache = indices_and_edges_cache_arc.lock().unwrap();
+        let indices_and_edges;
+        if self._skirt_height.unwrap() > 0.0 {
+            indices_and_edges = indices_and_edges_cache
                 .getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
         } else {
-            indicesAndEdges = indices_and_edges_cache
+            indices_and_edges = indices_and_edges_cache
                 .getRegularGridIndicesAndEdgeIndices(self._width, self._height);
         }
 
@@ -118,8 +118,8 @@ impl HeightmapTerrainData {
         self._mesh = Some(TerrainMesh::new(
             result.relativeToCenter.unwrap(),
             result.vertices,
-            indicesAndEdges.indices,
-            indicesAndEdges.index_count_without_skirts,
+            indices_and_edges.indices,
+            indices_and_edges.index_count_without_skirts,
             vertex_count_without_skirts,
             Some(result.minimum_height),
             Some(result.maximum_height),
@@ -128,10 +128,10 @@ impl HeightmapTerrainData {
             result.encoding.stride,
             result.oriented_bounding_box,
             result.encoding,
-            indicesAndEdges.west_indices_south_to_north,
-            indicesAndEdges.south_indices_east_to_west,
-            indicesAndEdges.east_indices_north_to_south,
-            indicesAndEdges.north_indices_west_to_east,
+            indices_and_edges.west_indices_south_to_north,
+            indices_and_edges.south_indices_east_to_west,
+            indices_and_edges.east_indices_north_to_south,
+            indices_and_edges.north_indices_west_to_east,
         ));
     }
 
@@ -142,14 +142,14 @@ impl HeightmapTerrainData {
         y: u32,
         level: u32,
         exaggeration: Option<f64>,
-        exaggerationRelativeHeight: Option<f64>,
+        exaggeration_relative_height: Option<f64>,
     ) -> CreateVerticeReturn {
         let tiling_scheme = tiling_scheme;
         let x = x;
         let y = y;
         let level = level;
         let exaggeration = exaggeration.unwrap_or(1.0);
-        let exaggerationRelativeHeight = exaggerationRelativeHeight.unwrap_or(0.0);
+        let exaggeration_relative_height = exaggeration_relative_height.unwrap_or(0.0);
 
         let ellipsoid = tiling_scheme.get_ellipsoid();
         let nativeRectangle = tiling_scheme.tile_x_y_to_native_rectange(x, y, level);
@@ -166,8 +166,8 @@ impl HeightmapTerrainData {
             tiling_scheme.get_number_of_x_tiles_at_level(0),
         );
         let thisLevelMaxError = levelZeroMaxError / (1 << level) as f64;
-        let skirtHeight = (thisLevelMaxError * 4.0).min(1000.0);
-        self._skirtHeight = Some(skirtHeight);
+        let skirt_height = (thisLevelMaxError * 4.0).min(1000.0);
+        self._skirt_height = Some(skirt_height);
         let result = create_vertice(CreateVerticeOptions {
             heightmap: &mut self._buffer,
             structure: Some(structure),
@@ -178,12 +178,12 @@ impl HeightmapTerrainData {
             rectangle: Some(rectangle),
             relativeToCenter: Some(center),
             ellipsoid: Some(ellipsoid),
-            skirtHeight: skirtHeight,
+            skirt_height: skirt_height,
             isGeographic: Some(
                 type_name::<T>() == "houtu_scene::geographic_tiling_scheme::GeographicTilingScheme",
             ),
             exaggeration: Some(exaggeration),
-            exaggerationRelativeHeight: Some(exaggerationRelativeHeight),
+            exaggeration_relative_height: Some(exaggeration_relative_height),
         });
         return result;
     }
@@ -201,7 +201,7 @@ impl HeightmapTerrainData {
         if self._mesh.is_none() {
             return None;
         }
-        let meshData = self._mesh.as_ref().unwrap();
+        let mesh_data = self._mesh.as_ref().unwrap();
 
         let width = self._width;
         let height = self._height;
@@ -210,41 +210,41 @@ impl HeightmapTerrainData {
 
         let mut heights: Vec<f32> = vec![0.; (width * height * stride) as usize];
 
-        let buffer = &meshData.vertices;
-        let encoding = meshData.encoding;
+        let buffer = &mesh_data.vertices;
+        let encoding = mesh_data.encoding;
 
         // PERFORMANCE_IDEA: don't recompute these rectangles - the caller already knows them.
-        let sourceRectangle = tiling_scheme.tile_x_y_to_rectange(thisX, thisY, thisLevel);
-        let destinationRectangle =
+        let source_rectangle = tiling_scheme.tile_x_y_to_rectange(thisX, thisY, thisLevel);
+        let destination_rectangle =
             tiling_scheme.tile_x_y_to_rectange(descendantX, descendantY, descendantLevel);
 
-        let heightOffset = structure.heightOffset;
-        let heightScale = structure.heightScale;
+        let height_offset = structure.height_offset;
+        let height_scale = structure.height_scale;
 
-        let elementsPerHeight = structure.elementsPerHeight;
-        let elementMultiplier = structure.elementMultiplier;
-        let isBigEndian = structure.isBigEndian;
+        let elements_per_height = structure.elements_per_height;
+        let element_multiplier = structure.element_multiplier;
+        let is_big_endian = structure.is_big_endian;
 
-        let divisor = elementMultiplier.pow(elementsPerHeight - 1);
+        let divisor = element_multiplier.pow(elements_per_height - 1);
 
         for j in 0..height {
             let latitude = lerp(
-                destinationRectangle.north,
-                destinationRectangle.south,
+                destination_rectangle.north,
+                destination_rectangle.south,
                 (j / (height - 1)) as f64,
             );
             for i in 0..width {
                 let longitude = lerp(
-                    destinationRectangle.west,
-                    destinationRectangle.east,
+                    destination_rectangle.west,
+                    destination_rectangle.east,
                     (i / (width - 1)) as f64,
                 );
                 let mut heightSample = interpolateMeshHeight(
                     &buffer,
                     &encoding,
-                    heightOffset,
-                    heightScale,
-                    &sourceRectangle,
+                    height_offset,
+                    height_scale,
+                    &source_rectangle,
                     width,
                     height,
                     longitude,
@@ -264,13 +264,13 @@ impl HeightmapTerrainData {
                     heightSample
                 };
 
-                setHeight(
+                set_height(
                     &mut heights,
-                    elementsPerHeight,
-                    elementMultiplier,
+                    elements_per_height,
+                    element_multiplier,
                     divisor,
                     stride,
-                    isBigEndian,
+                    is_big_endian,
                     j * width + i,
                     heightSample,
                 );
@@ -294,19 +294,19 @@ impl HeightmapTerrainData {
 fn interpolateMeshHeight(
     buffer: &Vec<f32>,
     encoding: &TerrainEncoding,
-    heightOffset: f64,
-    heightScale: f64,
-    sourceRectangle: &Rectangle,
+    height_offset: f64,
+    height_scale: f64,
+    source_rectangle: &Rectangle,
     width: u32,
     height: u32,
     longitude: f64,
     latitude: f64,
 ) -> f64 {
-    // returns a height encoded according to the structure's heightScale and heightOffset.
-    let fromWest = ((longitude - sourceRectangle.west) * (width - 1) as f64)
-        / (sourceRectangle.east - sourceRectangle.west);
-    let fromSouth = ((latitude - sourceRectangle.south) * (height - 1) as f64)
-        / (sourceRectangle.north - sourceRectangle.south);
+    // returns a height encoded according to the structure's height_scale and height_offset.
+    let fromWest = ((longitude - source_rectangle.west) * (width - 1) as f64)
+        / (source_rectangle.east - source_rectangle.west);
+    let fromSouth = ((latitude - source_rectangle.south) * (height - 1) as f64)
+        / (source_rectangle.north - source_rectangle.south);
 
     let mut westInteger = fromWest.round() as u32;
     let mut eastInteger = westInteger + 1;
@@ -328,61 +328,61 @@ fn interpolateMeshHeight(
     southInteger = height - 1 - southInteger;
     northInteger = height - 1 - northInteger;
 
-    let southwestHeight = (encoding
+    let south_west_height = (encoding
         .decodeHeight(buffer, (southInteger * width + westInteger) as usize)
-        - heightOffset)
-        / heightScale;
-    let southeastHeight = (encoding
+        - height_offset)
+        / height_scale;
+    let south_east_height = (encoding
         .decodeHeight(buffer, (southInteger * width + eastInteger) as usize)
-        - heightOffset)
-        / heightScale;
-    let northwestHeight = (encoding
+        - height_offset)
+        / height_scale;
+    let north_west_height = (encoding
         .decodeHeight(buffer, (northInteger * width + westInteger) as usize)
-        - heightOffset)
-        / heightScale;
-    let northeastHeight = (encoding
+        - height_offset)
+        / height_scale;
+    let north_east_height = (encoding
         .decodeHeight(buffer, (northInteger * width + eastInteger) as usize)
-        - heightOffset)
-        / heightScale;
+        - height_offset)
+        / height_scale;
 
-    return triangleInterpolateHeight(
+    return triangle_interpolate_height(
         dx,
         dy,
-        southwestHeight,
-        southeastHeight,
-        northwestHeight,
-        northeastHeight,
+        south_west_height,
+        south_east_height,
+        north_west_height,
+        north_east_height,
     );
 }
 
-fn triangleInterpolateHeight(
+fn triangle_interpolate_height(
     dX: f64,
     dY: f64,
-    southwestHeight: f64,
-    southeastHeight: f64,
-    northwestHeight: f64,
-    northeastHeight: f64,
+    south_west_height: f64,
+    south_east_height: f64,
+    north_west_height: f64,
+    north_east_height: f64,
 ) -> f64 {
     // The HeightmapTessellator bisects the quad from southwest to northeast.
     if dY < dX {
         // Lower right triangle
-        return (southwestHeight
-            + dX * (southeastHeight - southwestHeight)
-            + dY * (northeastHeight - southeastHeight));
+        return (south_west_height
+            + dX * (south_east_height - south_west_height)
+            + dY * (north_east_height - south_east_height));
     }
 
     // Upper left triangle
-    return (southwestHeight
-        + dX * (northeastHeight - northwestHeight)
-        + dY * (northwestHeight - southwestHeight));
+    return (south_west_height
+        + dX * (north_east_height - north_west_height)
+        + dY * (north_west_height - south_west_height));
 }
-fn setHeight(
+fn set_height(
     heights: &mut Vec<f32>,
-    elementsPerHeight: u32,
-    elementMultiplier: u32,
+    elements_per_height: u32,
+    element_multiplier: u32,
     divisor: u32,
     stride: u32,
-    isBigEndian: bool,
+    is_big_endian: bool,
     index: u32,
     height: f64,
 ) {
@@ -390,29 +390,29 @@ fn setHeight(
     let mut divisor = divisor;
     let index = index * stride;
     let mut j = 0;
-    if isBigEndian {
-        for i in 0..elementsPerHeight - 1 {
+    if is_big_endian {
+        for i in 0..elements_per_height - 1 {
             heights[(index + i) as usize] = (height / divisor as f32).round();
             height -= heights[(index + i) as usize] * divisor as f32;
-            divisor /= elementMultiplier;
+            divisor /= element_multiplier;
         }
-        j = elementsPerHeight - 2;
+        j = elements_per_height - 2;
     } else {
-        for i in (0..elementsPerHeight - 1).rev() {
+        for i in (0..elements_per_height - 1).rev() {
             heights[(index + i) as usize] = (height / divisor as f32).round();
             height -= heights[(index + i) as usize] * divisor as f32;
-            divisor /= elementMultiplier;
+            divisor /= element_multiplier;
         }
         j = 1;
     }
     heights[(index + j) as usize] = height;
 }
-//   fn getHeight(
+//   fn get_height(
 //     heights,
-//     elementsPerHeight,
-//     elementMultiplier,
+//     elements_per_height,
+//     element_multiplier,
 //     stride,
-//     isBigEndian,
+//     is_big_endian,
 //     index
 //   ) {
 //     index *= stride;
@@ -420,13 +420,13 @@ fn setHeight(
 //     let height = 0;
 //     let i;
 
-//     if isBigEndian {
-//       for (i = 0; i < elementsPerHeight; ++i) {
-//         height = height * elementMultiplier + heights[index + i];
+//     if is_big_endian {
+//       for (i = 0; i < elements_per_height; ++i) {
+//         height = height * element_multiplier + heights[index + i];
 //       }
 //     } else {
-//       for (i = elementsPerHeight - 1; i >= 0; --i) {
-//         height = height * elementMultiplier + heights[index + i];
+//       for (i = elements_per_height - 1; i >= 0; --i) {
+//         height = height * element_multiplier + heights[index + i];
 //       }
 //     }
 

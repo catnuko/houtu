@@ -16,10 +16,10 @@ impl CullingVolume {
         return &self.planes;
     }
     pub fn from_cartesian4() {}
-    pub fn computeVisibility(&self, boundingVolume: &Box<&dyn BoundingVolume>) -> Intersect {
+    pub fn computeVisibility(&self, bounding_volume: &Box<&dyn BoundingVolume>) -> Intersect {
         let mut intersecting = false;
         for plane in self.planes.iter() {
-            let result = boundingVolume.intersect_plane(&Plane::from_vec4(&plane));
+            let result = bounding_volume.intersect_plane(&Plane::from_vec4(&plane));
             if result == Intersect::OUTSIDE {
                 return Intersect::OUTSIDE;
             } else if result == Intersect::INTERSECTING {

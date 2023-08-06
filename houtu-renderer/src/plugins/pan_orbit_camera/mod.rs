@@ -160,9 +160,9 @@ pub struct PanOrbitCamera {
     pub pan_sensitivity: f32,
     /// The sensitivity of moving the camera closer or further way using the scroll wheel. Defaults to `1.0`.
     pub zoom_sensitivity: f32,
-    /// Button used to orbit the camera. Defaults to `Button::Left`.
+    /// Button used to orbit the camera. Defaults to `Button::LEFT`.
     pub button_orbit: MouseButton,
-    /// Button used to pan the camera. Defaults to `Button::Right`.
+    /// Button used to pan the camera. Defaults to `Button::RIGHT`.
     pub button_pan: MouseButton,
     /// Key that must be pressed for `button_orbit` to work. Defaults to `None` (no modifier).
     pub modifier_orbit: Option<KeyCode>,

@@ -1,11 +1,11 @@
 use bevy::math::DVec2;
 
-pub fn compressTextureCoordinates(textureCoordinates: &DVec2) -> f64 {
-    let x = bit_or(textureCoordinates.x, 0b0);
-    let y = bit_or(textureCoordinates.y, 0b0);
+pub fn compress_texture_coordinates(texture_coordinates: &DVec2) -> f64 {
+    let x = bit_or(texture_coordinates.x, 0b0);
+    let y = bit_or(texture_coordinates.y, 0b0);
     return 4096.0 * x + y;
 }
-pub fn decompressTextureCoordinates(compressed: f64) -> DVec2 {
+pub fn decompress_texture_coordinates(compressed: f64) -> DVec2 {
     let temp = compressed / 4096.0;
     let xZeroTo4095 = temp.floor();
     let x = xZeroTo4095 / 4095.0;
@@ -21,6 +21,6 @@ pub fn bit_or(num: f64, num2: u64) -> f64 {
 pub fn bit_or_zero(num: f64) -> f64 {
     return bit_or(num, 0b0);
 }
-pub fn octPackFloat(encoded: &DVec2) -> f64 {
+pub fn oct_pack_float(encoded: &DVec2) -> f64 {
     return 256.0 * encoded.x + encoded.y;
 }

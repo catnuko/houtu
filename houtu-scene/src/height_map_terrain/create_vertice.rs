@@ -87,10 +87,10 @@ pub struct CreateVerticeOptions<'a> {
     pub heightmap: &'a mut Vec<f32>,
     pub width: u32,
     pub height: u32,
-    pub skirtHeight: f64,
+    pub skirt_height: f64,
     pub nativeRectangle: Rectangle,
     pub exaggeration: Option<f64>,
-    pub exaggerationRelativeHeight: Option<f64>,
+    pub exaggeration_relative_height: Option<f64>,
     pub rectangle: Option<Rectangle>,
     pub isGeographic: Option<bool>,
     pub relativeToCenter: Option<DVec3>,
@@ -113,8 +113,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let heightmap = options.heightmap;
     let width = options.width;
     let height = options.height;
-    let skirtHeight = options.skirtHeight;
-    let hasSkirts = skirtHeight > 0.0;
+    let skirt_height = options.skirt_height;
+    let hasSkirts = skirt_height > 0.0;
     let isGeographic = options.isGeographic.unwrap_or(true);
     let ellipsoid = options.ellipsoid.unwrap_or(Ellipsoid::WGS84);
 
@@ -159,19 +159,19 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let hasRelativeToCenter = options.relativeToCenter.is_some();
     let includeWebMercatorT = options.includeWebMercatorT.unwrap_or(false);
     let exaggeration = options.exaggeration.unwrap_or(1.0);
-    let exaggerationRelativeHeight = options.exaggerationRelativeHeight.unwrap_or(0.0);
+    let exaggeration_relative_height = options.exaggeration_relative_height.unwrap_or(0.0);
     let hasExaggeration = exaggeration != 1.0;
     let includeGeodeticSurfaceNormals = hasExaggeration;
     let structore = options
         .structure
         .unwrap_or(HeightmapTerrainStructure::default());
 
-    let heightScale = structore.heightScale;
-    let heightOffset = structore.heightOffset;
-    let elementsPerHeight = structore.elementsPerHeight;
+    let height_scale = structore.height_scale;
+    let height_offset = structore.height_offset;
+    let elements_per_height = structore.elements_per_height;
     let stride = structore.stride;
-    let elementMultiplier = structore.elementMultiplier;
-    let isBigEndian = structore.isBigEndian;
+    let element_multiplier = structore.element_multiplier;
+    let is_big_endian = structore.is_big_endian;
 
     let mut rectangleWidth = nativeRectangle.compute_width();
     let mut rectangleHeight = nativeRectangle.compute_height();
@@ -219,7 +219,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let gridVertexCount: u32 = width * height;
     let edgeVertexCount: u32 = {
-        if skirtHeight > 0.0 {
+        if skirt_height > 0.0 {
             width * 2 + height * 2
         } else {
             0
@@ -287,7 +287,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
         let isNorthEdge = rowIndex == startRow;
         let isSouthEdge = rowIndex == endRow - 1;
-        if skirtHeight > 0.0 {
+        if skirt_height > 0.0 {
             if isNorthEdge {
                 latitude += skirtOffsetPercentage * rectangleHeight;
             } else if isSouthEdge {
@@ -317,26 +317,26 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             let terrainOffset = (row as u32) * (width * stride) + (col as u32) * stride;
 
             let mut heightSample: f64;
-            if elementsPerHeight == 1 {
+            if elements_per_height == 1 {
                 heightSample = heightmap[terrainOffset as usize] as f64;
             } else {
                 heightSample = 0.;
 
-                if isBigEndian {
-                    for elementOffset in 0..elementsPerHeight {
-                        heightSample = heightSample * elementMultiplier as f64
+                if is_big_endian {
+                    for elementOffset in 0..elements_per_height {
+                        heightSample = heightSample * element_multiplier as f64
                             + heightmap[(terrainOffset + elementOffset) as usize] as f64;
                     }
                 } else {
                     //可能会出问题，注意
-                    for elementOffset in (0..elementsPerHeight).rev() {
-                        heightSample = heightSample * elementMultiplier as f64
+                    for elementOffset in (0..elements_per_height).rev() {
+                        heightSample = heightSample * element_multiplier as f64
                             + heightmap[(terrainOffset + elementOffset) as usize] as f64;
                     }
                 }
             }
 
-            heightSample = heightSample * heightScale + heightOffset;
+            heightSample = heightSample * height_scale + height_offset;
 
             maximum_height = maximum_height.max(heightSample);
             minimum_height = minimum_height.min(heightSample);
@@ -354,7 +354,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
             let mut index = (row as u32) * width + (col as u32);
 
-            if skirtHeight > 0.0 {
+            if skirt_height > 0.0 {
                 let isWestEdge = colIndex == startCol;
                 let isEastEdge = colIndex == endCol - 1;
                 let isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
@@ -363,7 +363,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
                     // Don't generate skirts on the corners.
                     continue;
                 } else if isEdge {
-                    heightSample -= skirtHeight;
+                    heightSample -= skirt_height;
 
                     if isWestEdge {
                         // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
@@ -455,7 +455,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         Some(includeWebMercatorT),
         Some(includeGeodeticSurfaceNormals),
         Some(exaggeration),
-        Some(exaggerationRelativeHeight),
+        Some(exaggeration_relative_height),
     );
     let lenth = (vertexCount * encoding.stride as u32) as usize;
     let mut vertices = Vec::with_capacity(lenth); // 预分配内存空间
@@ -515,8 +515,8 @@ mod tests {
         let height = 3;
         let mut structure = HeightmapTerrainStructure::default();
         structure.stride = 3;
-        structure.elementsPerHeight = 2;
-        structure.elementMultiplier = 10;
+        structure.elements_per_height = 2;
+        structure.element_multiplier = 10;
         let mut heightmap: Vec<f32> = [
             1.0, 2.0, 100.0, 3.0, 4.0, 100.0, 5.0, 6.0, 100.0, 7.0, 8.0, 100.0, 9.0, 10.0, 100.0,
             11.0, 12.0, 100.0, 13.0, 14.0, 100.0, 15.0, 16.0, 100.0, 17.0, 18.0, 100.0,
@@ -533,7 +533,7 @@ mod tests {
 
             width: width,
             height: height,
-            skirtHeight: 0.0,
+            skirt_height: 0.0,
             nativeRectangle: nativeRectangle.clone(),
             rectangle: Some(Rectangle::new(
                 10.0.to_radians(),
@@ -545,7 +545,7 @@ mod tests {
             isGeographic: None,
             includeWebMercatorT: None,
             exaggeration: None,
-            exaggerationRelativeHeight: None,
+            exaggeration_relative_height: None,
             relativeToCenter: None,
             ellipsoid: None,
         };

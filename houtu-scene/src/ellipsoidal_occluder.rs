@@ -86,7 +86,7 @@ impl EllipsoidalOccluder {
         let mut cv;
         if let Some(minimum_height) = minimum_height {
             if minimum_height < 0.0 && ellipsoid.minimumRadius > -minimum_height {
-                // This code is similar to the cameraPosition setter, but unrolled for performance because it will be called a lot.
+                // This code is similar to the camera_position setter, but unrolled for performance because it will be called a lot.
                 cv = DVec3::ZERO;
                 cv.x = self._cameraPosition.x / (ellipsoid.radii.x + minimum_height);
                 cv.y = self._cameraPosition.y / (ellipsoid.radii.y + minimum_height);

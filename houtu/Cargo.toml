@@ -1,7 +1,7 @@
 [package]
 name = "houtu"
 version = "0.1.0"
-authors = ["Corey Farwell <coreyf@rwell.org>"]
+authors = ["catnuko <catnuko6912@gmail.com>"]
 edition = "2021"
 
 [lib]
@@ -19,29 +19,11 @@ bevy = { version = "0.10.1", default-features = false, features = [
     "wayland",
     "png",
 ] }
-# geo = "0.24"
-# rgis-camera = { path = "../rgis-camera" }
-# rgis-file-loader = { path = "../rgis-file-loader" }
-# rgis-keyboard = { path = "../rgis-keyboard" }
-# rgis-layers = { path = "../rgis-layers" }
-# rgis-mouse = { path = "../rgis-mouse" }
-# rgis-network = { path = "../rgis-network" }
-# rgis-renderer = { path = "../rgis-renderer" }
 houtu-scene = { path = "../houtu-scene" }
 houtu-renderer = { path = "../houtu-renderer" }
-# rgis-settings = { path = "../rgis-settings" }
-# bevy_jobs = { git = "https://github.com/frewsxcv/bevy_jobs" }
-# rgis-transform = { path = "../rgis-transform" }
-# rgis-ui = { path = "../rgis-ui" }
-# time-logger = { path = "../time-logger" }
-# rgis-events = { path = "../rgis-events" }
 
-# [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# rgis-cli = { path = "../rgis-cli" }
+# [profile.dev.package."*"]
+# opt-level = 3
 
-# [target.'cfg(target_arch = "wasm32")'.dependencies]
-# bevy-web-resizer = "4.0"
-# wasm-bindgen = "0.2"
-
-[profile.dev.package."*"]
-opt-level = 3
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"

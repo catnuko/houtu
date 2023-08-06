@@ -88,8 +88,8 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     let heightmap = options.heightmap;
     let width = options.width;
     let height = options.height;
-    let skirtHeight = options.skirtHeight;
-    let hasSkirts = skirtHeight > 0.0;
+    let skirt_height = options.skirt_height;
+    let hasSkirts = skirt_height > 0.0;
     let isGeographic = options.isGeographic.unwrap_or(true);
     let ellipsoid = options.ellipsoid.unwrap_or(Ellipsoid::WGS84);
 
@@ -134,19 +134,19 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     let hasRelativeToCenter = options.relativeToCenter.is_some();
     let includeWebMercatorT = options.includeWebMercatorT.unwrap_or(false);
     let exaggeration = options.exaggeration.unwrap_or(1.0);
-    let exaggerationRelativeHeight = options.exaggerationRelativeHeight.unwrap_or(0.0);
+    let exaggeration_relative_height = options.exaggeration_relative_height.unwrap_or(0.0);
     let hasExaggeration = exaggeration != 1.0;
     let includeGeodeticSurfaceNormals = hasExaggeration;
     let structore = options
         .structure
         .unwrap_or(HeightmapTerrainStructure::default());
 
-    let heightScale = structore.heightScale;
-    let heightOffset = structore.heightOffset;
-    let elementsPerHeight = structore.elementsPerHeight;
+    let height_scale = structore.height_scale;
+    let height_offset = structore.height_offset;
+    let elements_per_height = structore.elements_per_height;
     let stride = structore.stride;
-    let elementMultiplier = structore.elementMultiplier;
-    let isBigEndian = structore.isBigEndian;
+    let element_multiplier = structore.element_multiplier;
+    let is_big_endian = structore.is_big_endian;
 
     let rectangleWidth = nativeRectangle.compute_width();
     let rectangleHeight = nativeRectangle.compute_height();
@@ -194,7 +194,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
 
     let gridVertexCount: i64 = width * height;
     let edgeVertexCount: i64 = {
-        if skirtHeight > 0.0 {
+        if skirt_height > 0.0 {
             width * 2 + height * 2
         } else {
             0
@@ -262,7 +262,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
 
         let isNorthEdge = rowIndex == startRow;
         let isSouthEdge = rowIndex == endRow - 1;
-        if skirtHeight > 0.0 {
+        if skirt_height > 0.0 {
             if isNorthEdge {
                 latitude += skirtOffsetPercentage * rectangleHeight;
             } else if isSouthEdge {
@@ -292,27 +292,27 @@ pub fn create_vertice(options: CreateVerticeOptions) {
             let terrainOffset = row * (width * stride) + col * stride;
 
             let heightSample: f64;
-            if elementsPerHeight == 1 {
+            if elements_per_height == 1 {
                 heightSample = heightmap[terrainOffset as usize];
             } else {
                 heightSample = 0.;
 
                 let elementOffset;
-                if isBigEndian {
-                    for elementOffset in 0..elementsPerHeight {
-                        heightSample = heightSample * elementMultiplier
+                if is_big_endian {
+                    for elementOffset in 0..elements_per_height {
+                        heightSample = heightSample * element_multiplier
                             + heightmap[(terrainOffset + elementOffset) as usize];
                     }
                 } else {
                     //可能会出问题，注意
-                    for elementOffset in (0..elementsPerHeight).rev() {
-                        heightSample = heightSample * elementMultiplier
+                    for elementOffset in (0..elements_per_height).rev() {
+                        heightSample = heightSample * element_multiplier
                             + heightmap[(terrainOffset + elementOffset) as usize];
                     }
                 }
             }
 
-            heightSample = heightSample * heightScale + heightOffset;
+            heightSample = heightSample * height_scale + height_offset;
 
             maximum_height = maximum_height.max(heightSample);
             minimum_height = minimum_height.min(heightSample);
@@ -330,7 +330,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
 
             let index = row * width + col;
 
-            if skirtHeight > 0.0 {
+            if skirt_height > 0.0 {
                 let isWestEdge = colIndex == startCol;
                 let isEastEdge = colIndex == endCol - 1;
                 let isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
@@ -339,7 +339,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
                     // Don't generate skirts on the corners.
                     continue;
                 } else if isEdge {
-                    heightSample -= skirtHeight;
+                    heightSample -= skirt_height;
 
                     if isWestEdge {
                         // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
@@ -428,7 +428,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     //   includeWebMercatorT,
     //   includeGeodeticSurfaceNormals,
     //   exaggeration,
-    //   exaggerationRelativeHeight
+    //   exaggeration_relative_height
     // );
     // let vertices = new Float32Array(vertexCount * encoding.stride);
 

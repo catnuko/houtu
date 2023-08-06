@@ -102,7 +102,7 @@ impl IntersectionTests {
         // qw >= 0.0.  Looking outward or tangent.
         return None;
     }
-    pub fn grazingAltitudeLocation(ray: &Ray, ellipsoid: Option<&Ellipsoid>) -> Option<DVec3> {
+    pub fn grazing_altitude_location(ray: &Ray, ellipsoid: Option<&Ellipsoid>) -> Option<DVec3> {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let position = ray.origin;
         let direction = ray.direction;
@@ -170,10 +170,10 @@ impl IntersectionTests {
             for i in 0..length {
                 s = D_I.mul_vec3(B.mul_vec3(solutions[i]));
                 let v = (s.subtract(position)).normalize();
-                let dotProduct = v.dot(direction);
+                let dot_product = v.dot(direction);
 
-                if dotProduct > maximumValue {
-                    maximumValue = dotProduct;
+                if dot_product > maximumValue {
+                    maximumValue = dot_product;
                     closest = s.clone();
                 }
             }
@@ -335,7 +335,7 @@ mod tests {
     fn grazingAltitudeLocation_inside_ellipsoid() {
         let ellipsoid = Ellipsoid::UNIT_SPHERE;
         let ray = Ray::new(DVec3::new(0.5, 0.0, 0.0), DVec3::UNIT_Z);
-        let actual = IntersectionTests::grazingAltitudeLocation(&ray, Some(&ellipsoid));
+        let actual = IntersectionTests::grazing_altitude_location(&ray, Some(&ellipsoid));
         assert!(actual.unwrap().eq(&ray.origin));
     }
 }

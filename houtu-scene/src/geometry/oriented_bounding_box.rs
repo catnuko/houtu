@@ -227,7 +227,7 @@ impl OrientedBoundingBox {
         );
         planeOrigin.z = 0.0; // center the plane on the equator to simpify plane normal calculation
         let isPole = planeOrigin.x.abs() < EPSILON10 && planeOrigin.y.abs() < EPSILON10;
-        let planeNormal = {
+        let plane_normal = {
             if !isPole {
                 planeOrigin.normalize()
             } else {
@@ -236,8 +236,8 @@ impl OrientedBoundingBox {
         };
 
         let planeYAxis = DVec3::UNIT_Z;
-        let planeXAxis = planeNormal.cross(planeYAxis);
-        plane = Plane::fromPointNormal(&planeOrigin, &planeNormal);
+        let planeXAxis = plane_normal.cross(planeYAxis);
+        plane = Plane::fromPointNormal(&planeOrigin, &plane_normal);
 
         // Get the horizon point relative to the center. This will be the farthest extent in the plane's X dimension.
         let horizonCartesian = DVec3::from_radians(
@@ -293,7 +293,7 @@ impl OrientedBoundingBox {
             planeOrigin,
             planeXAxis,
             planeYAxis,
-            planeNormal,
+            plane_normal,
             minX,
             maxX,
             minY,
@@ -473,10 +473,10 @@ pub fn fromPlaneExtents(
     planeXAxis: DVec3,
     planeYAxis: DVec3,
     planeZAxis: DVec3,
-    minimumX: f64,
-    maximumX: f64,
-    minimumY: f64,
-    maximumY: f64,
+    minimum_x: f64,
+    maximum_x: f64,
+    minimum_y: f64,
+    maximum_y: f64,
     minimumZ: f64,
     maximumZ: f64,
 ) -> OrientedBoundingBox {
@@ -488,13 +488,13 @@ pub fn fromPlaneExtents(
     halfAxes.set_column(2, &planeZAxis);
 
     let mut centerOffset = DVec3::default();
-    centerOffset.x = (minimumX + maximumX) / 2.0;
-    centerOffset.y = (minimumY + maximumY) / 2.0;
+    centerOffset.x = (minimum_x + maximum_x) / 2.0;
+    centerOffset.y = (minimum_y + maximum_y) / 2.0;
     centerOffset.z = (minimumZ + maximumZ) / 2.0;
 
     let mut scale = DVec3::default();
-    scale.x = (maximumX - minimumX) / 2.0;
-    scale.y = (maximumY - minimumY) / 2.0;
+    scale.x = (maximum_x - minimum_x) / 2.0;
+    scale.y = (maximum_y - minimum_y) / 2.0;
     scale.z = (maximumZ - minimumZ) / 2.0;
 
     let center = result.center;

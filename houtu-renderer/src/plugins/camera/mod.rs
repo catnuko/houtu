@@ -1,8 +1,6 @@
-use std::{
-    f64::{
-        consts::{FRAC_PI_2, PI},
-        MAX,
-    },
+use std::f64::{
+    consts::{FRAC_PI_2, PI},
+    MAX,
 };
 
 use bevy::{
@@ -11,13 +9,12 @@ use bevy::{
     window::PrimaryWindow,
 };
 mod camera_event_aggregator;
-mod camera_new;
-mod camera_old;
 mod egui;
+mod globe_camra;
 mod pan_orbit;
-use self::{camera_new::CameraControlPlugin, pan_orbit::pan_orbit_camera};
+use self::{globe_camra::CameraControlPlugin, pan_orbit::pan_orbit_camera};
 pub use camera_event_aggregator::MouseEvent;
-pub use camera_new::GlobeCamera;
+pub use globe_camra::GlobeCamera;
 
 use houtu_scene::{Projection, *};
 
@@ -43,6 +40,17 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
     };
     let ellipsoid = Ellipsoid::WGS84;
     let _x = ellipsoid.semimajor_axis() as f32;
+    // let perspective_projection = PerspectiveProjection {
+    //     fov: (60.0 as f32).to_radians(),
+    //     aspect_ratio: primary.width() / primary.height(),
+    //     near: 0.1,
+    //     far: 10000000000.0,
+    // };
+    // frustum construction code copied from Bevy
+    // let view_projection = perspective_projection.get_projection_matrix();
+    // let transform = Transform::default();
+    // let projection = bevy::prelude::Projection::Perspective(perspective_projection);
+    // let frustum = Frustum::from_view_projection(&view_projection);
     commands.spawn((
         Camera3dBundle {
             projection: bevy::prelude::Projection::Perspective(PerspectiveProjection {
@@ -51,6 +59,8 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
                 near: 0.1,
                 far: 10000000000.0,
             }),
+            // transform,
+            // frustum,
             // transform: Transform::from_translation(Vec3 {
             //     x: x + 10000000.,
             //     y: x + 10000000.,
@@ -67,50 +77,50 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
 pub struct GlobeCameraControl {
     pub drawing_buffer_width: u32,
     pub drawing_buffer_height: u32,
-    pub pixelRatio: f64,
-    pub minimumZoomDistance: f64,
-    pub maximumZoomDistance: f64,
-    pub _minimumZoomRate: f64,
-    pub _maximumZoomRate: f64,
-    pub _maximumRotateRate: f64,
-    pub _minimumRotateRate: f64,
-    pub _minimumUndergroundPickDistance: f64,
-    pub _maximumUndergroundPickDistance: f64,
-    pub enableCollisionDetection: bool,
-    pub _maxCoord: DVec3,
-    pub _zoomFactor: f64,
-    pub maximumMovementRatio: f64,
-    pub bounceAnimationTime: f64,
-    pub _tiltCenterMousePosition: DVec2,
-    pub _tiltCenter: DVec2,
-    pub _rotateMousePosition: DVec2,
-    pub _rotateStartPosition: DVec3,
-    pub _strafeStartPosition: DVec3,
-    pub _strafeMousePosition: DVec2,
-    pub _strafeEndMousePosition: DVec2,
-    pub _zoomMouseStart: DVec2,
-    pub _zoomWorldPosition: DVec3,
-    pub minimumTrackBallHeight: f64,
-    pub _minimumTrackBallHeight: f64,
-    pub minimumCollisionTerrainHeight: f64,
-    pub _minimumCollisionTerrainHeight: f64,
-    pub minimumPickingTerrainHeight: f64,
-    pub _minimumPickingTerrainHeight: f64,
-    pub minimumPickingTerrainDistanceWithInertia: f64,
-    pub _useZoomWorldPosition: bool,
-    pub _tiltCVOffMap: bool,
+    pub pixel_ratio: f64,
+    pub minimum_zoom_distance: f64,
+    pub maximum_zoom_distance: f64,
+    pub _minimum_zoom_rate: f64,
+    pub _maximum_zoom_rate: f64,
+    pub _maximum_rotate_rate: f64,
+    pub _minimum_rotate_rate: f64,
+    pub _minimum_underground_pick_distance: f64,
+    pub _maximum_underground_pick_distance: f64,
+    pub enable_collision_detection: bool,
+    pub _max_coord: DVec3,
+    pub _zoom_factor: f64,
+    pub maximum_movement_ratio: f64,
+    pub bounce_animation_time: f64,
+    pub _tilt_center_mouse_position: DVec2,
+    pub _tilt_center: DVec2,
+    pub _rotate_mouse_position: DVec2,
+    pub _rotate_start_position: DVec3,
+    pub _strafe_start_position: DVec3,
+    pub _strafe_mouse_position: DVec2,
+    pub _strafe_end_mouse_position: DVec2,
+    pub _zoom_mouse_start: DVec2,
+    pub _zoom_world_position: DVec3,
+    pub minimum_track_ball_height: f64,
+    pub _minimum_track_ball_height: f64,
+    pub minimum_collision_terrain_height: f64,
+    pub _minimum_collision_terrain_height: f64,
+    pub minimum_picking_terrain_height: f64,
+    pub _minimum_picking_terrain_height: f64,
+    pub minimum_picking_terrain_distance_with_inertia: f64,
+    pub _use_zoom_world_position: bool,
+    pub _tilt_cv_off_map: bool,
     pub _looking: bool,
     pub _rotating: bool,
     pub _strafing: bool,
-    pub _zoomingOnVector: bool,
-    pub _zoomingUnderground: bool,
-    pub _rotatingZoom: bool,
-    pub _adjustedHeightForTerrain: bool,
-    pub _cameraUnderground: bool,
-    pub _tiltOnEllipsoid: bool,
-    pub _rotateFactor: f64,
-    pub _rotateRateRangeAdjustment: f64,
-    pub _horizontalRotationAxis: Option<DVec3>,
+    pub _zooming_on_vector: bool,
+    pub _zooming_underground: bool,
+    pub _rotating_zoom: bool,
+    pub _adjusted_height_for_terrain: bool,
+    pub _camera_underground: bool,
+    pub _tilt_on_ellipsoid: bool,
+    pub _rotate_factor: f64,
+    pub _rotate_rate_range_adjustment: f64,
+    pub _horizontal_rotation_axis: Option<DVec3>,
     pub _ellipsoid: Ellipsoid,
 }
 impl Default for GlobeCameraControl {
@@ -118,53 +128,53 @@ impl Default for GlobeCameraControl {
         let max_coord = GeographicProjection::WGS84.project(&Cartographic::new(PI, FRAC_PI_2, 0.));
         let ellipsoid = Ellipsoid::WGS84;
         Self {
-            pixelRatio: 1.0,
+            pixel_ratio: 1.0,
             drawing_buffer_width: 0,
             drawing_buffer_height: 0,
-            _cameraUnderground: false,
-            _zoomFactor: 5.0,
-            maximumMovementRatio: 1.0,
-            bounceAnimationTime: 3.0,
-            minimumZoomDistance: 1.0,
-            maximumZoomDistance: MAX,
-            _minimumZoomRate: 20.0,
-            _maximumZoomRate: 5906376272000.0,
-            enableCollisionDetection: true,
-            _rotatingZoom: false,
-            _zoomingOnVector: false,
-            _useZoomWorldPosition: false,
-            _zoomingUnderground: false,
-            _maxCoord: max_coord,
-            _tiltCenterMousePosition: DVec2::new(-1.0, -1.0),
-            _tiltCenter: DVec2::new(0.0, 0.0),
-            _rotateMousePosition: DVec2::new(-1.0, -1.0),
-            _rotateStartPosition: DVec3::new(0.0, 0.0, 0.0),
-            _strafeStartPosition: DVec3::new(0.0, 0.0, 0.0),
-            _strafeMousePosition: DVec2::new(0.0, 0.0),
-            _strafeEndMousePosition: DVec2::new(0.0, 0.0),
-            _zoomMouseStart: DVec2::new(-1.0, -1.0),
-            _zoomWorldPosition: DVec3::new(0.0, 0.0, 0.0),
-            minimumTrackBallHeight: 7500000.0,
-            _minimumTrackBallHeight: 7500000.0,
-            minimumCollisionTerrainHeight: 150000.0,
-            _minimumCollisionTerrainHeight: 150000.0,
-            minimumPickingTerrainHeight: 150000.0,
-            _minimumPickingTerrainHeight: 150000.0,
-            minimumPickingTerrainDistanceWithInertia: 4000.0,
-            _tiltCVOffMap: false,
+            _camera_underground: false,
+            _zoom_factor: 5.0,
+            maximum_movement_ratio: 1.0,
+            bounce_animation_time: 3.0,
+            minimum_zoom_distance: 1.0,
+            maximum_zoom_distance: MAX,
+            _minimum_zoom_rate: 20.0,
+            _maximum_zoom_rate: 5906376272000.0,
+            enable_collision_detection: true,
+            _rotating_zoom: false,
+            _zooming_on_vector: false,
+            _use_zoom_world_position: false,
+            _zooming_underground: false,
+            _max_coord: max_coord,
+            _tilt_center_mouse_position: DVec2::new(-1.0, -1.0),
+            _tilt_center: DVec2::new(0.0, 0.0),
+            _rotate_mouse_position: DVec2::new(-1.0, -1.0),
+            _rotate_start_position: DVec3::new(0.0, 0.0, 0.0),
+            _strafe_start_position: DVec3::new(0.0, 0.0, 0.0),
+            _strafe_mouse_position: DVec2::new(0.0, 0.0),
+            _strafe_end_mouse_position: DVec2::new(0.0, 0.0),
+            _zoom_mouse_start: DVec2::new(-1.0, -1.0),
+            _zoom_world_position: DVec3::new(0.0, 0.0, 0.0),
+            minimum_track_ball_height: 7500000.0,
+            _minimum_track_ball_height: 7500000.0,
+            minimum_collision_terrain_height: 150000.0,
+            _minimum_collision_terrain_height: 150000.0,
+            minimum_picking_terrain_height: 150000.0,
+            _minimum_picking_terrain_height: 150000.0,
+            minimum_picking_terrain_distance_with_inertia: 4000.0,
+            _tilt_cv_off_map: false,
             _looking: false,
             _rotating: false,
             _strafing: false,
-            _adjustedHeightForTerrain: false,
-            _tiltOnEllipsoid: false,
-            _maximumRotateRate: 1.77,
-            _minimumRotateRate: 1.0 / 5000.0,
-            _minimumUndergroundPickDistance: 2000.0,
-            _maximumUndergroundPickDistance: 10000.0,
+            _adjusted_height_for_terrain: false,
+            _tilt_on_ellipsoid: false,
+            _maximum_rotate_rate: 1.77,
+            _minimum_rotate_rate: 1.0 / 5000.0,
+            _minimum_underground_pick_distance: 2000.0,
+            _maximum_underground_pick_distance: 10000.0,
             _ellipsoid: ellipsoid,
-            _rotateFactor: 1.0,
-            _rotateRateRangeAdjustment: 1.0,
-            _horizontalRotationAxis: None,
+            _rotate_factor: 1.0,
+            _rotate_rate_range_adjustment: 1.0,
+            _horizontal_rotation_axis: None,
         }
     }
 }
@@ -175,7 +185,7 @@ impl GlobeCameraControl {
         } else {
             self._ellipsoid = Ellipsoid::WGS84;
         }
-        self._rotateFactor = 1.0 / self._ellipsoid.maximum_radius;
-        self._rotateRateRangeAdjustment = self._ellipsoid.maximum_radius;
+        self._rotate_factor = 1.0 / self._ellipsoid.maximum_radius;
+        self._rotate_rate_range_adjustment = self._ellipsoid.maximum_radius;
     }
 }

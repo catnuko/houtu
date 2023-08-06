@@ -23,34 +23,34 @@ impl BoundingRectangle {
         let mut result: [f64; 16] = [
             0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ];
-        let halfWidth = self.width * 0.5;
-        let halfHeight = self.height * 0.5;
-        let halfDepth = (farDepthRange - nearDepthRange) * 0.5;
+        let half_width = self.width * 0.5;
+        let half_height = self.height * 0.5;
+        let half_depth = (farDepthRange - nearDepthRange) * 0.5;
 
-        let column0Row0 = halfWidth;
-        let column1Row1 = halfHeight;
-        let column2Row2 = halfDepth;
-        let column3Row0 = self.x + halfWidth;
-        let column3Row1 = self.y + halfHeight;
-        let column3Row2 = nearDepthRange + halfDepth;
-        let column3Row3 = 1.0;
+        let c_0_r_0 = half_width;
+        let c_1_r_1 = half_height;
+        let c_2_r_2 = half_depth;
+        let c_3_r_0 = self.x + half_width;
+        let c_3_r_1 = self.y + half_height;
+        let c_3_r_2 = nearDepthRange + half_depth;
+        let c_3_r_3 = 1.0;
 
-        result[0] = column0Row0;
+        result[0] = c_0_r_0;
         result[1] = 0.0;
         result[2] = 0.0;
         result[3] = 0.0;
         result[4] = 0.0;
-        result[5] = column1Row1;
+        result[5] = c_1_r_1;
         result[6] = 0.0;
         result[7] = 0.0;
         result[8] = 0.0;
         result[9] = 0.0;
-        result[10] = column2Row2;
+        result[10] = c_2_r_2;
         result[11] = 0.0;
-        result[12] = column3Row0;
-        result[13] = column3Row1;
-        result[14] = column3Row2;
-        result[15] = column3Row3;
+        result[12] = c_3_r_0;
+        result[13] = c_3_r_1;
+        result[14] = c_3_r_2;
+        result[15] = c_3_r_3;
 
         return DMat4::from_cols_array(&result);
     }
@@ -63,42 +63,42 @@ impl BoundingRectangle {
 
         let length = positions.len();
 
-        let mut minimumX = positions[0].x;
-        let mut minimumY = positions[0].y;
+        let mut minimum_x = positions[0].x;
+        let mut minimum_y = positions[0].y;
 
-        let mut maximumX = positions[0].x;
-        let mut maximumY = positions[0].y;
+        let mut maximum_x = positions[0].x;
+        let mut maximum_y = positions[0].y;
 
         for i in 1..length {
             let p = positions[i];
             let x = p.x;
             let y = p.y;
 
-            minimumX = x.min(minimumX);
-            maximumX = x.max(maximumX);
-            minimumY = y.min(minimumY);
-            maximumY = y.max(maximumY);
+            minimum_x = x.min(minimum_x);
+            maximum_x = x.max(maximum_x);
+            minimum_y = y.min(minimum_y);
+            maximum_y = y.max(maximum_y);
         }
 
-        result.x = minimumX;
-        result.y = minimumY;
-        result.width = maximumX - minimumX;
-        result.height = maximumY - minimumY;
+        result.x = minimum_x;
+        result.y = minimum_y;
+        result.width = maximum_x - minimum_x;
+        result.height = maximum_y - minimum_y;
         return result;
     }
     pub fn fromRectangle(rectangle: Rectangle) -> Self {
         let mut result = BoundingRectangle::new();
         let projection = GeographicProjection::default();
 
-        let lowerLeft = projection.project(&rectangle.south_west());
-        let mut upperRight = projection.project(&rectangle.north_east());
+        let lower_left = projection.project(&rectangle.south_west());
+        let mut upper_right = projection.project(&rectangle.north_east());
 
-        upperRight = upperRight.sub(lowerLeft);
+        upper_right = upper_right.sub(lower_left);
 
-        result.x = lowerLeft.x;
-        result.y = lowerLeft.y;
-        result.width = upperRight.x;
-        result.height = upperRight.y;
+        result.x = lower_left.x;
+        result.y = lower_left.y;
+        result.width = upper_right.x;
+        result.height = upper_right.y;
         return result;
     }
 }

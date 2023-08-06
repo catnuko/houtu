@@ -147,11 +147,11 @@ fn real_render_system(
                     ),
                     material: terrain_materials.add(TerrainMeshMaterial {
                         color: Color::rgba(r, g, b, 1.0),
-                        // image: Some(asset_server.load("icon.png")),
-                        image:Some( asset_server.load(format!(
-                                "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
-                                key.level, key.x, key.y,
-                            ))),
+                        image: Some(asset_server.load("icon.png")),
+                        // image:Some( asset_server.load(format!(
+                        //         "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
+                        //         key.level, key.x, key.y,
+                        //     ))),
                     }),
                     // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
                     ..Default::default()

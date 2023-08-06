@@ -1,16 +1,14 @@
-
-
 use bevy::{
-    ecs::{prelude::*},
+    ecs::prelude::*,
     input::{
         mouse::{MouseScrollUnit, MouseWheel},
         prelude::*,
     },
-    math::{DVec2},
+    math::DVec2,
     prelude::*,
     time::Time,
     utils::HashMap,
-    window::{PrimaryWindow},
+    window::PrimaryWindow,
 };
 use bevy_egui::EguiSet;
 use houtu_scene::{Cartesian2, EPSILON14};
@@ -41,20 +39,20 @@ impl bevy::app::Plugin for Plugin {
 
 #[derive(Default, Debug, Clone)]
 pub struct LastMovement {
-    startPosition: DVec2,
-    endPosition: DVec2,
+    start_position: DVec2,
+    end_position: DVec2,
     valid: bool,
 }
 #[derive(Default, Debug, Clone)]
 pub struct Movement {
-    pub startPosition: DVec2,
-    pub endPosition: DVec2,
+    pub start_position: DVec2,
+    pub end_position: DVec2,
 }
 impl Movement {
     fn into_state(&self, v: bool) -> MovementState {
         MovementState {
-            startPosition: self.startPosition.clone(),
-            endPosition: self.endPosition.clone(),
+            start_position: self.start_position.clone(),
+            end_position: self.end_position.clone(),
             inertiaEnabled: v,
         }
     }
@@ -75,20 +73,20 @@ pub struct PressTimetWrap(HashMap<&'static str, f64>);
 pub struct ReleaseTimeWrap(HashMap<&'static str, f64>);
 #[derive(Resource, Default)]
 pub struct Aggregator {
-    _currentMousePosition: DVec2,
-    _buttonsDown: u32,
-    _eventStartPosition: DVec2,
+    _current_mouse_position: DVec2,
+    _buttons_down: u32,
+    _event_start_position: DVec2,
 }
 impl Aggregator {
-    pub fn getStartMousePosition(
+    pub fn get_start_mouse_position(
         &self,
-        typeName: &'static str,
+        type_name: &'static str,
         event_start_position_wrap: &EventStartPositionWrap,
     ) -> DVec2 {
-        if typeName == WHEEL {
-            return self._currentMousePosition.clone();
+        if type_name == WHEEL {
+            return self._current_mouse_position.clone();
         }
-        return event_start_position_wrap.get(typeName).unwrap().clone();
+        return event_start_position_wrap.get(type_name).unwrap().clone();
     }
 }
 const WHEEL: &'static str = "WHEEL";
@@ -96,12 +94,12 @@ const LEFT_DRAG: &'static str = "LEFT_DRAG";
 const RIGHT_DRAG: &'static str = "RIGHT_DRAG";
 const MIDDLE_DRAG: &'static str = "MIDDLE_DRAG";
 const PINCH: &'static str = "PINCH";
-const cameraEventType: [&'static str; 4] = [WHEEL, LEFT_DRAG, RIGHT_DRAG, MIDDLE_DRAG];
+const CAMERA_EVENT_TYPE: [&'static str; 4] = [WHEEL, LEFT_DRAG, RIGHT_DRAG, MIDDLE_DRAG];
 #[derive(Debug)]
 pub struct ControlEventData {
     pub movement: MovementState,
-    pub startPosition: DVec2, // pub press_time: f64,
-                              // pub release_time: f64,
+    pub start_position: DVec2, // pub press_time: f64,
+                               // pub release_time: f64,
 }
 pub enum ControlEvent {
     Tilt(ControlEventData),
@@ -113,8 +111,8 @@ fn setup(
     // mut movement_wrap: ResMut<MovementWrap>,
     // mut last_movement_wrap: ResMut<LastMovementWrap>,
 ) {
-    for typeName in cameraEventType {
-        update_wrap.insert(typeName, true);
+    for type_name in CAMERA_EVENT_TYPE {
+        update_wrap.insert(type_name, true);
     }
 }
 pub fn default_input_map(
@@ -142,7 +140,7 @@ pub fn default_input_map(
                     }
                     Some(v) => v,
                 };
-                let lastMovement = match last_movement_wrap.get_mut(WHEEL) {
+                let last_movement = match last_movement_wrap.get_mut(WHEEL) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(WHEEL, v);
@@ -150,54 +148,54 @@ pub fn default_input_map(
                     }
                     Some(v) => v,
                 };
-                let arcLength = 7.5 * delta.to_radians();
+                let arc_length = 7.5 * delta.to_radians();
                 press_time_wrap.insert(WHEEL, cur_time);
                 release_time_wrap.insert(WHEEL, cur_time);
-                movement.endPosition.x = 0.0;
-                movement.endPosition.y = arcLength;
-                lastMovement.endPosition = movement.endPosition.clone();
-                lastMovement.valid = true;
+                movement.end_position.x = 0.0;
+                movement.end_position.y = arc_length;
+                last_movement.end_position = movement.end_position.clone();
+                last_movement.valid = true;
                 update_wrap.insert(WHEEL, false);
             }
             MouseEvent::MouseMove(mouse_movemet_event) => {
-                for typeName in cameraEventType {
-                    let movement = match movement_wrap.get_mut(typeName) {
+                for type_name in CAMERA_EVENT_TYPE {
+                    let movement = match movement_wrap.get_mut(type_name) {
                         None => {
                             let v = Movement::default();
-                            movement_wrap.insert(typeName, v);
-                            movement_wrap.get_mut(typeName).unwrap()
+                            movement_wrap.insert(type_name, v);
+                            movement_wrap.get_mut(type_name).unwrap()
                         }
                         Some(v) => v,
                     };
-                    let lastMovement = match last_movement_wrap.get_mut(typeName) {
+                    let last_movement = match last_movement_wrap.get_mut(type_name) {
                         None => {
                             let v = LastMovement::default();
-                            last_movement_wrap.insert(typeName, v);
-                            last_movement_wrap.get_mut(typeName).unwrap()
+                            last_movement_wrap.insert(type_name, v);
+                            last_movement_wrap.get_mut(type_name).unwrap()
                         }
                         Some(v) => v,
                     };
-                    if let Some(v) = is_down_wrap.get(typeName) {
+                    if let Some(v) = is_down_wrap.get(type_name) {
                         if !v {
                             continue;
                         }
-                        if !update_wrap.get(typeName).unwrap() {
-                            movement.endPosition = mouse_movemet_event.endPosition.clone();
+                        if !update_wrap.get(type_name).unwrap() {
+                            movement.end_position = mouse_movemet_event.end_position.clone();
                         } else {
-                            lastMovement.startPosition = movement.startPosition.clone();
-                            lastMovement.endPosition = movement.endPosition.clone();
-                            lastMovement.valid = true;
+                            last_movement.start_position = movement.start_position.clone();
+                            last_movement.end_position = movement.end_position.clone();
+                            last_movement.valid = true;
 
-                            movement.startPosition = mouse_movemet_event.startPosition.clone();
-                            movement.endPosition = mouse_movemet_event.endPosition.clone();
-                            update_wrap.insert(typeName, false);
+                            movement.start_position = mouse_movemet_event.start_position.clone();
+                            movement.end_position = mouse_movemet_event.end_position.clone();
+                            update_wrap.insert(type_name, false);
                         }
                     }
                 }
-                aggregator._currentMousePosition = mouse_movemet_event.endPosition.clone();
+                aggregator._current_mouse_position = mouse_movemet_event.end_position.clone();
             }
             MouseEvent::LeftDown(p) => {
-                let lastMovement = match last_movement_wrap.get_mut(LEFT_DRAG) {
+                let last_movement = match last_movement_wrap.get_mut(LEFT_DRAG) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(LEFT_DRAG, v);
@@ -205,21 +203,21 @@ pub fn default_input_map(
                     }
                     Some(v) => v,
                 };
-                aggregator._buttonsDown += 1;
-                lastMovement.valid = false;
+                aggregator._buttons_down += 1;
+                last_movement.valid = false;
                 is_down_wrap.insert(LEFT_DRAG, true);
                 press_time_wrap.insert(LEFT_DRAG, cur_time);
                 event_start_position_wrap.insert(LEFT_DRAG, p.clone());
                 // println!("left down");
             }
             MouseEvent::LeftUp(_p) => {
-                aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
+                aggregator._buttons_down = (aggregator._buttons_down - 1).max(0);
                 is_down_wrap.insert(LEFT_DRAG, false);
                 release_time_wrap.insert(LEFT_DRAG, cur_time);
                 // println!("left up");
             }
             MouseEvent::RightDown(p) => {
-                let lastMovement = match last_movement_wrap.get_mut(RIGHT_DRAG) {
+                let last_movement = match last_movement_wrap.get_mut(RIGHT_DRAG) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(RIGHT_DRAG, v);
@@ -227,19 +225,19 @@ pub fn default_input_map(
                     }
                     Some(v) => v,
                 };
-                aggregator._buttonsDown += 1;
-                lastMovement.valid = false;
+                aggregator._buttons_down += 1;
+                last_movement.valid = false;
                 is_down_wrap.insert(RIGHT_DRAG, true);
                 press_time_wrap.insert(RIGHT_DRAG, cur_time);
                 event_start_position_wrap.insert(RIGHT_DRAG, p.clone());
             }
             MouseEvent::RightUp(_p) => {
-                aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
+                aggregator._buttons_down = (aggregator._buttons_down - 1).max(0);
                 is_down_wrap.insert(RIGHT_DRAG, false);
                 release_time_wrap.insert(RIGHT_DRAG, cur_time);
             }
             MouseEvent::MiddleDown(p) => {
-                let lastMovement = match last_movement_wrap.get_mut(MIDDLE_DRAG) {
+                let last_movement = match last_movement_wrap.get_mut(MIDDLE_DRAG) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(MIDDLE_DRAG, v);
@@ -247,14 +245,14 @@ pub fn default_input_map(
                     }
                     Some(v) => v,
                 };
-                aggregator._buttonsDown += 1;
-                lastMovement.valid = false;
+                aggregator._buttons_down += 1;
+                last_movement.valid = false;
                 is_down_wrap.insert(MIDDLE_DRAG, true);
                 press_time_wrap.insert(MIDDLE_DRAG, cur_time);
                 event_start_position_wrap.insert(MIDDLE_DRAG, p.clone());
             }
             MouseEvent::MiddleUp(_p) => {
-                aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
+                aggregator._buttons_down = (aggregator._buttons_down - 1).max(0);
                 is_down_wrap.insert(MIDDLE_DRAG, false);
                 release_time_wrap.insert(MIDDLE_DRAG, cur_time);
             }
@@ -265,8 +263,8 @@ pub fn default_input_map(
 
 #[derive(Debug, Default, Clone)]
 pub struct MovementState {
-    pub startPosition: DVec2,
-    pub endPosition: DVec2,
+    pub start_position: DVec2,
+    pub end_position: DVec2,
     pub inertiaEnabled: bool,
 }
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
@@ -286,31 +284,31 @@ pub fn maintain_inertia_system(
     is_down_wrap: ResMut<IsDownWrap>,
     time: Res<Time>,
 ) {
-    for typeName in cameraEventType {
+    for type_name in CAMERA_EVENT_TYPE {
         //isMoving
-        if !update_wrap.get(typeName).unwrap() {
-            let startPosition =
-                aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
-            if let Some(movement) = movement_wrap.get(typeName) {
-                match typeName {
+        if !update_wrap.get(type_name).unwrap() {
+            let start_position =
+                aggregator.get_start_mouse_position(type_name, &event_start_position_wrap);
+            if let Some(movement) = movement_wrap.get(type_name) {
+                match type_name {
                     WHEEL => {
                         control_event_writer.send(ControlEvent::Zoom(ControlEventData {
                             movement: movement.into_state(false),
-                            startPosition: startPosition,
+                            start_position: start_position,
                         }));
                         activate_inertia(&mut movement_state_wrap, "_lastInertiaZoomMovement");
                     }
                     LEFT_DRAG => {
                         control_event_writer.send(ControlEvent::Spin(ControlEventData {
                             movement: movement.into_state(false),
-                            startPosition: startPosition,
+                            start_position: start_position,
                         }));
                         activate_inertia(&mut movement_state_wrap, "_lastInertiaSpinMovement");
                     }
                     MIDDLE_DRAG => {
                         control_event_writer.send(ControlEvent::Tilt(ControlEventData {
                             movement: movement.into_state(false),
-                            startPosition: startPosition,
+                            start_position: start_position,
                         }));
                         activate_inertia(&mut movement_state_wrap, "_lastInertiaTiltMovement");
                     }
@@ -318,11 +316,11 @@ pub fn maintain_inertia_system(
                 }
             }
         } else {
-            match typeName {
+            match type_name {
                 WHEEL => {
                     if maintain_inertia(
                         &mut movement_state_wrap,
-                        typeName,
+                        type_name,
                         "_lastInertiaZoomMovement",
                         0.9,
                         &press_time_wrap,
@@ -331,19 +329,19 @@ pub fn maintain_inertia_system(
                         &is_down_wrap,
                         &time,
                     ) {
-                        let startPosition =
-                            aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+                        let start_position = aggregator
+                            .get_start_mouse_position(type_name, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaZoomMovement").unwrap();
                         control_event_writer.send(ControlEvent::Zoom(ControlEventData {
                             movement: movement.clone(),
-                            startPosition: startPosition,
+                            start_position: start_position,
                         }))
                     }
                 }
                 LEFT_DRAG => {
                     if maintain_inertia(
                         &mut movement_state_wrap,
-                        typeName,
+                        type_name,
                         "_lastInertiaSpinMovement",
                         0.9,
                         &press_time_wrap,
@@ -352,19 +350,19 @@ pub fn maintain_inertia_system(
                         &is_down_wrap,
                         &time,
                     ) {
-                        let startPosition =
-                            aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+                        let start_position = aggregator
+                            .get_start_mouse_position(type_name, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaSpinMovement").unwrap();
                         control_event_writer.send(ControlEvent::Zoom(ControlEventData {
                             movement: movement.clone(),
-                            startPosition: startPosition,
+                            start_position: start_position,
                         }))
                     }
                 }
                 MIDDLE_DRAG => {
                     if maintain_inertia(
                         &mut movement_state_wrap,
-                        typeName,
+                        type_name,
                         "_lastInertiaTiltMovement",
                         0.9,
                         &press_time_wrap,
@@ -373,12 +371,12 @@ pub fn maintain_inertia_system(
                         &is_down_wrap,
                         &time,
                     ) {
-                        let startPosition =
-                            aggregator.getStartMousePosition(typeName, &event_start_position_wrap);
+                        let start_position = aggregator
+                            .get_start_mouse_position(type_name, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaTiltMovement").unwrap();
                         control_event_writer.send(ControlEvent::Zoom(ControlEventData {
                             movement: movement.clone(),
-                            startPosition: startPosition,
+                            start_position: start_position,
                         }))
                     }
                 }
@@ -386,25 +384,25 @@ pub fn maintain_inertia_system(
             }
         }
         //重置状态
-        update_wrap.insert(typeName, true);
+        update_wrap.insert(type_name, true);
     }
 }
 fn activate_inertia(
     movement_state_wrap: &mut ResMut<MovementStateWrap>,
-    lastMovementName: &'static str,
+    last_movement_name: &'static str,
 ) {
-    if let Some(movement_state) = movement_state_wrap.get_mut(lastMovementName) {
+    if let Some(movement_state) = movement_state_wrap.get_mut(last_movement_name) {
         movement_state.inertiaEnabled = true;
     }
     let last_movement_name_list: Vec<&'static str>;
-    if lastMovementName == "_lastInertiaZoomMovement" {
+    if last_movement_name == "_lastInertiaZoomMovement" {
         last_movement_name_list = [
             "_lastInertiaSpinMovement",
             "_lastInertiaTranslateMovement",
             "_lastInertiaTiltMovement",
         ]
         .into();
-    } else if lastMovementName == "_lastInertiaTiltMovement" {
+    } else if last_movement_name == "_lastInertiaTiltMovement" {
         last_movement_name_list =
             ["_lastInertiaSpinMovement", "_lastInertiaTranslateMovement"].into();
     } else {
@@ -416,29 +414,29 @@ fn activate_inertia(
         }
     }
 }
-const inertiaMaxClickTimeThreshold: f64 = 0.4;
+const INERTIA_MAX_CLICK_TIME_THRESHOLD: f64 = 0.4;
 fn maintain_inertia(
     movement_state_wrap: &mut ResMut<MovementStateWrap>,
-    typeName: &'static str,
-    lastMovementName: &'static str,
-    inertiaConstant: f64,
+    type_name: &'static str,
+    last_movement_name: &'static str,
+    inertia_constant: f64,
     press_time_wrap: &ResMut<PressTimetWrap>,
     release_time_wrap: &ResMut<ReleaseTimeWrap>,
     last_movement_wrap: &ResMut<LastMovementWrap>,
     is_down_wrap: &ResMut<IsDownWrap>,
     time: &Res<Time>,
 ) -> bool {
-    let movement_state = match movement_state_wrap.get_mut(lastMovementName) {
+    let movement_state = match movement_state_wrap.get_mut(last_movement_name) {
         None => {
             let v = MovementState::default();
-            movement_state_wrap.insert(lastMovementName, v);
-            movement_state_wrap.get_mut(lastMovementName).unwrap()
+            movement_state_wrap.insert(last_movement_name, v);
+            movement_state_wrap.get_mut(last_movement_name).unwrap()
         }
         Some(v) => v,
     };
 
-    let ts = press_time_wrap.get(typeName);
-    let tr = release_time_wrap.get(typeName);
+    let ts = press_time_wrap.get(type_name);
+    let tr = release_time_wrap.get(type_name);
     if ts.is_none() || tr.is_none() {
         return false;
     }
@@ -449,17 +447,17 @@ fn maintain_inertia(
     let now = time.elapsed_seconds_f64();
     let fromNow = now - tr;
     //如果按键释放事件和点击事件之间的时间差在0.4秒内才会保持惯性，滚轮缩放时，阈值=0，所以会保持惯性，而spin和tilt大于0.4，一般不会保持惯性，除非很快的拉动地球才会。
-    if threshold < inertiaMaxClickTimeThreshold {
+    if threshold < INERTIA_MAX_CLICK_TIME_THRESHOLD {
         //随时间增加，从1无限接近于0
-        let d = decay(fromNow, inertiaConstant);
+        let d = decay(fromNow, inertia_constant);
 
-        let lastMovement = last_movement_wrap.get(typeName);
-        if lastMovement.is_none() || !movement_state.inertiaEnabled {
+        let last_movement = last_movement_wrap.get(type_name);
+        if last_movement.is_none() || !movement_state.inertiaEnabled {
             return false;
         }
-        let lastMovement = lastMovement.unwrap();
-        if lastMovement.startPosition.equals_epsilon(
-            lastMovement.endPosition,
+        let last_movement = last_movement.unwrap();
+        if last_movement.start_position.equals_epsilon(
+            last_movement.end_position,
             Some(EPSILON14),
             None,
         ) {
@@ -467,32 +465,32 @@ fn maintain_inertia(
         }
         //不清楚为什么乘以0.5,可能想减小动作幅度
         let mut motion = DVec2::ZERO;
-        motion.x = (lastMovement.endPosition.x - lastMovement.startPosition.x) * 0.5;
-        motion.y = (lastMovement.endPosition.y - lastMovement.startPosition.y) * 0.5;
+        motion.x = (last_movement.end_position.x - last_movement.start_position.x) * 0.5;
+        motion.y = (last_movement.end_position.y - last_movement.start_position.y) * 0.5;
 
-        movement_state.startPosition = lastMovement.startPosition.clone();
+        movement_state.start_position = last_movement.start_position.clone();
         // println!(
-        //     "startPositin={:?},endPosition={:?},motion={:?}",
-        //     lastMovement.startPosition.clone(),
-        //     lastMovement.endPosition.clone(),
+        //     "startPositin={:?},end_position={:?},motion={:?}",
+        //     last_movement.start_position.clone(),
+        //     last_movement.end_position.clone(),
         //     motion.clone() * d
         // );
-        movement_state.endPosition = motion * (d as f64);
-        movement_state.endPosition = movement_state.startPosition + movement_state.endPosition;
+        movement_state.end_position = motion * (d as f64);
+        movement_state.end_position = movement_state.start_position + movement_state.end_position;
 
         // If value from the decreasing exponential function is close to zero,
         // the end coordinates may be NaN.
-        if movement_state.endPosition.x.is_nan()
-            || movement_state.endPosition.y.is_nan()
+        if movement_state.end_position.x.is_nan()
+            || movement_state.end_position.y.is_nan()
             || movement_state
-                .startPosition
-                .distance(movement_state.endPosition)
+                .start_position
+                .distance(movement_state.end_position)
                 < 0.5
         {
             return false;
         }
 
-        if is_down_wrap.get(typeName).is_none() {
+        if is_down_wrap.get(type_name).is_none() {
             //可以保持惯性，更新相机
             return true;
         }
@@ -530,28 +528,28 @@ impl bevy::prelude::Plugin for ScreenSpaceEventHandlerPlugin {
     }
 }
 
-const Left: &'static str = "Left";
-const Right: &'static str = "Right";
-const Middle: &'static str = "Middle";
-const LeftDown: &'static str = "LeftDown";
-const RightDown: &'static str = "RightDown";
-const MiddleDown: &'static str = "MiddleDown";
-const mouseEvent: [&'static str; 3] = [Left, Right, Middle];
-fn getMouseButtonName(mouseButton: MouseButton) -> &'static str {
+const LEFT: &'static str = "LEFT";
+const RIGHT: &'static str = "RIGHT";
+const MIDDLE: &'static str = "MIDDLE";
+const LEFT_DOWN: &'static str = "LEFT_DOWN";
+const RIGHT_DOWN: &'static str = "RIGHT_DOWN";
+const MIDDLE_DOWN: &'static str = "MIDDLE_DOWN";
+const MOUSE_EVENT: [&'static str; 3] = [LEFT, RIGHT, MIDDLE];
+fn get_mouse_button_name(mouseButton: MouseButton) -> &'static str {
     return match mouseButton {
-        MouseButton::Left => Left,
-        MouseButton::Right => Right,
-        MouseButton::Middle => Middle,
+        MouseButton::Left => LEFT,
+        MouseButton::Right => RIGHT,
+        MouseButton::Middle => MIDDLE,
         _ => {
             panic!("")
         }
     };
 }
-fn getMyMouseButtonName(mouseButton: MouseButton) -> &'static str {
+fn get_my_mouse_button_name(mouseButton: MouseButton) -> &'static str {
     return match mouseButton {
-        MouseButton::Left => LeftDown,
-        MouseButton::Right => RightDown,
-        MouseButton::Middle => MiddleDown,
+        MouseButton::Left => LEFT_DOWN,
+        MouseButton::Right => RIGHT_DOWN,
+        MouseButton::Middle => MIDDLE_DOWN,
         _ => {
             panic!("")
         }
@@ -566,22 +564,22 @@ pub struct IsButtonDownWrap(HashMap<&'static str, bool>);
 
 #[derive(Resource)]
 pub struct ScreenSpaceEventHandler {
-    _primaryPosition: DVec2,
-    _primaryStartPosition: DVec2,
-    _primaryPreviousPosition: DVec2,
-    _isPinching: bool,
-    _pinchingPosition: DVec2,
-    _clickPixelTolerance: f64,
+    _primary_position: DVec2,
+    _primary_start_position: DVec2,
+    _primary_previous_position: DVec2,
+    _is_pinching: bool,
+    _pinching_position: DVec2,
+    _click_pixel_to_lerance: f64,
 }
 impl Default for ScreenSpaceEventHandler {
     fn default() -> Self {
         Self {
-            _primaryPreviousPosition: DVec2::ZERO,
-            _pinchingPosition: DVec2::ZERO,
-            _primaryStartPosition: DVec2::ZERO,
-            _primaryPosition: DVec2::ZERO,
-            _clickPixelTolerance: 5.0,
-            _isPinching: false,
+            _primary_previous_position: DVec2::ZERO,
+            _pinching_position: DVec2::ZERO,
+            _primary_start_position: DVec2::ZERO,
+            _primary_position: DVec2::ZERO,
+            _click_pixel_to_lerance: 5.0,
+            _is_pinching: false,
         }
     }
 }
@@ -636,12 +634,14 @@ pub fn screen_space_event_hanlder_system(
         );
 
         //收集移动事件
-        screen_space_event_hanlder._primaryPosition = position.clone();
+        screen_space_event_hanlder._primary_position = position.clone();
         let mut movement = Movement::default();
-        movement.startPosition = screen_space_event_hanlder._primaryPreviousPosition.clone();
-        movement.endPosition = position.clone();
+        movement.start_position = screen_space_event_hanlder
+            ._primary_previous_position
+            .clone();
+        movement.end_position = position.clone();
         events.send(MouseEvent::MouseMove(movement));
-        screen_space_event_hanlder._primaryPreviousPosition = position.clone();
+        screen_space_event_hanlder._primary_previous_position = position.clone();
 
         //收集Down事件
         if mouse_buttons.any_just_pressed([
@@ -650,26 +650,26 @@ pub fn screen_space_event_hanlder_system(
             MouseButton::Right,
         ]) {
             let button: &'static str;
-            let button_my: &'static str;
+            // let button_my: &'static str;
             if mouse_buttons.just_pressed(MouseButton::Left) {
-                button = getMouseButtonName(MouseButton::Left);
-                button_my = getMyMouseButtonName(MouseButton::Left);
+                button = get_mouse_button_name(MouseButton::Left);
+                // button_my = get_my_mouse_button_name(MouseButton::Left);
                 events.send(MouseEvent::LeftDown(position.clone()));
             } else if mouse_buttons.just_pressed(MouseButton::Right) {
-                button = getMouseButtonName(MouseButton::Right);
-                button_my = getMyMouseButtonName(MouseButton::Right);
+                button = get_mouse_button_name(MouseButton::Right);
+                // button_my = get_my_mouse_button_name(MouseButton::Right);
                 events.send(MouseEvent::RightDown(position.clone()));
             } else if mouse_buttons.just_pressed(MouseButton::Middle) {
-                button = getMouseButtonName(MouseButton::Middle);
-                button_my = getMyMouseButtonName(MouseButton::Middle);
+                button = get_mouse_button_name(MouseButton::Middle);
+                // button_my = get_my_mouse_button_name(MouseButton::Middle);
                 events.send(MouseEvent::MiddleDown(position.clone()));
             } else {
                 return;
             }
             is_button_down_wrap.insert(button, true);
-            screen_space_event_hanlder._primaryPosition = position.clone();
-            screen_space_event_hanlder._primaryStartPosition = position.clone();
-            screen_space_event_hanlder._primaryPreviousPosition = position.clone();
+            screen_space_event_hanlder._primary_position = position.clone();
+            screen_space_event_hanlder._primary_start_position = position.clone();
+            screen_space_event_hanlder._primary_previous_position = position.clone();
         }
         //收集Up和Click事件
         if mouse_buttons.any_just_released([
@@ -678,37 +678,37 @@ pub fn screen_space_event_hanlder_system(
             MouseButton::Right,
         ]) {
             let button: &'static str;
-            let button_my: &'static str;
+            // let button_my: &'static str;
             if mouse_buttons.just_released(MouseButton::Left) {
-                button = getMouseButtonName(MouseButton::Left);
-                button_my = getMyMouseButtonName(MouseButton::Left);
+                button = get_mouse_button_name(MouseButton::Left);
+                // button_my = get_my_mouse_button_name(MouseButton::Left);
                 events.send(MouseEvent::LeftUp(position.clone()));
                 if checkPixelTolerance(
-                    &screen_space_event_hanlder._primaryStartPosition,
+                    &screen_space_event_hanlder._primary_start_position,
                     &position,
-                    screen_space_event_hanlder._clickPixelTolerance,
+                    screen_space_event_hanlder._click_pixel_to_lerance,
                 ) {
                     events.send(MouseEvent::LeftClick(position.clone()));
                 }
             } else if mouse_buttons.just_released(MouseButton::Right) {
-                button = getMouseButtonName(MouseButton::Right);
-                button_my = getMyMouseButtonName(MouseButton::Right);
+                button = get_mouse_button_name(MouseButton::Right);
+                // button_my = get_my_mouse_button_name(MouseButton::Right);
                 events.send(MouseEvent::RightUp(position.clone()));
                 if checkPixelTolerance(
-                    &screen_space_event_hanlder._primaryStartPosition,
+                    &screen_space_event_hanlder._primary_start_position,
                     &position,
-                    screen_space_event_hanlder._clickPixelTolerance,
+                    screen_space_event_hanlder._click_pixel_to_lerance,
                 ) {
                     events.send(MouseEvent::RightClick(position.clone()));
                 }
             } else if mouse_buttons.just_released(MouseButton::Middle) {
-                button = getMouseButtonName(MouseButton::Middle);
-                button_my = getMyMouseButtonName(MouseButton::Middle);
+                button = get_mouse_button_name(MouseButton::Middle);
+                // button_my = get_my_mouse_button_name(MouseButton::Middle);
                 events.send(MouseEvent::MiddleUp(position.clone()));
                 if checkPixelTolerance(
-                    &screen_space_event_hanlder._primaryStartPosition,
+                    &screen_space_event_hanlder._primary_start_position,
                     &position,
-                    screen_space_event_hanlder._clickPixelTolerance,
+                    screen_space_event_hanlder._click_pixel_to_lerance,
                 ) {
                     events.send(MouseEvent::MiddleClick(position.clone()));
                 }
@@ -719,18 +719,18 @@ pub fn screen_space_event_hanlder_system(
         }
 
         if mouse_buttons.just_pressed(MouseButton::Middle)
-            && !screen_space_event_hanlder._isPinching
+            && !screen_space_event_hanlder._is_pinching
         {
-            screen_space_event_hanlder._isPinching = true;
-            screen_space_event_hanlder._pinchingPosition = position.clone();
+            screen_space_event_hanlder._is_pinching = true;
+            screen_space_event_hanlder._pinching_position = position.clone();
         }
         if mouse_buttons.just_released(MouseButton::Middle)
-            && (screen_space_event_hanlder._isPinching)
+            && (screen_space_event_hanlder._is_pinching)
         {
-            screen_space_event_hanlder._isPinching = false;
+            screen_space_event_hanlder._is_pinching = false;
             let mut movement = Movement::default();
-            movement.startPosition = screen_space_event_hanlder._pinchingPosition.clone();
-            movement.endPosition = position.clone();
+            movement.start_position = screen_space_event_hanlder._pinching_position.clone();
+            movement.end_position = position.clone();
             events.send(MouseEvent::PinchEnd(movement));
         }
         for ev in mouse_wheel_reader.iter() {
@@ -748,9 +748,9 @@ pub fn screen_space_event_hanlder_system(
         }
     }
 }
-fn checkPixelTolerance(startPosition: &DVec2, endPosition: &DVec2, pixelTolerance: f64) -> bool {
-    let xDiff = startPosition.x - endPosition.x;
-    let yDiff = startPosition.y - endPosition.y;
+fn checkPixelTolerance(start_position: &DVec2, end_position: &DVec2, pixelTolerance: f64) -> bool {
+    let xDiff = start_position.x - end_position.x;
+    let yDiff = start_position.y - end_position.y;
     let totalPixels = (xDiff * xDiff + yDiff * yDiff).sqrt();
 
     return totalPixels < pixelTolerance;

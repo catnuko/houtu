@@ -53,12 +53,12 @@ impl BoundingSphere {
         let centerSeparation = toRightCenter.magnitude();
 
         if leftRadius >= centerSeparation + rightRadius {
-            // Left sphere wins.
+            // LEFT sphere wins.
             return self.clone();
         }
 
         if rightRadius >= centerSeparation + leftRadius {
-            // Right sphere wins.
+            // RIGHT sphere wins.
             return right.clone();
         }
 

@@ -198,29 +198,29 @@ impl Matrix4 for DMat4 {
     ) -> DMat4 {
         let mut result: [f64; 16] = [0.; 16];
 
-        let column0Row0 = (2.0 * near) / (right - left);
-        let column1Row1 = (2.0 * near) / (top - bottom);
+        let c_0_r_0 = (2.0 * near) / (right - left);
+        let c_1_r_1 = (2.0 * near) / (top - bottom);
         let column2Row0 = (right + left) / (right - left);
         let column2Row1 = (top + bottom) / (top - bottom);
-        let column2Row2 = -1.0;
+        let c_2_r_2 = -1.0;
         let column2Row3 = -1.0;
-        let column3Row2 = -2.0 * near;
+        let c_3_r_2 = -2.0 * near;
 
-        result[0] = column0Row0;
+        result[0] = c_0_r_0;
         result[1] = 0.0;
         result[2] = 0.0;
         result[3] = 0.0;
         result[4] = 0.0;
-        result[5] = column1Row1;
+        result[5] = c_1_r_1;
         result[6] = 0.0;
         result[7] = 0.0;
         result[8] = column2Row0;
         result[9] = column2Row1;
-        result[10] = column2Row2;
+        result[10] = c_2_r_2;
         result[11] = column2Row3;
         result[12] = 0.0;
         result[13] = 0.0;
-        result[14] = column3Row2;
+        result[14] = c_3_r_2;
         result[15] = 0.0;
         return DMat4::from_cols_array(&result);
     }
@@ -233,29 +233,29 @@ impl Matrix4 for DMat4 {
         far: f64,
     ) -> DMat4 {
         let mut result: [f64; 16] = [0.; 16];
-        let column0Row0 = (2.0 * near) / (right - left);
-        let column1Row1 = (2.0 * near) / (top - bottom);
+        let c_0_r_0 = (2.0 * near) / (right - left);
+        let c_1_r_1 = (2.0 * near) / (top - bottom);
         let column2Row0 = (right + left) / (right - left);
         let column2Row1 = (top + bottom) / (top - bottom);
-        let column2Row2 = -(far + near) / (far - near);
+        let c_2_r_2 = -(far + near) / (far - near);
         let column2Row3 = -1.0;
-        let column3Row2 = (-2.0 * far * near) / (far - near);
+        let c_3_r_2 = (-2.0 * far * near) / (far - near);
 
-        result[0] = column0Row0;
+        result[0] = c_0_r_0;
         result[1] = 0.0;
         result[2] = 0.0;
         result[3] = 0.0;
         result[4] = 0.0;
-        result[5] = column1Row1;
+        result[5] = c_1_r_1;
         result[6] = 0.0;
         result[7] = 0.0;
         result[8] = column2Row0;
         result[9] = column2Row1;
-        result[10] = column2Row2;
+        result[10] = c_2_r_2;
         result[11] = column2Row3;
         result[12] = 0.0;
         result[13] = 0.0;
-        result[14] = column3Row2;
+        result[14] = c_3_r_2;
         result[15] = 0.0;
         return DMat4::from_cols_array(&result);
     }

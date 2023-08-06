@@ -61,7 +61,7 @@ impl bevy::prelude::Plugin for Plugin {
 fn render_system(
     mut primitive: ResMut<QuadtreePrimitive>,
     mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
-    mut globe_camera_query: Query<(&mut GlobeCamera)>,
+    mut globe_camera_query: Query<&mut GlobeCamera>,
     frame_count: Res<FrameCount>,
     primary_query: Query<&Window, With<PrimaryWindow>>,
     mut all_traversal_quad_details: ResMut<AllTraversalQuadDetails>,
@@ -111,7 +111,7 @@ fn real_render_system(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     rendered_query: Query<(Entity, &TileRendered)>,
-    mut images: ResMut<Assets<Image>>,
+    _images: ResMut<Assets<Image>>,
 ) {
     //清除已经渲染但不需要渲染的瓦片
     for (entity, tile_rendered) in rendered_query.iter() {

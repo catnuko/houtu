@@ -1,14 +1,13 @@
 use bevy::{
-    math::DVec4,
-    prelude::{AssetServer, Assets, Component, Entity, Handle, Image, Query, ResMut},
-    prelude::{Deref, DerefMut, Res, Visibility},
+    prelude::{AssetServer, Assets, Handle, Image},
+    prelude::{Deref, DerefMut},
     render::renderer::RenderDevice,
     utils::Uuid,
 };
 use bevy_egui::egui::mutex::{Mutex, MutexGuard};
 use houtu_scene::Rectangle;
-use std::{borrow::Borrow, cell::RefCell};
-use std::{rc::Rc, sync::Arc};
+
+use std::{sync::Arc};
 
 use crate::plugins::camera::GlobeCamera;
 

@@ -1,8 +1,8 @@
-use std::{cmp::Ordering, primitive};
+use std::{cmp::Ordering};
 
 use bevy::{
     core::FrameCount,
-    prelude::{AssetServer, Assets, Image, Res, ResMut, Resource},
+    prelude::{AssetServer, Assets, Image, Res, Resource},
     render::renderer::RenderDevice,
     time::Time,
     window::Window,
@@ -15,7 +15,6 @@ use houtu_scene::{
 use crate::plugins::camera::GlobeCamera;
 
 use super::{
-    globe_surface_tile::GlobeSurfaceTile,
     globe_surface_tile_provider::{GlobeSurfaceTileProvider, TileVisibility},
     imagery_layer_storage::ImageryLayerStorage,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
@@ -23,7 +22,7 @@ use super::{
     quadtree_tile::{Quadrant, QuadtreeTile, QuadtreeTileLoadState},
     quadtree_tile_storage::QuadtreeTileStorage,
     reproject_texture::ReprojectTextureTaskQueue,
-    terrain_provider::{self, TerrainProvider},
+    terrain_provider::{TerrainProvider},
     tile_key::TileKey,
     tile_replacement_queue::TileReplacementQueue,
     tile_selection_result::TileSelectionResult,
@@ -61,7 +60,7 @@ pub enum QueueType {
 }
 impl QuadtreePrimitive {
     pub fn new() -> Self {
-        let mut storage = QuadtreeTileStorage::new();
+        let storage = QuadtreeTileStorage::new();
         Self {
             tile_cache_size: 100,
             loading_descendant_limit: 20,
@@ -235,9 +234,9 @@ fn process_tile_load_queue(
     render_world_queue: &mut ReprojectTextureTaskQueue,
     render_device: &RenderDevice,
 ) {
-    if (primitive.tile_load_queue_high.len() == 0
+    if primitive.tile_load_queue_high.len() == 0
         && primitive.tile_load_queue_medium.len() == 0
-        && primitive.tile_load_queue_low.len() == 0)
+        && primitive.tile_load_queue_low.len() == 0
     {
         return;
     }
@@ -304,7 +303,7 @@ fn process_tile_load_queue(
 
 fn process_single_priority_load_queue(
     primitive: &mut QuadtreePrimitive,
-    frame_count: &FrameCount,
+    _frame_count: &FrameCount,
     did_some_loading: &mut bool,
     end_time: f64,
     time: &Res<Time>,
@@ -520,7 +519,7 @@ fn visitTile(
     }
     let tile = primitive.storage.get_mut(&tile_key).unwrap();
     if primitive.tile_provider.can_refine(tile) {
-        let mut all_are_upsampled = {
+        let all_are_upsampled = {
             let mut v = false;
             let south_west_child = primitive.storage.get(&tile_key.southwest()).unwrap();
             v = v && south_west_child.upsampled_from_parent;
@@ -694,7 +693,7 @@ fn screen_space_error(
     tile: &QuadtreeTile,
     globe_camera: &mut GlobeCamera,
     window: &Window,
-    ellipsoid: &Ellipsoid,
+    _ellipsoid: &Ellipsoid,
 ) -> f64 {
     let max_geometric_error: f64 = tile_provider.get_level_maximum_geometric_error(tile.key.level);
 
@@ -724,7 +723,7 @@ fn visitVisibleChildrenNearToFar(
     northwest: TileKey,
     northeast: TileKey,
 ) {
-    let (east, west, south, north) = {
+    let (east, _west, _south, north) = {
         let v = primitive.storage.get(&southwest).unwrap();
         (
             v.rectangle.east,
@@ -948,7 +947,7 @@ pub fn get_traversal_details<'a>(
 pub struct TileLoadEvent(pub u32);
 fn update_tile_load_progress_system(primitive: &mut QuadtreePrimitive) {
     let p0_count = primitive.tiles_to_render.len();
-    let p1_count = primitive.tile_to_update_heights.len();
+    let _p1_count = primitive.tile_to_update_heights.len();
     let p2_count = primitive.tile_load_queue_high.len();
     let p3_count = primitive.tile_load_queue_medium.len();
     let p4_count = primitive.tile_load_queue_low.len();
@@ -969,12 +968,12 @@ fn update_tile_load_progress_system(primitive: &mut QuadtreePrimitive) {
             .unwrap_or(0);
         debug.tiles_rendered = p0_count as u32;
 
-        if (debug.tiles_visited != debug.last_tiles_visited
+        if debug.tiles_visited != debug.last_tiles_visited
             || debug.tiles_rendered != debug.last_tiles_rendered
             || debug.tiles_culled != debug.last_tiles_culled
             || debug.max_depth != debug.last_max_depth
             || debug.tiles_waiting_for_children != debug.last_tiles_waiting_for_children
-            || debug.max_depth_visited != debug.last_max_depth_visited)
+            || debug.max_depth_visited != debug.last_max_depth_visited
         {
             println!("Visited {}, Rendered: {}, Culled: {}, Max Depth Rendered: {}, Max Depth Visited: {}, Waiting for children: {}",debug.tiles_visited,debug.tiles_rendered,debug.tiles_culled,debug.max_depth,debug.max_depth_visited,debug.tiles_waiting_for_children);
 

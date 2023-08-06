@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+
 
 use bevy::{
     math::DVec4,
@@ -9,13 +9,11 @@ use bevy::{
 use crate::plugins::camera::GlobeCamera;
 
 use super::{
-    imagery::{Imagery, ImageryState, ShareMutImagery},
+    imagery::{ImageryState, ShareMutImagery},
     imagery_layer::ImageryLayer,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_tile::QuadtreeTile,
-    quadtree_tile_storage::QuadtreeTileStorage,
     reproject_texture::ReprojectTextureTaskQueue,
-    tile_key::TileKey,
 };
 
 pub struct TileImagery {

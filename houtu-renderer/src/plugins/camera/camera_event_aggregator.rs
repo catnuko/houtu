@@ -1,19 +1,16 @@
-use std::any::type_name;
+
 
 use bevy::{
-    ecs::{bundle::Bundle, prelude::*},
+    ecs::{prelude::*},
     input::{
-        mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
+        mouse::{MouseScrollUnit, MouseWheel},
         prelude::*,
     },
-    math::{prelude::*, DVec2},
+    math::{DVec2},
     prelude::*,
-    render::{camera::RenderTarget, view::WindowSystem},
     time::Time,
-    transform::components::Transform,
-    ui::update,
     utils::HashMap,
-    window::{PrimaryWindow, WindowRef},
+    window::{PrimaryWindow},
 };
 use bevy_egui::EguiSet;
 use houtu_scene::{Cartesian2, EPSILON14};
@@ -137,7 +134,7 @@ pub fn default_input_map(
         match event {
             MouseEvent::Wheel(delta) => {
                 update_wrap.insert(WHEEL, true);
-                let mut movement = match movement_wrap.get_mut(WHEEL) {
+                let movement = match movement_wrap.get_mut(WHEEL) {
                     None => {
                         let v = Movement::default();
                         movement_wrap.insert(WHEEL, v);
@@ -145,7 +142,7 @@ pub fn default_input_map(
                     }
                     Some(v) => v,
                 };
-                let mut lastMovement = match last_movement_wrap.get_mut(WHEEL) {
+                let lastMovement = match last_movement_wrap.get_mut(WHEEL) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(WHEEL, v);
@@ -164,7 +161,7 @@ pub fn default_input_map(
             }
             MouseEvent::MouseMove(mouse_movemet_event) => {
                 for typeName in cameraEventType {
-                    let mut movement = match movement_wrap.get_mut(typeName) {
+                    let movement = match movement_wrap.get_mut(typeName) {
                         None => {
                             let v = Movement::default();
                             movement_wrap.insert(typeName, v);
@@ -172,7 +169,7 @@ pub fn default_input_map(
                         }
                         Some(v) => v,
                     };
-                    let mut lastMovement = match last_movement_wrap.get_mut(typeName) {
+                    let lastMovement = match last_movement_wrap.get_mut(typeName) {
                         None => {
                             let v = LastMovement::default();
                             last_movement_wrap.insert(typeName, v);
@@ -200,7 +197,7 @@ pub fn default_input_map(
                 aggregator._currentMousePosition = mouse_movemet_event.endPosition.clone();
             }
             MouseEvent::LeftDown(p) => {
-                let mut lastMovement = match last_movement_wrap.get_mut(LEFT_DRAG) {
+                let lastMovement = match last_movement_wrap.get_mut(LEFT_DRAG) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(LEFT_DRAG, v);
@@ -215,14 +212,14 @@ pub fn default_input_map(
                 event_start_position_wrap.insert(LEFT_DRAG, p.clone());
                 // println!("left down");
             }
-            MouseEvent::LeftUp(p) => {
+            MouseEvent::LeftUp(_p) => {
                 aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
                 is_down_wrap.insert(LEFT_DRAG, false);
                 release_time_wrap.insert(LEFT_DRAG, cur_time);
                 // println!("left up");
             }
             MouseEvent::RightDown(p) => {
-                let mut lastMovement = match last_movement_wrap.get_mut(RIGHT_DRAG) {
+                let lastMovement = match last_movement_wrap.get_mut(RIGHT_DRAG) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(RIGHT_DRAG, v);
@@ -236,13 +233,13 @@ pub fn default_input_map(
                 press_time_wrap.insert(RIGHT_DRAG, cur_time);
                 event_start_position_wrap.insert(RIGHT_DRAG, p.clone());
             }
-            MouseEvent::RightUp(p) => {
+            MouseEvent::RightUp(_p) => {
                 aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
                 is_down_wrap.insert(RIGHT_DRAG, false);
                 release_time_wrap.insert(RIGHT_DRAG, cur_time);
             }
             MouseEvent::MiddleDown(p) => {
-                let mut lastMovement = match last_movement_wrap.get_mut(MIDDLE_DRAG) {
+                let lastMovement = match last_movement_wrap.get_mut(MIDDLE_DRAG) {
                     None => {
                         let v = LastMovement::default();
                         last_movement_wrap.insert(MIDDLE_DRAG, v);
@@ -256,7 +253,7 @@ pub fn default_input_map(
                 press_time_wrap.insert(MIDDLE_DRAG, cur_time);
                 event_start_position_wrap.insert(MIDDLE_DRAG, p.clone());
             }
-            MouseEvent::MiddleUp(p) => {
+            MouseEvent::MiddleUp(_p) => {
                 aggregator._buttonsDown = (aggregator._buttonsDown - 1).max(0);
                 is_down_wrap.insert(MIDDLE_DRAG, false);
                 release_time_wrap.insert(MIDDLE_DRAG, cur_time);
@@ -284,9 +281,9 @@ pub fn maintain_inertia_system(
     press_time_wrap: ResMut<PressTimetWrap>,
     release_time_wrap: ResMut<ReleaseTimeWrap>,
     aggregator: ResMut<Aggregator>,
-    mouse_event_reader: EventReader<MouseEvent>,
+    _mouse_event_reader: EventReader<MouseEvent>,
     mut movement_state_wrap: ResMut<MovementStateWrap>,
-    mut is_down_wrap: ResMut<IsDownWrap>,
+    is_down_wrap: ResMut<IsDownWrap>,
     time: Res<Time>,
 ) {
     for typeName in cameraEventType {
@@ -399,7 +396,7 @@ fn activate_inertia(
     if let Some(movement_state) = movement_state_wrap.get_mut(lastMovementName) {
         movement_state.inertiaEnabled = true;
     }
-    let mut last_movement_name_list: Vec<&'static str>;
+    let last_movement_name_list: Vec<&'static str>;
     if lastMovementName == "_lastInertiaZoomMovement" {
         last_movement_name_list = [
             "_lastInertiaSpinMovement",
@@ -431,7 +428,7 @@ fn maintain_inertia(
     is_down_wrap: &ResMut<IsDownWrap>,
     time: &Res<Time>,
 ) -> bool {
-    let mut movement_state = match movement_state_wrap.get_mut(lastMovementName) {
+    let movement_state = match movement_state_wrap.get_mut(lastMovementName) {
         None => {
             let v = MovementState::default();
             movement_state_wrap.insert(lastMovementName, v);
@@ -448,9 +445,9 @@ fn maintain_inertia(
     let ts = ts.unwrap();
     let tr = tr.unwrap();
 
-    let threshold = (tr - ts);
+    let threshold = tr - ts;
     let now = time.elapsed_seconds_f64();
-    let fromNow = (now - tr);
+    let fromNow = now - tr;
     //如果按键释放事件和点击事件之间的时间差在0.4秒内才会保持惯性，滚轮缩放时，阈值=0，所以会保持惯性，而spin和tilt大于0.4，一般不会保持惯性，除非很快的拉动地球才会。
     if threshold < inertiaMaxClickTimeThreshold {
         //随时间增加，从1无限接近于0
@@ -485,12 +482,12 @@ fn maintain_inertia(
 
         // If value from the decreasing exponential function is close to zero,
         // the end coordinates may be NaN.
-        if (movement_state.endPosition.x.is_nan()
+        if movement_state.endPosition.x.is_nan()
             || movement_state.endPosition.y.is_nan()
             || movement_state
                 .startPosition
                 .distance(movement_state.endPosition)
-                < 0.5)
+                < 0.5
         {
             return false;
         }
@@ -621,16 +618,16 @@ pub fn screen_space_event_hanlder_system(
     // mut previousPositionsWrap: ResMut<ReleaseTimeWrap>,
     mut is_button_down_wrap: ResMut<IsButtonDownWrap>,
     mut screen_space_event_hanlder: ResMut<ScreenSpaceEventHandler>,
-    camera_query: Query<(&Camera)>,
+    camera_query: Query<&Camera>,
 ) {
-    for (camera) in camera_query.iter() {
+    for camera in camera_query.iter() {
         let Ok(window) = primary_query.get_single() else {
             return;
         };
         let Some(raw_position) = window.cursor_position() else {
             return;
         };
-        let Some((left_top,_)) = camera.physical_viewport_rect() else {
+        let Some((_left_top,_)) = camera.physical_viewport_rect() else {
             return;
         };
         let position = DVec2::new(
@@ -652,8 +649,8 @@ pub fn screen_space_event_hanlder_system(
             MouseButton::Middle,
             MouseButton::Right,
         ]) {
-            let mut button: &'static str;
-            let mut button_my: &'static str;
+            let button: &'static str;
+            let button_my: &'static str;
             if mouse_buttons.just_pressed(MouseButton::Left) {
                 button = getMouseButtonName(MouseButton::Left);
                 button_my = getMyMouseButtonName(MouseButton::Left);
@@ -680,8 +677,8 @@ pub fn screen_space_event_hanlder_system(
             MouseButton::Middle,
             MouseButton::Right,
         ]) {
-            let mut button: &'static str;
-            let mut button_my: &'static str;
+            let button: &'static str;
+            let button_my: &'static str;
             if mouse_buttons.just_released(MouseButton::Left) {
                 button = getMouseButtonName(MouseButton::Left);
                 button_my = getMyMouseButtonName(MouseButton::Left);

@@ -52,7 +52,7 @@ impl TileReplacementQueue {
             keep_trimming = self.get_tail() != self.last_before_start_of_frame;
 
             let tile_key = self.get_tail().unwrap().clone();
-            let mut tile = storage.get(&tile_key).unwrap();
+            let tile = storage.get(&tile_key).unwrap();
             let previous = tile.replacement_previous;
 
             if tile.eligible_for_unloading() {
@@ -60,7 +60,7 @@ impl TileReplacementQueue {
                 self.remove(storage, &entity);
             }
             if let Some(entity) = previous {
-                if let Some(v) = self.get_tail() {
+                if let Some(_v) = self.get_tail() {
                     // *v = entity;
                     self.list.pop_back();
                     self.list.push_back(entity);
@@ -70,7 +70,7 @@ impl TileReplacementQueue {
         }
     }
     fn remove(&mut self, storage: &mut QuadtreeTileStorage, entity: &TileKey) {
-        let mut item = storage.get_mut(entity).unwrap();
+        let item = storage.get_mut(entity).unwrap();
         {
             if self.last_before_start_of_frame.is_some()
                 && self.last_before_start_of_frame.unwrap() == item.key
@@ -79,10 +79,10 @@ impl TileReplacementQueue {
             }
         }
         let head_mut = self.get_head();
-        let mut item = storage.get_mut(entity).unwrap();
+        let item = storage.get_mut(entity).unwrap();
         if head_mut == Some(item.key) {
             if let Some(t) = item.replacement_next {
-                if let Some(v) = head_mut {
+                if let Some(_v) = head_mut {
                     // *v = t.clone();
                     self.list.pop_front();
                     self.list.push_front(t.clone());
@@ -93,16 +93,16 @@ impl TileReplacementQueue {
                 }
             }
         } else {
-            let entity = item.replacement_previous.unwrap().clone();
+            let _entity = item.replacement_previous.unwrap().clone();
             let state_entity = item.replacement_next.clone();
             item.replacement_next = state_entity;
         }
 
         let tail_mut = self.get_tail();
-        let mut item = storage.get_mut(entity).unwrap();
+        let item = storage.get_mut(entity).unwrap();
         if tail_mut.is_some() && tail_mut == Some(item.key) {
             if let Some(t) = item.replacement_previous {
-                if let Some(v) = tail_mut {
+                if let Some(_v) = tail_mut {
                     // *v = t.clone();
                     self.list.pop_back();
                     self.list.push_back(t.clone());
@@ -113,7 +113,7 @@ impl TileReplacementQueue {
                 }
             }
         } else {
-            let entity = item.replacement_next.unwrap().clone();
+            let _entity = item.replacement_next.unwrap().clone();
             let state_entity = item.replacement_previous.clone();
             item.replacement_previous = state_entity;
         }
@@ -121,7 +121,7 @@ impl TileReplacementQueue {
     }
     pub fn mark_tile_rendered(&mut self, storage: &mut QuadtreeTileStorage, entity: TileKey) {
         let head_mut = self.get_head();
-        let mut item = storage.get_mut(&entity).unwrap();
+        let item = storage.get_mut(&entity).unwrap();
         if head_mut.is_some() && head_mut.unwrap() == item.key {
             if self.last_before_start_of_frame.is_some()
                 && self.last_before_start_of_frame.unwrap() == item.key
@@ -137,18 +137,18 @@ impl TileReplacementQueue {
 
         self.count += 1;
         let head_mut = self.get_head();
-        let mut item = storage.get_mut(&entity).unwrap();
+        let item = storage.get_mut(&entity).unwrap();
         if head_mut.is_none() {
             item.replacement_next = None;
             item.replacement_previous = None;
-            if let Some(v) = head_mut {
+            if let Some(_v) = head_mut {
                 // *v = item.key;
                 self.list.pop_front();
                 self.list.push_front(item.key);
             }
             let item_key = item.key.clone();
             let tail_mut = self.get_tail();
-            if let Some(v) = tail_mut {
+            if let Some(_v) = tail_mut {
                 // *v = item.key;
                 self.list.pop_back();
                 self.list.push_back(item_key);
@@ -161,12 +161,12 @@ impl TileReplacementQueue {
         }
 
         let head_mut = self.get_head();
-        let mut item = storage.get_mut(&entity).unwrap();
+        let item = storage.get_mut(&entity).unwrap();
         item.replacement_previous = None;
         if let Some(v) = head_mut {
             item.replacement_next = Some(v.clone());
             let entity = v.clone();
-            let state_entity = Some(item.key.clone());
+            let _state_entity = Some(item.key.clone());
             item.replacement_previous = Some(entity);
         } else {
             item.replacement_next = None;

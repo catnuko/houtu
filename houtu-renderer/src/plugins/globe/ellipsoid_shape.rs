@@ -1,9 +1,9 @@
 use std::f64::consts::{PI, TAU};
 
-use std::fmt;
+
 
 use bevy::math::DVec3;
-use bevy::prelude::{Mesh, Vec3};
+use bevy::prelude::{Mesh};
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use houtu_scene::*;
@@ -86,8 +86,8 @@ impl From<EllipsoidShape> for Mesh {
             stackPartitions = 2;
         }
 
-        let mut i = 0;
-        let mut j = 0;
+        let _i = 0;
+        let _j = 0;
         let mut index = 0;
 
         // Create arrays for theta and phi. Duplicate first and last angle to
@@ -118,7 +118,7 @@ impl From<EllipsoidShape> for Mesh {
         // to close the sides if the clock range is not a full circle
         let mut extraIndices: i32 = 0;
         let mut vertexMultiplier: i32 = 1;
-        let mut hasInnerSurface =
+        let hasInnerSurface =
             innerRadii.x != radii.x || innerRadii.y != radii.y || innerRadii.z != radii.z;
         let mut isTopOpen = false;
         let mut isBotOpen = false;
@@ -141,30 +141,30 @@ impl From<EllipsoidShape> for Mesh {
             }
         }
         let vertexCount = (numThetas * numPhis * vertexMultiplier) as i32;
-        let mut positions = (0..vertexCount * 3).map(|i| 0.).collect::<Vec<f64>>();
-        let mut normals = (0..vertexCount * 3).map(|i| 0.).collect::<Vec<f64>>();
-        let mut st = (0..vertexCount * 2).map(|i| 0.).collect::<Vec<f64>>();
-        let mut isInner = (0..vertexCount).map(|i| false).collect::<Vec<bool>>();
-        let mut negateNormal = (0..vertexCount).map(|i| false).collect::<Vec<bool>>();
+        let mut positions = (0..vertexCount * 3).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut normals = (0..vertexCount * 3).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut st = (0..vertexCount * 2).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut isInner = (0..vertexCount).map(|_i| false).collect::<Vec<bool>>();
+        let mut negateNormal = (0..vertexCount).map(|_i| false).collect::<Vec<bool>>();
 
         // Multiply by 6 because there are two triangles per sector
         let indexCount = slicePartitions * stackPartitions * vertexMultiplier;
         let numIndices = 6
             * (indexCount + extraIndices + 1
                 - (slicePartitions + stackPartitions) * vertexMultiplier);
-        let mut indices = (0..numIndices).map(|i| 0).collect::<Vec<i32>>();
+        let mut indices = (0..numIndices).map(|_i| 0).collect::<Vec<i32>>();
 
-        let mut sinPhi = (0..numPhis).map(|i| 0.).collect::<Vec<f64>>();
-        let mut cosPhi = (0..numPhis).map(|i| 0.).collect::<Vec<f64>>();
+        let mut sinPhi = (0..numPhis).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut cosPhi = (0..numPhis).map(|_i| 0.).collect::<Vec<f64>>();
         for i in 0..numPhis {
-            sinPhi[i as usize] = (phis[i as usize].sin());
+            sinPhi[i as usize] = phis[i as usize].sin();
             cosPhi[i as usize] = (phis[i as usize]).cos();
         }
-        let mut sinTheta = (0..numThetas).map(|i| 0.).collect::<Vec<f64>>();
-        let mut cosTheta = (0..numThetas).map(|i| 0.).collect::<Vec<f64>>();
+        let mut sinTheta = (0..numThetas).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut cosTheta = (0..numThetas).map(|_i| 0.).collect::<Vec<f64>>();
         for j in 0..numThetas {
             cosTheta[j as usize] = (thetas[j as usize]).cos();
-            sinTheta[j as usize] = (thetas[j as usize].sin());
+            sinTheta[j as usize] = thetas[j as usize].sin();
         }
         // Create outer surface
         for i in 0..numPhis {
@@ -379,21 +379,21 @@ impl From<EllipsoidShape> for Mesh {
         let mut endPositions: Vec<[f32; 3]> = Vec::new();
         let mut endNormals: Vec<[f32; 3]> = Vec::new();
         let mut endST: Vec<[f32; 2]> = Vec::new();
-        positions.iter().enumerate().step_by(3).for_each(|(i, x)| {
+        positions.iter().enumerate().step_by(3).for_each(|(i, _x)| {
             endPositions.push([
                 positions[i] as f32,
                 positions[i + 1] as f32,
                 positions[i + 2] as f32,
             ])
         });
-        normals.iter().enumerate().step_by(3).for_each(|(i, x)| {
+        normals.iter().enumerate().step_by(3).for_each(|(i, _x)| {
             endNormals.push([
                 normals[i] as f32,
                 normals[i + 1] as f32,
                 normals[i + 2] as f32,
             ]);
         });
-        st.iter().enumerate().step_by(2).for_each(|(i, x)| {
+        st.iter().enumerate().step_by(2).for_each(|(i, _x)| {
             endST.push([st[i] as f32, st[i + 1] as f32]);
         });
         let indices2 = Indices::U32(indices.iter().map(|&x| x as u32).collect());

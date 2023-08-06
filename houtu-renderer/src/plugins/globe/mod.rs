@@ -1,5 +1,5 @@
-use bevy::pbr::wireframe::Wireframe;
-use bevy::prelude::shape::{Box, Cylinder};
+
+
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 mod ellipsoid_shape;
@@ -32,8 +32,8 @@ fn setup(
     });
     let ellipsoid = Ellipsoid::WGS84;
     let x = ellipsoid.semimajor_axis() as f32;
-    let y = ellipsoid.semimajor_axis() as f32;
-    let z = ellipsoid.semiminor_axis() as f32;
+    let _y = ellipsoid.semimajor_axis() as f32;
+    let _z = ellipsoid.semiminor_axis() as f32;
     let mesh: Mesh = EllipsoidShape::from_ellipsoid(ellipsoid).into();
 
     commands.spawn((PbrBundle {

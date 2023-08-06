@@ -8,7 +8,7 @@
 
 use futures_util::StreamExt;
 use houtu_jobs::{AsyncReturn, Context, Job};
-use std::{collections::HashMap, io, string};
+use std::{io};
 pub struct FetchedFile {
     pub name: String,
     pub bytes: bytes::Bytes,

@@ -4,7 +4,7 @@ use bevy::{
     render::renderer::RenderDevice,
     utils::{HashMap, Uuid},
 };
-use bevy_egui::egui::epaint::image;
+
 use houtu_jobs::JobSpawner;
 use houtu_scene::{
     BoundingVolume, Cartesian3, Ellipsoid, EllipsoidalOccluder, GeographicProjection,
@@ -17,7 +17,6 @@ use super::{
     ellipsoid_terrain_provider::EllipsoidTerrainProvider,
     globe_surface_tile::{GlobeSurfaceTile, TerrainState},
     imagery::ImageryState,
-    imagery_layer::ImageryLayer,
     imagery_layer_storage::ImageryLayerStorage,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
@@ -82,7 +81,7 @@ impl GlobeSurfaceTileProvider {
             globe_camera,
         );
         let tile = storage.get_mut(&tile_key).unwrap();
-        if (terrainOnly && terrainStateBefore != tile.data.terrain_state) {
+        if terrainOnly && terrainStateBefore != tile.data.terrain_state {
             // Terrain state changed. If:
             // a) The tile is visible, and
             // b) The bounding volume is accurate (updated as a side effect of computing visibility)
@@ -135,7 +134,7 @@ impl GlobeSurfaceTileProvider {
             return TileVisibility::PARTIAL;
         }
         let obb = tile_bounding_region.get_bounding_volume();
-        let mut bounding_volume: Option<Box<&dyn BoundingVolume>> = if let Some(v) = obb {
+        let bounding_volume: Option<Box<&dyn BoundingVolume>> = if let Some(v) = obb {
             Some(Box::new(v))
         } else {
             if let Some(t) = tile_bounding_region.get_bounding_sphere() {
@@ -194,8 +193,8 @@ impl GlobeSurfaceTileProvider {
         imagery_layer_storage: &mut ImageryLayerStorage,
         primitive: &mut QuadtreePrimitive,
     ) -> bool {
-        let mut terrainReady = tile.data.terrain_state == TerrainState::READY;
-        let mut initialImageryState = true;
+        let terrainReady = tile.data.terrain_state == TerrainState::READY;
+        let initialImageryState = true;
         for (id, _) in imagery_layer_storage.map.iter() {
             self.readyImageryScratch
                 .insert(id.clone(), initialImageryState);
@@ -253,7 +252,7 @@ impl GlobeSurfaceTileProvider {
                 }
                 for descendant_tile_imagery in descendant.data.imagery.iter() {
                     let descendant_is_ready = {
-                        let mut v = descendant_tile_imagery.loading_imagery.is_none();
+                        let v = descendant_tile_imagery.loading_imagery.is_none();
                         let descendant_loading_imagery = descendant_tile_imagery
                             .loading_imagery
                             .as_ref()
@@ -288,7 +287,7 @@ impl GlobeSurfaceTileProvider {
                         return false;
                     }
                 }
-            } else if (last_frame_selection_result == TileSelectionResult::REFINED) {
+            } else if last_frame_selection_result == TileSelectionResult::REFINED {
                 self.canRenderTraversalStack
                     .push(descendant.southwest.unwrap());
                 self.canRenderTraversalStack
@@ -545,7 +544,7 @@ pub fn update_tile_bounding_region(
         tile.data.bounding_volume_is_from_mesh = has_bounding_volumes_from_mesh;
     }
 }
-fn process_source_tile(source_tile: &mut QuadtreeTile) {}
+fn process_source_tile(_source_tile: &mut QuadtreeTile) {}
 fn compute_occludee_point(
     ellipsoidal_occluder: &EllipsoidalOccluder,
     center: &DVec3,

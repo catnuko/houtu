@@ -1,12 +1,12 @@
-use std::f64::consts::PI;
+
 
 use bevy::{
-    math::{DVec2, DVec3},
+    math::{DVec2},
     prelude::*,
     window::PrimaryWindow,
 };
 use bevy_prototype_debug_lines::*;
-use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid, HeadingPitchRoll};
+use houtu_scene::{Ellipsoid};
 
 use crate::plugins::camera::{GlobeCamera, MouseEvent};
 
@@ -33,7 +33,7 @@ pub fn debug_system(
         y: primary.height() as f64,
     };
 
-    for (entity, mut transform, mut projection, global_transform, mut globe_camera) in
+    for (_entity, _transform, _projection, _global_transform, mut globe_camera) in
         &mut orbit_cameras
     {
         for event in mouse_event_reader.iter() {
@@ -74,7 +74,7 @@ pub fn debug_system(
                     }
 
                     if state.debug_camera_dur {
-                        let ray = globe_camera.getPickRay(&position, &window_size);
+                        let _ray = globe_camera.getPickRay(&position, &window_size);
                         let direction = globe_camera.position
                             + globe_camera.get_direction_wc().normalize() * 100000000.0;
                         let up = globe_camera.position

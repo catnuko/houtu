@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use houtu_jobs::{AsyncReturn, Context, FinishedJobs, Job, JobSpawner};
+use houtu_jobs::{FinishedJobs, Job, JobSpawner};
 
 use super::{file, network};
 use bevy::ecs::event::Events;

@@ -1,14 +1,13 @@
-use bevy::{prelude::*, utils::Uuid};
+use bevy::{prelude::*};
 use houtu_jobs::{
-    AsyncReturn, Context, FinishedJobs, Job, JobOutcomePayload, JobSpawner, Progress,
+    AsyncReturn, Context, Job,
 };
 use houtu_scene::{
-    CreateVerticeReturn, GeographicTilingScheme, HeightmapTerrainData, IndicesAndEdgesCache,
-    Rectangle, TerrainMesh, TilingScheme, WebMercatorTilingScheme,
+    GeographicTilingScheme, HeightmapTerrainData,
 };
 use std::{
     io,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use super::tile_key::TileKey;
@@ -36,7 +35,7 @@ impl Job for UpsampleJob {
     fn name(&self) -> String {
         format!("create vertice ",)
     }
-    fn perform(self, context: Context) -> AsyncReturn<Self::Outcome> {
+    fn perform(self, _context: Context) -> AsyncReturn<Self::Outcome> {
         Box::pin(async move {
             let fetch = async {
                 let new_terrain_data = self

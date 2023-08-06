@@ -1,8 +1,4 @@
-use std::{
-    f32::consts::E,
-    f64::consts::{E as Ef64, PI},
-    sync::Arc,
-};
+
 
 use bevy::{
     core::cast_slice,
@@ -17,9 +13,9 @@ use bevy::{
     },
     utils::{HashMap, Uuid},
 };
-use bevy_egui::egui::epaint::image;
+
 use houtu_scene::{
-    lerp, lerp_f32, BoundingRectangle, Ellipsoid, GeographicTilingScheme, HeightmapTerrainData,
+    lerp_f32,
     Matrix4, Rectangle, TilingScheme,
 };
 
@@ -29,13 +25,11 @@ use crate::plugins::{
 };
 
 use super::{
-    globe_surface_tile::GlobeSurfaceTile,
     imagery::{Imagery, ImageryState, ShareMutImagery},
     imagery_layer_storage::ImageryLayerStorage,
     imagery_provider::ImageryProvider,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_tile::QuadtreeTile,
-    render_context::RenderContext,
     reproject_texture::ReprojectTextureTaskQueue,
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
@@ -356,10 +350,10 @@ impl ImageryLayer {
             // and there are more imagery tiles to the east of this one, the max_u
             // should be 1.0 to make sure rounding errors don't make the last
             // image fall shy of the edge of the terrain tile.
-            if (i == south_east_tile_coordinates.x
+            if i == south_east_tile_coordinates.x
                 && (self.is_base_layer()
                     || (clipped_imagery_rectangle.east - terrain_rectangle.east).abs()
-                        < very_close_x))
+                        < very_close_x)
             {
                 max_u = 1.0;
             }
@@ -393,10 +387,10 @@ impl ImageryLayer {
                 // and there are more imagery tiles to the south of this one, the min_v
                 // should be 0.0 to make sure rounding errors don't make the last
                 // image fall shy of the edge of the terrain tile.
-                if (j == south_east_tile_coordinates.y
+                if j == south_east_tile_coordinates.y
                     && (self.is_base_layer()
                         || (clipped_imagery_rectangle.south - terrain_rectangle.south).abs()
-                            < very_close_y))
+                            < very_close_y)
                 {
                     min_v = 0.0;
                 }
@@ -471,7 +465,7 @@ impl ImageryLayer {
     }
     pub fn reproject_texture(
         imagery: &Imagery,
-        need_geographic_projection: bool,
+        _need_geographic_projection: bool,
         images: &mut Assets<Image>,
         width: u32,
         height: u32,
@@ -577,15 +571,15 @@ impl ImageryLayer {
     pub fn destroy(&mut self) {}
 }
 pub fn finish_reproject_texture_system(
-    mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
+    render_world_queue: ResMut<ReprojectTextureTaskQueue>,
     mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
 ) {
     let (_, receiver) = render_world_queue.status_channel.clone();
-    for i in 0..render_world_queue.count() {
+    for _i in 0..render_world_queue.count() {
         let Ok((imagery_layer_id,key))  =receiver.try_recv()else{continue;};
         let task = render_world_queue.get(&key).expect("task");
-        let mut imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
-        let mut imagery = imagery_layer.get_imagery_mut(&key).unwrap();
+        let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
+        let imagery = imagery_layer.get_imagery_mut(&key).unwrap();
         imagery.set_texture(task.output_texture.clone());
         imagery.set_state(ImageryState::READY);
     }

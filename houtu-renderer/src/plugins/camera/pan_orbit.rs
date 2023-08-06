@@ -4,17 +4,17 @@ use super::camera_event_aggregator::{
     Aggregator, ControlEvent, EventStartPositionWrap, MovementState,
 };
 use super::camera_new::GlobeCamera;
-use super::{egui, GlobeCameraControl};
-use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
+use super::{GlobeCameraControl};
+
 use bevy::math::{DMat4, DVec2, DVec3};
 use bevy::prelude::*;
-use bevy::render::camera::{CameraProjection, RenderTarget};
-use bevy::window::{PrimaryWindow, WindowRef};
-use bevy_easings::Lerp;
-use bevy_egui::{EguiSet, WindowSize};
-use egui::EguiWantsFocus;
+use bevy::render::camera::{CameraProjection};
+use bevy::window::{PrimaryWindow};
+
+
+
 use houtu_scene::{
-    acos_clamped, to_mat4_64, Cartesian3, Cartographic, Ellipsoid, HeadingPitchRoll,
+    acos_clamped, to_mat4_64, Cartesian3, Ellipsoid, HeadingPitchRoll,
     IntersectionTests, Plane, Ray, SceneTransforms, Transforms, EPSILON14, EPSILON2, EPSILON3,
     EPSILON4,
 };
@@ -22,8 +22,8 @@ use std::f64::consts::{PI, TAU};
 use std::ops::Neg;
 pub fn pan_orbit_camera(
     primary_query: Query<&Window, With<PrimaryWindow>>,
-    mut event_start_position_wrap: ResMut<EventStartPositionWrap>,
-    mut aggregator: ResMut<Aggregator>,
+    event_start_position_wrap: ResMut<EventStartPositionWrap>,
+    aggregator: ResMut<Aggregator>,
     mut orbit_cameras: Query<(
         Entity,
         &mut Transform,
@@ -44,9 +44,9 @@ pub fn pan_orbit_camera(
 
     for event in control_event_rader.iter() {
         for (
-            entity,
+            _entity,
             mut transform,
-            mut projection,
+            projection,
             global_transform,
             mut globe_camera,
             mut globe_camera_control,
@@ -183,10 +183,10 @@ pub fn pan_orbit_camera(
 
                     if !sameStartPosition || rotatingZoom {
                         let cameraPositionNormal = globe_camera.position.normalize();
-                        if (globe_camera_control._cameraUnderground
+                        if globe_camera_control._cameraUnderground
                             || globe_camera_control._zoomingUnderground
                             || (globe_camera.get_position_cartographic().height < 3000.0
-                                && (globe_camera.direction.dot(cameraPositionNormal)).abs() < 0.6))
+                                && (globe_camera.direction.dot(cameraPositionNormal)).abs() < 0.6)
                         {
                             zoomOnVector = true;
                         } else {
@@ -518,7 +518,7 @@ fn tilt3D(
         look3D(controller, camera, startPosition, movement, up, window_size);
         return;
     }
-    let mut cartographic = Ellipsoid::WGS84
+    let cartographic = Ellipsoid::WGS84
         .cartesianToCartographic(&camera.position)
         .unwrap();
 
@@ -541,7 +541,7 @@ fn spin3D(
     movement: &mut MovementState,
     window_size: &DVec2,
 ) {
-    let cameraUnderground = controller._cameraUnderground;
+    let _cameraUnderground = controller._cameraUnderground;
     let mut ellipsoid = Ellipsoid::WGS84;
 
     if !camera.get_transform().eq(&DMat4::IDENTITY) {
@@ -558,7 +558,7 @@ fn spin3D(
         return;
     }
 
-    let mut magnitude;
+    let magnitude;
     let mut radii;
 
     let up = ellipsoid.geodeticSurfaceNormal(&camera.position);
@@ -601,7 +601,7 @@ fn spin3D(
         .cartesianToCartographic(&camera.get_position_wc())
         .unwrap()
         .height;
-    let globe = false;
+    let _globe = false;
     let spin3DPick = camera.pick_ellipsoid(&movement.startPosition, window_size);
     if spin3DPick.is_some() {
         pan3D(controller, camera, startPosition, movement, window_size);
@@ -634,7 +634,7 @@ fn spin3D(
 fn rotate3D(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
-    startPosition: &DVec2,
+    _startPosition: &DVec2,
     movement: &MovementState,
     window_size: &DVec2,
     constrained_axis: Option<DVec3>,
@@ -788,7 +788,7 @@ fn pan3D(
 fn look3D(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
-    startPosition: &DVec2,
+    _startPosition: &DVec2,
     movement: &MovementState,
     rotationAxis: Option<DVec3>,
     window_size: &DVec2,
@@ -903,7 +903,7 @@ fn continueStrafing(
 }
 
 fn strafe(
-    controller: &mut GlobeCameraControl,
+    _controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     movement: &MovementState,
     strafeStartPosition: &DVec3,

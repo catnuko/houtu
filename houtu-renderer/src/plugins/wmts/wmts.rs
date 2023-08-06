@@ -86,7 +86,7 @@ impl WMTS {
         }
     }
     pub fn getParams(&self, col: u32, row: u32, level: u32) -> HashMap<String, String> {
-        let mut tileMatrix;
+        let tileMatrix;
         if let Some(real_labels) = &self.tile_matrix_labels {
             tileMatrix = real_labels[level as usize].clone();
         } else {

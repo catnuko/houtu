@@ -6,23 +6,22 @@ use bevy::{
     render::renderer::RenderDevice,
 };
 use houtu_jobs::{FinishedJobs, JobSpawner};
-use houtu_scene::{HeightmapTerrainData, TerrainMesh, TileBoundingRegion};
+use houtu_scene::{HeightmapTerrainData, TileBoundingRegion};
 
 use crate::plugins::camera::GlobeCamera;
 
 use super::{
     create_terrain_mesh_job::CreateTileJob,
     imagery::{ImageryState, ShareMutImagery},
-    imagery_layer::ImageryLayer,
-    imagery_layer_storage::{self, ImageryLayerStorage},
+    imagery_layer_storage::{ImageryLayerStorage},
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
-    quadtree_tile::{QuadtreeTile, QuadtreeTileLoadState},
+    quadtree_tile::{QuadtreeTileLoadState},
     quadtree_tile_storage::QuadtreeTileStorage,
     reproject_texture::ReprojectTextureTaskQueue,
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
-    tile_key::{self, TileKey},
+    tile_key::{TileKey},
     upsample_job::UpsampleJob,
 };
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -85,7 +84,7 @@ impl GlobeSurfaceTile {
 
         //TODO
         let mut i = 0;
-        let mut len = self.imagery.len();
+        let len = self.imagery.len();
         while should_removeTile && i < len {
             let tile_imagery = self.imagery.get(i).unwrap();
             should_removeTile = tile_imagery.loading_imagery.is_none()
@@ -347,13 +346,13 @@ pub fn process_terrain_state_machine_system(
 ) {
     while let Some(result) = finished_jobs.take_next::<CreateTileJob>() {
         if let Ok(res) = result {
-            let mut tile = primitive.storage.get_mut(&res.key).unwrap();
+            let tile = primitive.storage.get_mut(&res.key).unwrap();
             tile.data.terrain_state = TerrainState::TRANSFORMED;
         }
     }
     while let Some(result) = finished_jobs.take_next::<UpsampleJob>() {
         if let Ok(res) = result {
-            let mut tile = primitive.storage.get_mut(&res.key).unwrap();
+            let tile = primitive.storage.get_mut(&res.key).unwrap();
 
             if let Some(new_terrain_data) = res.terrain_data {
                 tile.data.set_terrain_data(new_terrain_data);
@@ -370,7 +369,7 @@ fn initialize(
     imagery_layer_storage: &mut ImageryLayerStorage,
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
-    if (tile.state == QuadtreeTileLoadState::START) {
+    if tile.state == QuadtreeTileLoadState::START {
         prepare_new_tile(storage, tile_key, terrain_provider, imagery_layer_storage);
         let tile = storage.get_mut(&tile_key).unwrap();
         tile.state = QuadtreeTileLoadState::LOADING;

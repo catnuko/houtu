@@ -1,19 +1,18 @@
-use super::pan_orbit::pan_orbit_camera;
-use super::{camera_event_aggregator, egui};
-use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
+
+use super::{camera_event_aggregator};
+
 use bevy::math::{DMat3, DMat4, DQuat, DVec2, DVec3, DVec4};
 use bevy::prelude::*;
-use bevy::render::camera::RenderTarget;
+
 use bevy::render::primitives::Frustum;
-use bevy::window::{PrimaryWindow, WindowRef};
-use bevy_easings::Lerp;
-use bevy_egui::EguiSet;
-use egui::EguiWantsFocus;
+
+
+
+
 use houtu_scene::{
-    acos_clamped, equals_epsilon, to_mat4_32, zero_to_two_pi, BoundingRectangle, Cartesian3,
+    acos_clamped, equals_epsilon, zero_to_two_pi, BoundingRectangle, Cartesian3,
     Cartographic, CullingVolume, Ellipsoid, EllipsoidGeodesic, GeographicProjection,
-    HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4, PerspectiveFrustum,
-    PerspectiveOffCenterFrustum, Projection, Quaternion, Rectangle, Transforms, EPSILON10,
+    HeadingPitchRoll, IntersectionTests, Matrix3, Matrix4, PerspectiveFrustum, Projection, Quaternion, Rectangle, Transforms, EPSILON10,
     EPSILON2, EPSILON3, EPSILON4, RADIANS_PER_DEGREE,
 };
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
@@ -98,7 +97,7 @@ impl Default for GlobeCamera {
     fn default() -> Self {
         let max_coord = GeographicProjection::WGS84.project(&Cartographic::new(PI, FRAC_PI_2, 0.));
 
-        let mut me = Self {
+        let me = Self {
             positionWCDeltaMagnitude: 0.0,
             positionWCDeltaMagnitudeLastFrame: 0.0,
             timeSinceMoved: 0.0,
@@ -156,7 +155,7 @@ fn globe_camera_setup_system(
         (With<Camera3d>, Changed<Transform>),
     >,
 ) {
-    for (mut globe_camera, mut transform, frustum, projection, camera) in &mut query {
+    for (mut globe_camera, mut transform, _frustum, projection, camera) in &mut query {
         if globe_camera.inited == true {
             return;
         }
@@ -394,7 +393,7 @@ impl GlobeCamera {
         if end_transform.is_some() {
             self._setTransform(&end_transform.unwrap());
         }
-        let convert = convert.unwrap_or(true);
+        let _convert = convert.unwrap_or(true);
         let destination = destination.unwrap_or(self.get_position_wc().clone());
         let hpr = if let Some(orientation) = orientation {
             match orientation {
@@ -448,7 +447,7 @@ impl GlobeCamera {
 
         let ellipsoid = Ellipsoid::WGS84;
         let transform = Transforms::eastNorthUpToFixedFrame(&position, Some(ellipsoid));
-        let mut invTransform = transform.inverse_transformation();
+        let invTransform = transform.inverse_transformation();
 
         direction = invTransform.multiply_by_point_as_vector(&direction);
         up = invTransform.multiply_by_point_as_vector(&up);
@@ -482,7 +481,7 @@ impl GlobeCamera {
         // let mode = self._mode;
 
         let height_changed = false;
-        let height = 0.0;
+        let _height = 0.0;
 
         let positionChanged = !self._position.equals(self.position) || height_changed;
         if positionChanged {
@@ -587,10 +586,10 @@ impl GlobeCamera {
     pub fn rotate_vertical(&mut self, angle: f64) {
         let mut angle = angle;
         let position = self.position;
-        if (self.constrained_axis.is_some()
+        if self.constrained_axis.is_some()
             && !self
                 .position
-                .equals_epsilon(DVec3::ZERO, Some(EPSILON2), None))
+                .equals_epsilon(DVec3::ZERO, Some(EPSILON2), None)
         {
             let constrained_axis = self.constrained_axis.unwrap();
             let p = position.normalize();
@@ -662,7 +661,7 @@ impl GlobeCamera {
         window_position: &DVec2,
         window_size: &DVec2,
     ) -> Option<DVec3> {
-        let ellipsoid = Ellipsoid::WGS84;
+        let _ellipsoid = Ellipsoid::WGS84;
         let ray = self.getPickRay(window_position, window_size);
         let intersection = IntersectionTests::rayEllipsoid(&ray, None);
         let intersection = if let Some(v) = intersection {
@@ -768,7 +767,7 @@ impl GlobeCamera {
         north_center = north_center.subtract(center);
         south_center = south_center.subtract(center);
 
-        let mut direction = ellipsoid.geodeticSurfaceNormal(&center);
+        let direction = ellipsoid.geodeticSurfaceNormal(&center);
         let mut direction = if let Some(v) = direction {
             v
         } else {

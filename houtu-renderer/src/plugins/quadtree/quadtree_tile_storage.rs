@@ -1,8 +1,8 @@
 use bevy::utils::HashMap;
-use houtu_scene::{GeographicTilingScheme, Rectangle, Tile, TilingScheme};
+use houtu_scene::{GeographicTilingScheme, Rectangle, TilingScheme};
 
 use super::{
-    quadtree_tile::{Direction, Quadrant, QuadtreeTile, TileNode},
+    quadtree_tile::{Quadrant, QuadtreeTile},
     tile_key::TileKey,
 };
 
@@ -25,7 +25,7 @@ impl QuadtreeTileStorage {
     pub fn root_len(&self) -> usize {
         return self.root.len();
     }
-    pub fn add(&mut self, mut tile: QuadtreeTile) {
+    pub fn add(&mut self, tile: QuadtreeTile) {
         if let None = tile.parent {
             self.root.push(tile.key.clone())
         }
@@ -150,7 +150,7 @@ impl QuadtreeTileStorage {
         let mut i = 0;
         for y in 0..number_of_level_zero_tiles_y {
             for x in 0..number_of_level_zero_tiles_x {
-                let r = tiling_scheme.tile_x_y_to_rectange(x, y, 0);
+                let _r = tiling_scheme.tile_x_y_to_rectange(x, y, 0);
                 self.new_root_tile(
                     &TileKey {
                         x: x,

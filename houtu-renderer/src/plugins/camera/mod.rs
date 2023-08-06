@@ -1,5 +1,4 @@
 use std::{
-    f32::consts::TAU,
     f64::{
         consts::{FRAC_PI_2, PI},
         MAX,
@@ -7,10 +6,8 @@ use std::{
 };
 
 use bevy::{
-    input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     math::{DMat4, DVec2, DVec3},
     prelude::*,
-    render::primitives::Frustum,
     window::PrimaryWindow,
 };
 mod camera_event_aggregator;
@@ -21,7 +18,7 @@ mod pan_orbit;
 use self::{camera_new::CameraControlPlugin, pan_orbit::pan_orbit_camera};
 pub use camera_event_aggregator::MouseEvent;
 pub use camera_new::GlobeCamera;
-use camera_old::{PanOrbitCamera, PanOrbitCameraPlugin};
+
 use houtu_scene::{Projection, *};
 
 pub struct CameraPlugin;
@@ -45,7 +42,7 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
         return;
     };
     let ellipsoid = Ellipsoid::WGS84;
-    let x = ellipsoid.semimajor_axis() as f32;
+    let _x = ellipsoid.semimajor_axis() as f32;
     commands.spawn((
         Camera3dBundle {
             projection: bevy::prelude::Projection::Perspective(PerspectiveProjection {

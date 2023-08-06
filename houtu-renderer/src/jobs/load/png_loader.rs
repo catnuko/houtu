@@ -1,4 +1,4 @@
-use super::file::FileLoader;
+
 
 pub struct PngLoader;
 

@@ -13,7 +13,7 @@ impl Default for LoadPlugin {
     }
 }
 impl bevy::app::Plugin for LoadPlugin {
-    fn build(&self, app: &mut App) {
+    fn build(&self, _app: &mut App) {
         // app.add_system(systems::handle_network_fetch_finished_jobs);
     }
 }

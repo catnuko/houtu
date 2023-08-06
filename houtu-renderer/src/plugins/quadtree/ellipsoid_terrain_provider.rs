@@ -30,10 +30,10 @@ impl TerrainProvider for EllipsoidTerrainProvider {
     fn get_tiling_scheme(&self) -> &GeographicTilingScheme {
         return &self.tiling_scheme;
     }
-    fn get_tile_data_available(&self, key: &TileKey) -> Option<bool> {
+    fn get_tile_data_available(&self, _key: &TileKey) -> Option<bool> {
         return None;
     }
-    fn load_tile_data_availability(&self, key: &TileKey) -> Option<bool> {
+    fn load_tile_data_availability(&self, _key: &TileKey) -> Option<bool> {
         return None;
     }
     fn get_level_maximum_geometric_error(&self, level: u32) -> f64 {
@@ -80,6 +80,6 @@ fn get_estimated_level_zero_geometric_error_for_a_heightmap(
     tile_image_width: u32,
     number_of_tiles_at_level_zero: u32,
 ) -> f64 {
-    return ((ellipsoid.maximum_radius * 2. * PI * 0.25)
-        / (tile_image_width as f64 * number_of_tiles_at_level_zero as f64));
+    return (ellipsoid.maximum_radius * 2. * PI * 0.25)
+        / (tile_image_width as f64 * number_of_tiles_at_level_zero as f64);
 }

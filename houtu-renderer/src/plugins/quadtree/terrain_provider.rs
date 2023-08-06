@@ -1,7 +1,7 @@
-use std::f64::consts::PI;
+
 
 use houtu_scene::{
-    Ellipsoid, GeographicTilingScheme, HeightmapTerrainData, Rectangle, TilingScheme,
+    GeographicTilingScheme, HeightmapTerrainData,
 };
 
 use super::{tile_availability::TileAvailability, tile_key::TileKey};

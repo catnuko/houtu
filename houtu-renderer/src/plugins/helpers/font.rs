@@ -1,4 +1,4 @@
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{egui, EguiContexts};
 pub fn config_ctx(mut contexts: EguiContexts) {
     let ctx = contexts.ctx_mut();
     let mut fonts = egui::FontDefinitions::default();

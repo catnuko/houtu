@@ -1,7 +1,7 @@
-use std::{fmt, io, string::ParseError};
+use std::{io};
 
 use houtu_jobs::{
-    AsyncReturn, Context, FinishedJobs, Job, JobOutcomePayload, JobSpawner, Progress,
+    AsyncReturn, Context, Job,
 };
 pub struct CreateVerticeJob {}
 pub struct CreateVerticeJobOutcome {}
@@ -19,7 +19,7 @@ impl Job for CreateVerticeJob {
     fn name(&self) -> String {
         format!("create vertice ",)
     }
-    fn perform(self, context: Context) -> AsyncReturn<Self::Outcome> {
+    fn perform(self, _context: Context) -> AsyncReturn<Self::Outcome> {
         Box::pin(async move {
             let fetch = async { Ok(CreateVerticeJobOutcome {}) };
             #[cfg(not(target_arch = "wasm32"))]

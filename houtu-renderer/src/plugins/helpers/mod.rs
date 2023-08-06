@@ -1,13 +1,11 @@
-use std::f64::consts::PI;
+
 
 use bevy::{
-    math::{DVec2, DVec3},
     prelude::*,
-    window::PrimaryWindow,
 };
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_prototype_debug_lines::*;
-use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid, HeadingPitchRoll};
+use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid};
 
 use self::ui_state::UiState;
 mod camera;
@@ -70,7 +68,7 @@ fn ui_example_system(mut contexts: EguiContexts, mut state: ResMut<UiState>) {
         });
 }
 
-fn setup(mut commands: Commands, mut lines: ResMut<DebugLines>) {
+fn setup(_commands: Commands, mut lines: ResMut<DebugLines>) {
     let length = (Ellipsoid::WGS84.maximum_radius as f32) + 10000000.0;
     // A line that stays on screen 9 seconds
     lines.line_colored(

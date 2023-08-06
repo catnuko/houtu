@@ -1,18 +1,14 @@
 use bevy::{
-    asset::{AssetLoader, LoadContext, LoadedAsset},
-    pbr::{wireframe::Wireframe, MaterialPipeline, MaterialPipelineKey},
+    pbr::{MaterialPipeline, MaterialPipelineKey},
     prelude::*,
-    reflect::{erased_serde::__private::serde::Deserialize, TypeUuid},
+    reflect::{TypeUuid},
     render::{
-        mesh::{MeshVertexBufferLayout, PrimitiveTopology},
+        mesh::{MeshVertexBufferLayout},
         render_resource::{
-            AsBindGroup, PolygonMode, RenderPipelineDescriptor, ShaderRef,
+            AsBindGroup, RenderPipelineDescriptor, ShaderRef,
             SpecializedMeshPipelineError,
         },
-        renderer::RenderDevice,
-        texture::{CompressedImageFormats, ImageTextureLoader, ImageType, TextureError},
     },
-    utils::BoxedFuture,
 };
 #[derive(Default, AsBindGroup, TypeUuid, Debug, Clone, Reflect, Resource)]
 #[uuid = "886f4558-1621-492a-856e-ea1dbc9902d9"]
@@ -33,7 +29,7 @@ impl Material for TerrainMeshMaterial {
     }
     fn specialize(
         _pipeline: &MaterialPipeline<Self>,
-        descriptor: &mut RenderPipelineDescriptor,
+        _descriptor: &mut RenderPipelineDescriptor,
         _layout: &MeshVertexBufferLayout,
         _key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {

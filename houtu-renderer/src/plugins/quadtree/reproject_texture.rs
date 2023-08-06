@@ -5,19 +5,18 @@ use bevy::{
     core::cast_slice,
     prelude::*,
     render::{
-        extract_resource::{ExtractResource, ExtractResourcePlugin},
         render_asset::RenderAssets,
         render_graph::{self, RenderGraph},
         render_resource::*,
-        renderer::{RenderDevice, RenderQueue},
+        renderer::{RenderDevice},
         texture::BevyDefault,
-        Extract, RenderApp, RenderSet,
+        Extract, RenderApp,
     },
     utils::{HashMap, Uuid},
 };
 use std::mem;
 
-use houtu_scene::Rectangle;
+
 
 use super::tile_key::TileKey;
 
@@ -247,7 +246,7 @@ struct ReprojectTextureNode;
 impl render_graph::Node for ReprojectTextureNode {
     fn run(
         &self,
-        graph: &mut render_graph::RenderGraphContext,
+        _graph: &mut render_graph::RenderGraphContext,
         render_context: &mut bevy::render::renderer::RenderContext,
         world: &World,
     ) -> Result<(), render_graph::NodeRunError> {

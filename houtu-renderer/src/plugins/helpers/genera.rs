@@ -14,7 +14,7 @@ pub fn debug_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (entity, mut globe_camera) in &mut camera_query {
+    for (_entity, mut globe_camera) in &mut camera_query {
         if state.show_frustum_planes {
             if state.frustum_planes_entity.is_none() {
                 let p = globe_camera.get_position_wc().clone();

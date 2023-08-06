@@ -1,7 +1,6 @@
 use bevy::{
-    pbr::wireframe::{WireframeConfig, WireframePlugin},
+    pbr::wireframe::{WireframePlugin},
     prelude::*,
-    window::WindowResolution,
 };
 
 mod events;
@@ -9,13 +8,13 @@ mod jobs;
 mod plugins;
 mod systems;
 mod z_index;
-use bevy_egui::EguiPlugin;
+
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
-use houtu_scene::Ellipsoid;
-use plugins::{helpers, pan_orbit_camera, quadtree};
+
+use plugins::{helpers, quadtree};
 // use plugins::quadtree;
-use z_index::ZIndex;
+
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {
     Polygon,

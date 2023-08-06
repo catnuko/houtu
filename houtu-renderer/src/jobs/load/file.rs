@@ -1,5 +1,5 @@
 use houtu_jobs::{
-    AsyncReturn, Context, FinishedJobs, Job, JobOutcomePayload, JobSpawner, Progress,
+    AsyncReturn, Context, Job, JobOutcomePayload, Progress,
 };
 use std::{fmt, marker::PhantomData};
 

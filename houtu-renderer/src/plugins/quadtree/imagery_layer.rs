@@ -1,5 +1,3 @@
-
-
 use bevy::{
     core::cast_slice,
     math::{DMat4, DVec4},
@@ -14,10 +12,7 @@ use bevy::{
     utils::{HashMap, Uuid},
 };
 
-use houtu_scene::{
-    lerp_f32,
-    Matrix4, Rectangle, TilingScheme,
-};
+use houtu_scene::{lerp_f32, Matrix4, Rectangle, TilingScheme};
 
 use crate::plugins::{
     camera::GlobeCamera,
@@ -35,11 +30,6 @@ use super::{
     tile_imagery::TileImagery,
     tile_key::TileKey,
 };
-
-pub struct ImageryLayerOtherState {
-    pub minimumTerrainLevel: Option<u32>,
-    pub maximumTerrainLevel: Option<u32>,
-}
 
 pub struct ImageryLayer {
     pub id: Uuid,
@@ -116,7 +106,7 @@ impl ImageryLayer {
     fn is_base_layer(&self) -> bool {
         return self.is_base_layer;
     }
-    pub fn _createTileImagerySkeletons(
+    pub fn _create_tile_imagery_skeletons(
         &mut self,
         tile: &mut QuadtreeTile,
         // key: &TileKey,
@@ -320,7 +310,7 @@ impl ImageryLayer {
             );
         }
 
-        let initialMinV = min_v;
+        let initial_min_v = min_v;
         for i in north_west_tile_coordinates.x..south_east_tile_coordinates.x {
             min_u = max_u;
 
@@ -334,12 +324,13 @@ impl ImageryLayer {
                     .tile_x_y_to_rectange(i, north_west_tile_coordinates.y, imagery_level)
             };
 
-            let clippedImageryRectangleRes = imagery_rectangle.simpleIntersection(&imagery_bounds);
+            let clipped_imagery_rectangle_res =
+                imagery_rectangle.simpleIntersection(&imagery_bounds);
 
-            if clippedImageryRectangleRes.is_none() {
+            if clipped_imagery_rectangle_res.is_none() {
                 continue;
             }
-            clipped_imagery_rectangle = clippedImageryRectangleRes.expect("rectangle is some");
+            clipped_imagery_rectangle = clipped_imagery_rectangle_res.expect("rectangle is some");
 
             max_u = (1.0 as f64).min(
                 (clipped_imagery_rectangle.east - terrain_rectangle.west)
@@ -358,7 +349,7 @@ impl ImageryLayer {
                 max_u = 1.0;
             }
 
-            min_v = initialMinV;
+            min_v = initial_min_v;
             for j in north_west_tile_coordinates.y..south_east_tile_coordinates.y {
                 max_v = min_v;
 
@@ -371,13 +362,14 @@ impl ImageryLayer {
                         .get_tiling_scheme()
                         .tile_x_y_to_rectange(i, j, imagery_level)
                 };
-                let clippedImageryRectangleRes =
+                let clipped_imagery_rectangle_res =
                     imagery_rectangle.simpleIntersection(&imagery_bounds);
 
-                if clippedImageryRectangleRes.is_none() {
+                if clipped_imagery_rectangle_res.is_none() {
                     continue;
                 }
-                clipped_imagery_rectangle = clippedImageryRectangleRes.expect("rectangle is some");
+                clipped_imagery_rectangle =
+                    clipped_imagery_rectangle_res.expect("rectangle is some");
                 min_v = (0.0 as f64).max(
                     (clipped_imagery_rectangle.south - terrain_rectangle.south)
                         / terrain_rectangle.compute_height(),
@@ -455,12 +447,12 @@ impl ImageryLayer {
         let terrain_height = quand_tile_rectangle.compute_height();
 
         let scale_x = terrain_width / imagery_rectangle.compute_width();
-        let scale_Y = terrain_height / imagery_rectangle.compute_height();
+        let scale_y = terrain_height / imagery_rectangle.compute_height();
         return DVec4::new(
             (scale_x * (quand_tile_rectangle.west - imagery_rectangle.west)) / terrain_width,
-            (scale_Y * (quand_tile_rectangle.south - imagery_rectangle.south)) / terrain_height,
+            (scale_y * (quand_tile_rectangle.south - imagery_rectangle.south)) / terrain_height,
             scale_x,
-            scale_Y,
+            scale_y,
         );
     }
     pub fn reproject_texture(
@@ -535,7 +527,7 @@ impl ImageryLayer {
             usage: BufferUsages::VERTEX,
         });
         let v = &globe_camera.viewport;
-        let _viewportOrthographicMatrix = DMat4::compute_orthographic_off_center(
+        let _viewport_orthographic_matrix = DMat4::compute_orthographic_off_center(
             v.x,
             v.x + v.width,
             v.y,
@@ -546,7 +538,7 @@ impl ImageryLayer {
         .to_mat4_32();
         let unifrom_params = ParamsUniforms {
             texture_dimensions: UVec2::new(width, height),
-            viewport_orthographic: _viewportOrthographicMatrix,
+            viewport_orthographic: _viewport_orthographic_matrix,
         };
         let mut buffer = encase::UniformBuffer::new(Vec::new());
         buffer.write(&unifrom_params).unwrap();

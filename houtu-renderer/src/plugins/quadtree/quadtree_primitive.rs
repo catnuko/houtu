@@ -1,4 +1,4 @@
-use std::{cmp::Ordering};
+use std::cmp::Ordering;
 
 use bevy::{
     core::FrameCount,
@@ -22,7 +22,7 @@ use super::{
     quadtree_tile::{Quadrant, QuadtreeTile, QuadtreeTileLoadState},
     quadtree_tile_storage::QuadtreeTileStorage,
     reproject_texture::ReprojectTextureTaskQueue,
-    terrain_provider::{TerrainProvider},
+    terrain_provider::TerrainProvider,
     tile_key::TileKey,
     tile_replacement_queue::TileReplacementQueue,
     tile_selection_result::TileSelectionResult,
@@ -114,9 +114,16 @@ impl QuadtreePrimitive {
         }
         self.tile_replacement_queue.markStartOfRenderFrame();
     }
-    fn queue_tile_load(&mut self, queue_type: QueueType, tile_key: TileKey) {
+    fn queue_tile_load(
+        &mut self,
+        queue_type: QueueType,
+        tile_key: TileKey,
+        globe_camera: &mut GlobeCamera,
+    ) {
         let tile = self.storage.get_mut(&tile_key).unwrap();
-        tile.load_priority = self.tile_provider.compute_tile_load_priority();
+        tile.load_priority = self
+            .tile_provider
+            .compute_tile_load_priority(tile, globe_camera);
         match queue_type {
             QueueType::High => self.tile_load_queue_high.push(tile.key),
             QueueType::Medium => self.tile_load_queue_medium.push(tile.key),
@@ -130,6 +137,7 @@ impl QuadtreePrimitive {
         window: &Window,
         all_traversal_quad_details: &mut AllTraversalQuadDetails,
         root_traversal_details: &mut RootTraversalDetails,
+        imagery_layer_storage: &mut ImageryLayerStorage,
     ) {
         if self.debug.suspend_lod_update {
             return;
@@ -172,7 +180,7 @@ impl QuadtreePrimitive {
             let tile_mut = self.storage.get_mut(key).unwrap();
             if !tile_mut.renderable {
                 let cloned = tile_mut.key.clone();
-                self.queue_tile_load(QueueType::High, cloned);
+                self.queue_tile_load(QueueType::High, cloned, globe_camera);
                 self.debug.tiles_waiting_for_children += 1;
             } else {
                 let mut ancestor_meets_sse = false;
@@ -187,6 +195,7 @@ impl QuadtreePrimitive {
                     window,
                     all_traversal_quad_details,
                     root_traversal_details,
+                    imagery_layer_storage,
                 );
             }
         }
@@ -356,15 +365,16 @@ fn visit_if_visible(
     window: &Window,
     all_traversal_quad_details: &mut AllTraversalQuadDetails,
     root_traversal_details: &mut RootTraversalDetails,
+    imagery_layer_storage: &mut ImageryLayerStorage,
 ) {
-    if primitive.tile_provider.computeTileVisibility(
+    if primitive.tile_provider.compute_tile_visibility(
         &mut primitive.storage,
         ellipsoidal_occluder,
         globe_camera,
         tile_key,
     ) != TileVisibility::NONE
     {
-        return visitTile(
+        return visit_tile(
             primitive,
             tile_key,
             globe_camera,
@@ -374,6 +384,7 @@ fn visit_if_visible(
             ancestor_meets_sse,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
     }
     primitive.debug.tiles_culled += 1;
@@ -401,7 +412,7 @@ fn visit_if_visible(
     if contains_needed_position(primitive, &rectangle) {
         let tile = primitive.storage.get_mut(&tile_key).unwrap();
         if tile.data.vertex_array.is_none() {
-            primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
+            primitive.queue_tile_load(QueueType::Medium, tile_key.clone(), globe_camera);
         }
         let last_frame = primitive.last_selection_frame_number;
         let tile = primitive.storage.get_mut(&tile_key).unwrap();
@@ -420,7 +431,7 @@ fn visit_if_visible(
     } else if primitive.preload_siblings || tile_key.level == 0 {
         let tile = primitive.storage.get_mut(&tile_key).unwrap();
         tile.last_selection_result = TileSelectionResult::CULLED;
-        primitive.queue_tile_load(QueueType::Low, tile_key.clone());
+        primitive.queue_tile_load(QueueType::Low, tile_key.clone(), globe_camera);
     } else {
         let tile = primitive.storage.get_mut(&tile_key).unwrap();
         tile.last_selection_result = TileSelectionResult::CULLED;
@@ -428,7 +439,7 @@ fn visit_if_visible(
     let tile = primitive.storage.get_mut(&tile_key).unwrap();
     tile.last_selection_result_frame = Some(frame_count.0);
 }
-fn visitTile(
+fn visit_tile(
     primitive: &mut QuadtreePrimitive,
     tile_key: TileKey,
     globe_camera: &mut GlobeCamera,
@@ -438,6 +449,7 @@ fn visitTile(
     ancestor_meets_sse: &mut bool,
     all_traversal_quad_details: &mut AllTraversalQuadDetails,
     root_traversal_details: &mut RootTraversalDetails,
+    imagery_layer_storage: &mut ImageryLayerStorage,
 ) {
     let tiling_scheme = primitive.get_tiling_scheme().clone();
     primitive.storage.subdivide(&tile_key, &tiling_scheme);
@@ -484,14 +496,16 @@ fn visitTile(
         let mut renderable =
             one_rendered_last_frame || two_culled_or_not_visited || three_completely_loaded;
         if !renderable {
-            // renderable = primitive
-            //     .tile_provider
-            //     .can_render_without_losing_detail(tile,,primitive);
-            renderable = false;
+            renderable = GlobeSurfaceTileProvider::can_render_without_losing_detail(
+                tile_key,
+                imagery_layer_storage,
+                primitive,
+            );
+            // renderable = false;
         }
         if renderable {
             if meets_sse {
-                primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
+                primitive.queue_tile_load(QueueType::Medium, tile_key.clone(), globe_camera);
             }
             primitive.tiles_to_render.push(tile_key);
 
@@ -514,7 +528,7 @@ fn visitTile(
 
         // Load this blocker tile with high priority, but only if this tile (not just an ancestor) meets the SSE.
         if meets_sse {
-            primitive.queue_tile_load(QueueType::High, tile_key.clone());
+            primitive.queue_tile_load(QueueType::High, tile_key.clone(), globe_camera);
         }
     }
     let tile = primitive.storage.get_mut(&tile_key).unwrap();
@@ -533,7 +547,7 @@ fn visitTile(
         };
         if all_are_upsampled {
             primitive.tiles_to_render.push(tile_key);
-            primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
+            primitive.queue_tile_load(QueueType::Medium, tile_key.clone(), globe_camera);
             primitive
                 .tile_replacement_queue
                 .mark_tile_rendered(&mut primitive.storage, tile_key.southwest());
@@ -573,10 +587,11 @@ fn visitTile(
         let load_index_high = primitive.tile_load_queue_high.len();
         let tiles_to_update_heights_index = primitive.tile_to_update_heights.len();
         let location = tile.location.clone();
-        visitVisibleChildrenNearToFar(
+        visit_visible_children_near_to_far(
             primitive,
             tile_key,
             location,
+            imagery_layer_storage,
             globe_camera,
             ellipsoidal_occluder,
             frame_count,
@@ -643,7 +658,7 @@ fn visitTile(
                         .tile_load_queue_low
                         .splice(load_index_high..new_len, []);
                     let renderable = tile.renderable;
-                    primitive.queue_tile_load(QueueType::Medium, tile_key.clone());
+                    primitive.queue_tile_load(QueueType::Medium, tile_key.clone(), globe_camera);
                     traversal_details.not_yet_renderable_count = if renderable { 0 } else { 1 };
                     queued_for_load = true;
                 }
@@ -659,7 +674,7 @@ fn visitTile(
                 primitive.debug.tiles_waiting_for_children += 1;
             }
             if primitive.preload_ancestors && !queued_for_load {
-                primitive.queue_tile_load(QueueType::Low, tile_key.clone());
+                primitive.queue_tile_load(QueueType::Low, tile_key.clone(), globe_camera);
             }
         }
         return;
@@ -669,7 +684,7 @@ fn visitTile(
 
     primitive.tiles_to_render.push(tile_key);
     let renderable = tile.renderable;
-    primitive.queue_tile_load(QueueType::High, tile_key.clone());
+    primitive.queue_tile_load(QueueType::High, tile_key.clone(), globe_camera);
 
     traversal_details.all_are_renderable = renderable;
     traversal_details.any_were_rendered_last_frame =
@@ -706,11 +721,11 @@ fn screen_space_error(
     error /= window.scale_factor();
     return error;
 }
-fn visitVisibleChildrenNearToFar(
+fn visit_visible_children_near_to_far(
     primitive: &mut QuadtreePrimitive,
     tile_key: TileKey,
     location: Quadrant,
-    // traversal_details: &mut TraversalDetails,
+    imagery_layer_storage: &mut ImageryLayerStorage,
     globe_camera: &mut GlobeCamera,
     ellipsoidal_occluder: &EllipsoidalOccluder,
     frame_count: &FrameCount,
@@ -746,6 +761,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
             visit_if_visible(
                 primitive,
@@ -757,6 +773,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
             visit_if_visible(
                 primitive,
@@ -768,6 +785,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
             visit_if_visible(
                 primitive,
@@ -779,6 +797,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
         } else {
             // Camera in northwest quadrant
@@ -792,6 +811,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
             visit_if_visible(
                 primitive,
@@ -803,6 +823,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
             visit_if_visible(
                 primitive,
@@ -814,6 +835,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
             visit_if_visible(
                 primitive,
@@ -825,6 +847,7 @@ fn visitVisibleChildrenNearToFar(
                 window,
                 all_traversal_quad_details,
                 root_traversal_details,
+                imagery_layer_storage,
             );
         }
     } else if camera_position.latitude < north {
@@ -839,6 +862,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
         visit_if_visible(
             primitive,
@@ -850,6 +874,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
         visit_if_visible(
             primitive,
@@ -861,6 +886,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
         visit_if_visible(
             primitive,
@@ -872,6 +898,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
     } else {
         // Camera in northeast quadrant
@@ -885,6 +912,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
         visit_if_visible(
             primitive,
@@ -896,6 +924,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
         visit_if_visible(
             primitive,
@@ -907,6 +936,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
         visit_if_visible(
             primitive,
@@ -918,6 +948,7 @@ fn visitVisibleChildrenNearToFar(
             window,
             all_traversal_quad_details,
             root_traversal_details,
+            imagery_layer_storage,
         );
     }
     let child_quad_details = all_traversal_quad_details.get(southwest.level);
@@ -944,7 +975,6 @@ pub fn get_traversal_details<'a>(
         Quadrant::Root(i) => root_traversal_details.0.get_mut(*i).unwrap(),
     };
 }
-pub struct TileLoadEvent(pub u32);
 fn update_tile_load_progress_system(primitive: &mut QuadtreePrimitive) {
     let p0_count = primitive.tiles_to_render.len();
     let _p1_count = primitive.tile_to_update_heights.len();

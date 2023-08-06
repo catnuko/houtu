@@ -1,11 +1,9 @@
-
-
 use bevy::{
     prelude::Resource,
     utils::{HashMap, Uuid},
 };
 
-use super::{imagery_layer::ImageryLayer};
+use super::imagery_layer::ImageryLayer;
 #[derive(Resource)]
 pub struct ImageryLayerStorage {
     pub map: HashMap<Uuid, ImageryLayer>,

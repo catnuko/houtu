@@ -1,5 +1,4 @@
-use bevy::{math::UVec3};
-
+use bevy::math::UVec3;
 
 #[derive(Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd)]
 pub struct TileKey {
@@ -45,13 +44,13 @@ impl TileKey {
     }
     pub fn parent(&self) -> Option<TileKey> {
         if self.level != 0 {
-            let parentX = (self.x / 2) | 0;
-            let parentY = (self.y / 2) | 0;
-            let parentLevel = self.level - 1;
+            let parent_x = (self.x / 2) | 0;
+            let parent_y = (self.y / 2) | 0;
+            let parent_level = self.level - 1;
             Some(TileKey {
-                x: parentX,
-                y: parentY,
-                level: parentLevel,
+                x: parent_x,
+                y: parent_y,
+                level: parent_level,
             })
         } else {
             None

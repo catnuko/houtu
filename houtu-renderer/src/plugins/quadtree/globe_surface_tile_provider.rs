@@ -8,7 +8,7 @@ use bevy::{
 use houtu_jobs::JobSpawner;
 use houtu_scene::{
     BoundingVolume, Cartesian3, Ellipsoid, EllipsoidalOccluder, GeographicProjection,
-    GeographicTilingScheme, Intersect, Rectangle, TileBoundingRegion,
+    GeographicTilingScheme, Intersect, Rectangle, TileBoundingRegion, EPSILON12, EPSILON5,
 };
 
 use crate::plugins::camera::GlobeCamera;
@@ -30,8 +30,8 @@ use super::{
 
 pub struct GlobeSurfaceTileProvider {
     terrain_provider: Box<dyn TerrainProvider>,
-    readyImageryScratch: HashMap<Uuid, bool>,
-    canRenderTraversalStack: Vec<TileKey>,
+    ready_imagery_scratch: HashMap<Uuid, bool>,
+    can_render_traversal_stack: Vec<TileKey>,
 }
 #[derive(Debug, PartialEq)]
 pub enum TileVisibility {
@@ -43,8 +43,8 @@ impl GlobeSurfaceTileProvider {
     pub fn new() -> Self {
         Self {
             terrain_provider: Box::new(EllipsoidTerrainProvider::new()),
-            canRenderTraversalStack: vec![],
-            readyImageryScratch: HashMap::new(),
+            can_render_traversal_stack: vec![],
+            ready_imagery_scratch: HashMap::new(),
         }
     }
     pub fn load_tile(
@@ -62,16 +62,16 @@ impl GlobeSurfaceTileProvider {
         globe_camera: &mut GlobeCamera,
     ) {
         let tile = storage.get_mut(&tile_key).unwrap();
-        let terrainStateBefore;
-        let mut terrainOnly = tile.data.bounding_volume_source_tile != Some(tile_key)
+        let terrain_state_before;
+        let mut terrain_only = tile.data.bounding_volume_source_tile != Some(tile_key)
             || tile.last_selection_result == TileSelectionResult::CULLED_BUT_NEEDED;
-        terrainStateBefore = tile.data.terrain_state.clone();
+        terrain_state_before = tile.data.terrain_state.clone();
         GlobeSurfaceTile::process_state_machine(
             storage,
             tile_key,
             &self.terrain_provider,
             imagery_layer_storage,
-            terrainOnly,
+            terrain_only,
             job_spawner,
             indices_and_edges_cache,
             asset_server,
@@ -81,23 +81,23 @@ impl GlobeSurfaceTileProvider {
             globe_camera,
         );
         let tile = storage.get_mut(&tile_key).unwrap();
-        if terrainOnly && terrainStateBefore != tile.data.terrain_state {
+        if terrain_only && terrain_state_before != tile.data.terrain_state {
             // Terrain state changed. If:
             // a) The tile is visible, and
             // b) The bounding volume is accurate (updated as a side effect of computing visibility)
             // Then we'll load imagery, too.
             let bounding_volume_source_tile = tile.data.bounding_volume_source_tile.clone();
-            if self.computeTileVisibility(storage, ellipsoidal_occluder, globe_camera, tile_key)
+            if self.compute_tile_visibility(storage, ellipsoidal_occluder, globe_camera, tile_key)
                 != TileVisibility::NONE
                 && bounding_volume_source_tile == Some(tile_key)
             {
-                terrainOnly = false;
+                terrain_only = false;
                 GlobeSurfaceTile::process_state_machine(
                     storage,
                     tile_key,
                     &self.terrain_provider,
                     imagery_layer_storage,
-                    terrainOnly,
+                    terrain_only,
                     job_spawner,
                     indices_and_edges_cache,
                     asset_server,
@@ -113,17 +113,38 @@ impl GlobeSurfaceTileProvider {
     pub fn get_tiling_scheme(&self) -> &GeographicTilingScheme {
         return self.terrain_provider.get_tiling_scheme();
     }
-    pub fn compute_tile_load_priority(&mut self) -> f64 {
-        0.
+    pub fn compute_tile_load_priority(
+        &mut self,
+        tile: &mut QuadtreeTile,
+        globe_camera: &mut GlobeCamera,
+    ) -> f64 {
+        let obb = tile
+            .data
+            .tile_bounding_region
+            .as_ref()
+            .and_then(|x| x.get_bounding_volume());
+        if obb.is_none() {
+            return 0.0;
+        }
+        let obb = obb.unwrap();
+        let camera_position = globe_camera.get_position_wc();
+        let camera_direction = globe_camera.get_direction_wc();
+        let mut tile_direction = obb.center - camera_position;
+        let magnitude = tile_direction.magnitude();
+        if magnitude < EPSILON5 {
+            return 0.0;
+        }
+        tile_direction = tile_direction / magnitude;
+        return (1.0 - tile_direction.dot(camera_direction)) * tile.distance;
     }
-    pub fn computeTileVisibility(
+    pub fn compute_tile_visibility(
         &mut self,
         storage: &mut QuadtreeTileStorage,
         ellipsoidal_occluder: &EllipsoidalOccluder,
         camera: &mut GlobeCamera,
         tile_key: TileKey,
     ) -> TileVisibility {
-        computeDistanceToTile(storage, ellipsoidal_occluder, camera, tile_key);
+        compute_distance_to_tile(storage, ellipsoidal_occluder, camera, tile_key);
         let tile = storage.get_mut(&tile_key).unwrap();
         let surface_tile = &mut tile.data;
         let tile_bounding_region = surface_tile
@@ -188,16 +209,19 @@ impl GlobeSurfaceTileProvider {
             .get_level_maximum_geometric_error(level);
     }
     pub fn can_render_without_losing_detail(
-        &mut self,
-        tile: &mut QuadtreeTile,
+        // &mut self,
+        tile_key: TileKey,
         imagery_layer_storage: &mut ImageryLayerStorage,
         primitive: &mut QuadtreePrimitive,
     ) -> bool {
-        let terrainReady = tile.data.terrain_state == TerrainState::READY;
-        let initialImageryState = true;
+        let tile = primitive.storage.get_mut(&tile_key).unwrap();
+        let terrain_ready = tile.data.terrain_state == TerrainState::READY;
+        let initial_imagery_state = true;
+        let globe_surface_tile_provider = &mut primitive.tile_provider;
         for (id, _) in imagery_layer_storage.map.iter() {
-            self.readyImageryScratch
-                .insert(id.clone(), initialImageryState);
+            globe_surface_tile_provider
+                .ready_imagery_scratch
+                .insert(id.clone(), initial_imagery_state);
         }
         for imagery in tile.data.imagery.iter_mut() {
             let is_ready = {
@@ -227,18 +251,35 @@ impl GlobeSurfaceTileProvider {
                 }
                 id
             };
-            let value = self.readyImageryScratch.get(&layer_id).unwrap();
-            self.readyImageryScratch
+            let value = globe_surface_tile_provider
+                .ready_imagery_scratch
+                .get(&layer_id)
+                .unwrap();
+            globe_surface_tile_provider
+                .ready_imagery_scratch
                 .insert(layer_id.clone(), is_ready && *value);
         }
         let last_frame = primitive.last_selection_frame_number;
-        self.canRenderTraversalStack.clear();
-        self.canRenderTraversalStack.push(tile.southwest.unwrap());
-        self.canRenderTraversalStack.push(tile.southeast.unwrap());
-        self.canRenderTraversalStack.push(tile.northwest.unwrap());
-        self.canRenderTraversalStack.push(tile.northeast.unwrap());
-        while self.canRenderTraversalStack.len() > 0 {
-            let descentant_key = self.canRenderTraversalStack.pop().unwrap();
+        globe_surface_tile_provider
+            .can_render_traversal_stack
+            .clear();
+        globe_surface_tile_provider
+            .can_render_traversal_stack
+            .push(tile.southwest.unwrap());
+        globe_surface_tile_provider
+            .can_render_traversal_stack
+            .push(tile.southeast.unwrap());
+        globe_surface_tile_provider
+            .can_render_traversal_stack
+            .push(tile.northwest.unwrap());
+        globe_surface_tile_provider
+            .can_render_traversal_stack
+            .push(tile.northeast.unwrap());
+        while globe_surface_tile_provider.can_render_traversal_stack.len() > 0 {
+            let descentant_key = globe_surface_tile_provider
+                .can_render_traversal_stack
+                .pop()
+                .unwrap();
             let descendant = primitive.storage.get(&descentant_key).unwrap();
             let last_frame_selection_result =
                 if descendant.last_selection_result_frame == last_frame {
@@ -247,7 +288,7 @@ impl GlobeSurfaceTileProvider {
                     TileSelectionResult::NONE
                 };
             if last_frame_selection_result == TileSelectionResult::RENDERED {
-                if !terrainReady && descendant.data.terrain_state == TerrainState::READY {
+                if !terrain_ready && descendant.data.terrain_state == TerrainState::READY {
                     return false;
                 }
                 for descendant_tile_imagery in descendant.data.imagery.iter() {
@@ -282,19 +323,26 @@ impl GlobeSurfaceTileProvider {
                         id
                     };
                     if descendant_is_ready
-                        && *self.readyImageryScratch.get(&descentant_layer_id).unwrap()
+                        && *globe_surface_tile_provider
+                            .ready_imagery_scratch
+                            .get(&descentant_layer_id)
+                            .unwrap()
                     {
                         return false;
                     }
                 }
             } else if last_frame_selection_result == TileSelectionResult::REFINED {
-                self.canRenderTraversalStack
+                globe_surface_tile_provider
+                    .can_render_traversal_stack
                     .push(descendant.southwest.unwrap());
-                self.canRenderTraversalStack
+                globe_surface_tile_provider
+                    .can_render_traversal_stack
                     .push(descendant.southeast.unwrap());
-                self.canRenderTraversalStack
+                globe_surface_tile_provider
+                    .can_render_traversal_stack
                     .push(descendant.northwest.unwrap());
-                self.canRenderTraversalStack
+                globe_surface_tile_provider
+                    .can_render_traversal_stack
                     .push(descendant.northeast.unwrap());
             }
         }
@@ -310,7 +358,7 @@ impl GlobeSurfaceTileProvider {
         return child_available != None;
     }
 }
-fn computeDistanceToTile(
+fn compute_distance_to_tile(
     storage: &mut QuadtreeTileStorage,
     ellipsoidal_occluder: &EllipsoidalOccluder,
     camera: &mut GlobeCamera,

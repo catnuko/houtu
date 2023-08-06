@@ -1,13 +1,6 @@
-use bevy::{
-    pbr::wireframe::{WireframePlugin},
-    prelude::*,
-};
+use bevy::{pbr::wireframe::WireframePlugin, prelude::*};
 
-mod events;
-mod jobs;
 mod plugins;
-mod systems;
-mod z_index;
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;

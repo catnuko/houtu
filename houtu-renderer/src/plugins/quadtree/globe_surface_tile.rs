@@ -13,15 +13,15 @@ use crate::plugins::camera::GlobeCamera;
 use super::{
     create_terrain_mesh_job::CreateTileJob,
     imagery::{ImageryState, ShareMutImagery},
-    imagery_layer_storage::{ImageryLayerStorage},
+    imagery_layer_storage::ImageryLayerStorage,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
-    quadtree_tile::{QuadtreeTileLoadState},
+    quadtree_tile::QuadtreeTileLoadState,
     quadtree_tile_storage::QuadtreeTileStorage,
     reproject_texture::ReprojectTextureTaskQueue,
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
-    tile_key::{TileKey},
+    tile_key::TileKey,
     upsample_job::UpsampleJob,
 };
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -187,7 +187,7 @@ impl GlobeSurfaceTile {
         tile_key: TileKey,
         terrain_provider: &Box<dyn TerrainProvider>,
         imagery_layer_storage: &mut ImageryLayerStorage,
-        terrainOnly: bool,
+        terrain_only: bool,
         job_spawner: &mut JobSpawner,
         indices_and_edges_cache: &IndicesAndEdgesCacheArc,
         asset_server: &AssetServer,
@@ -213,7 +213,7 @@ impl GlobeSurfaceTile {
                 globe_camera,
             );
         }
-        if terrainOnly {
+        if terrain_only {
             return;
         }
         let tile = storage.get_mut(&tile_key).unwrap();
@@ -405,7 +405,7 @@ fn prepare_new_tile(
     }
     for (_, imagery_layer) in imagery_layer_storage.map.iter_mut() {
         if imagery_layer.show {
-            imagery_layer._createTileImagerySkeletons(tile, terrain_provider);
+            imagery_layer._create_tile_imagery_skeletons(tile, terrain_provider);
         }
     }
 }

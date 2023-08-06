@@ -53,17 +53,7 @@ impl Plugin for RendererPlugin {
             .add_plugin(plugins::camera::CameraPlugin)
             // .add_plugin(plugins::tileset::Plugin)
             // .add_plugin(plugins::scene::ScenePlugin)
-            .add_plugin(quadtree::Plugin)
-            .add_startup_system(setup);
+            .add_plugin(quadtree::Plugin);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
-}
-fn setup(mut commands: Commands, mut wireframe_config: ResMut<WireframeConfig>) {
-    wireframe_config.global = false;
-    // let ellipsoid = Ellipsoid::WGS84;
-    // let x = ellipsoid.semimajor_axis() as f32;
-    // commands.spawn((Camera3dBundle {
-    //     transform: Transform::from_xyz(0., 0.0, 18478136.0).looking_at(Vec3::ZERO, Vec3::Y),
-    //     ..Default::default()
-    // },));
 }

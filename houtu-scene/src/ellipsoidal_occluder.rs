@@ -7,9 +7,9 @@ use crate::{
 #[derive(Clone, Debug, Resource)]
 pub struct EllipsoidalOccluder {
     pub ellipsoid: Ellipsoid,
-    pub cameraPosition: DVec3,
-    pub cameraPositionInScaledSpace: DVec3,
-    pub distanceToLimbInScaledSpaceSquared: f64,
+    _cameraPosition: DVec3,
+    _cameraPositionInScaledSpace: DVec3,
+    _distanceToLimbInScaledSpaceSquared: f64,
 }
 impl Default for EllipsoidalOccluder {
     fn default() -> Self {
@@ -20,32 +20,34 @@ impl EllipsoidalOccluder {
     pub fn new(ellipsoid: &Ellipsoid) -> Self {
         EllipsoidalOccluder {
             ellipsoid: ellipsoid.clone(),
-            cameraPosition: DVec3::ZERO,
-            cameraPositionInScaledSpace: DVec3::ZERO,
-            distanceToLimbInScaledSpaceSquared: 0.0,
+            _cameraPosition: DVec3::ZERO,
+            _cameraPositionInScaledSpace: DVec3::ZERO,
+            _distanceToLimbInScaledSpaceSquared: 0.0,
         }
+    }
+    pub fn get_camera_position(&self) -> &DVec3 {
+        return &self._cameraPosition;
     }
     pub fn set_camera_position(&mut self, camera_position: DVec3) {
         // See https://cesium.com/blog/2013/04/25/Horizon-culling/
         let ellipsoid = &self.ellipsoid;
         let cv = ellipsoid.transformPositionToScaledSpace(&camera_position);
-        self.cameraPositionInScaledSpace = cv.clone();
+        self._cameraPositionInScaledSpace = cv.clone();
         let vhMagnitudeSquared = cv.magnitude_squared() - 1.0;
-        self.cameraPosition = camera_position.clone();
-        self.cameraPositionInScaledSpace = cv;
-        self.distanceToLimbInScaledSpaceSquared = vhMagnitudeSquared;
+        self._cameraPosition = camera_position.clone();
+        self._cameraPositionInScaledSpace = cv;
+        self._distanceToLimbInScaledSpaceSquared = vhMagnitudeSquared;
     }
     pub fn isPointVisible(&self, occludee: DVec3) -> bool {
         let ellipsoid = &self.ellipsoid;
         let occludeeScaledSpacePosition = ellipsoid.transformPositionToScaledSpace(&occludee);
-        return self.isScaledSpacePointVisible(
+        return Self::_isScaledSpacePointVisible(
             &occludeeScaledSpacePosition,
-            &self.cameraPositionInScaledSpace,
-            self.distanceToLimbInScaledSpaceSquared,
+            &self._cameraPositionInScaledSpace,
+            self._distanceToLimbInScaledSpaceSquared,
         );
     }
-    pub fn isScaledSpacePointVisible(
-        &self,
+    fn _isScaledSpacePointVisible(
         occludeeScaledSpacePosition: &DVec3,
         cameraPositionInScaledSpace: &DVec3,
         distanceToLimbInScaledSpaceSquared: f64,
@@ -67,6 +69,13 @@ impl EllipsoidalOccluder {
         };
         return !isOccluded;
     }
+    pub fn isScaledSpacePointVisible(&self, occludeeScaledSpacePosition: &DVec3) -> bool {
+        return Self::_isScaledSpacePointVisible(
+            occludeeScaledSpacePosition,
+            &self._cameraPositionInScaledSpace,
+            self._distanceToLimbInScaledSpaceSquared,
+        );
+    }
     pub fn isScaledSpacePointVisiblePossiblyUnderEllipsoid(
         &self,
         occludeeScaledSpacePosition: &DVec3,
@@ -79,19 +88,19 @@ impl EllipsoidalOccluder {
             if minimum_height < 0.0 && ellipsoid.minimumRadius > -minimum_height {
                 // This code is similar to the cameraPosition setter, but unrolled for performance because it will be called a lot.
                 cv = DVec3::ZERO;
-                cv.x = self.cameraPosition.x / (ellipsoid.radii.x + minimum_height);
-                cv.y = self.cameraPosition.y / (ellipsoid.radii.y + minimum_height);
-                cv.z = self.cameraPosition.z / (ellipsoid.radii.z + minimum_height);
+                cv.x = self._cameraPosition.x / (ellipsoid.radii.x + minimum_height);
+                cv.y = self._cameraPosition.y / (ellipsoid.radii.y + minimum_height);
+                cv.z = self._cameraPosition.z / (ellipsoid.radii.z + minimum_height);
                 vhMagnitudeSquared = cv.x * cv.x + cv.y * cv.y + cv.z * cv.z - 1.0;
             } else {
-                cv = self.cameraPositionInScaledSpace;
-                vhMagnitudeSquared = self.distanceToLimbInScaledSpaceSquared;
+                cv = self._cameraPositionInScaledSpace;
+                vhMagnitudeSquared = self._distanceToLimbInScaledSpaceSquared;
             }
         } else {
-            cv = self.cameraPositionInScaledSpace;
-            vhMagnitudeSquared = self.distanceToLimbInScaledSpaceSquared;
+            cv = self._cameraPositionInScaledSpace;
+            vhMagnitudeSquared = self._distanceToLimbInScaledSpaceSquared;
         }
-        return self.isScaledSpacePointVisible(
+        return Self::_isScaledSpacePointVisible(
             occludeeScaledSpacePosition,
             &cv,
             vhMagnitudeSquared,
@@ -242,5 +251,63 @@ mod tests {
 
         let result = ellipsoidalOccluder.computeHorizonCullingPoint(&directionToPoint, &positions);
         assert!(result.is_none());
+    }
+    #[test]
+    fn isScaledSpacePointVisible() {
+        let camera_position = DVec3::new(0.0, 0.0, 2.5);
+        let ellipsoid = Ellipsoid::new(1.0, 1.0, 0.9);
+        let mut occluder = EllipsoidalOccluder::new(&ellipsoid);
+        occluder.set_camera_position(camera_position);
+        let point = DVec3::new(0.0, -3.0, -3.0);
+        let scaled_space_point = ellipsoid.transformPositionToScaledSpace(&point);
+        assert!(occluder.isScaledSpacePointVisible(&scaled_space_point));
+    }
+    #[test]
+    fn isScaledSpacePointVisiblePossiblyUnderEllipsoid() {
+        // Tests points that are halfway inside a unit sphere:
+        // 1) on the diagonal
+        // 2) on the +y-axis
+        // The camera is on the +z-axis so it will be able to see the diagonal point but not the +y-axis point.
+        let camera_position = DVec3::new(0.0, 0.0, 1.0);
+        let ellipsoid = Ellipsoid::new(1.0, 1.0, 1.0);
+        let mut occluder = EllipsoidalOccluder::new(&ellipsoid);
+        occluder.set_camera_position(camera_position);
+        let height = -0.5;
+        let mut direction = DVec3::new(1.0, 1.0, 1.0).normalize();
+        let mut point = direction.multiply_by_scalar(0.5);
+        let scaled_space_point = occluder
+            .computeHorizonCullingPoint(&point, &vec![point])
+            .unwrap();
+        let scaled_space_point_shrunk = occluder
+            .computeHorizonCullingPointPossiblyUnderEllipsoid(&point, &vec![point], height)
+            .unwrap();
+        assert!(occluder.isScaledSpacePointVisible(&scaled_space_point) == false);
+        assert!(occluder.isScaledSpacePointVisiblePossiblyUnderEllipsoid(
+            &scaled_space_point_shrunk,
+            Some(height)
+        ));
+        direction = DVec3::new(0.0, 1.0, 0.0);
+        point = direction * 0.5;
+        let scaled_space_point = occluder
+            .computeHorizonCullingPoint(&point, &vec![point])
+            .unwrap();
+        let scaled_space_point_shrunk = occluder
+            .computeHorizonCullingPointPossiblyUnderEllipsoid(&point, &vec![point], height)
+            .unwrap();
+        assert!(occluder.isScaledSpacePointVisible(&scaled_space_point) == false);
+        assert!(
+            occluder.isScaledSpacePointVisiblePossiblyUnderEllipsoid(
+                &scaled_space_point_shrunk,
+                Some(height)
+            ) == false
+        );
+    }
+    #[test]
+    fn reports_not_visible_when_point_is_over_horizon() {
+        let ellipsoid = Ellipsoid::WGS84;
+        let mut occlude = EllipsoidalOccluder::new(&ellipsoid);
+        occlude.set_camera_position(DVec3::new(7000000.0, 0.0, 0.0));
+        let point = DVec3::new(4510635.0, 4510635.0, 0.0);
+        assert!(occlude.isPointVisible(point) == false);
     }
 }

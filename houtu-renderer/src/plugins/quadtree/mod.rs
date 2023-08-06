@@ -129,7 +129,7 @@ fn real_render_system(
     for key in tile_key_list.iter() {
         let tile = primitive.storage.get_mut(key).unwrap();
         if tile.state == QuadtreeTileLoadState::DONE && tile.entity.is_none() {
-            info!("render tile key={:?}", key);
+            // info!("render tile key={:?}", key);
             let mut rng = rand::thread_rng();
             let r: f32 = rng.gen();
             let g: f32 = rng.gen();
@@ -147,11 +147,11 @@ fn real_render_system(
                     ),
                     material: terrain_materials.add(TerrainMeshMaterial {
                         color: Color::rgba(r, g, b, 1.0),
-                        image: Some(asset_server.load("icon.png")),
-                        // image:Some( asset_server.load(format!(
-                        //         "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
-                        //         key.level, key.x, key.y,
-                        //     ))),
+                        // image: Some(asset_server.load("icon.png")),
+                        image:Some( asset_server.load(format!(
+                                "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
+                                key.level, key.x, key.y,
+                            ))),
                     }),
                     // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
                     ..Default::default()

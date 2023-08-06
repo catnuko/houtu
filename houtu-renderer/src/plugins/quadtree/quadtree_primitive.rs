@@ -143,7 +143,8 @@ impl QuadtreePrimitive {
                 root_traversal_details.0 = vec![TraversalDetails::default(); len];
             }
         }
-        let occluders = &self.occluders;
+        let occluders = &mut self.occluders;
+        occluders.set_camera_position(globe_camera.get_position_wc());
         let p = globe_camera.get_position_cartographic();
         let mut root_tile_list = self.storage.get_root_tile();
         root_tile_list.sort_by(|a, b| {

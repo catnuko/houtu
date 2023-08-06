@@ -171,11 +171,14 @@ impl GlobeSurfaceTileProvider {
             return visibility;
         }
         let occludee_point_in_scaled_space = occludee_point_in_scaled_space.unwrap();
-        if (ellipsoidal_occluder.isScaledSpacePointVisiblePossiblyUnderEllipsoid(
+        let v = ellipsoidal_occluder.isScaledSpacePointVisiblePossiblyUnderEllipsoid(
             &occludee_point_in_scaled_space,
             Some(tile_bounding_region.minimum_height),
-        )) {
+        );
+
+        if v {
             return visibility;
+        } else {
         }
 
         return TileVisibility::NONE;

@@ -18,6 +18,7 @@ pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EguiPlugin)
+            .add_plugin(bevy_screen_diags::ScreenDiagsTextPlugin)
             .add_plugin(DebugLinesPlugin::with_depth_test(true))
             .insert_resource(UiState::default())
             .add_startup_system(font::config_ctx)

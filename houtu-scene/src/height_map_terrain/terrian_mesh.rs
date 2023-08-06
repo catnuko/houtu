@@ -4,7 +4,10 @@ use bevy::{
     render::{mesh::Indices, primitives::Aabb},
 };
 
-use crate::{BoundingSphere, OrientedBoundingBox, TerrainEncoding};
+use crate::{
+    decompressTextureCoordinates, BoundingSphere, OrientedBoundingBox, TerrainEncoding,
+    TerrainQuantization,
+};
 use bevy::prelude::*;
 #[derive(Default, Clone, Debug, Component)]
 pub struct TerrainMesh {
@@ -70,28 +73,37 @@ impl From<&TerrainMesh> for Mesh {
         mesh.set_indices(Some(Indices::U32(terrain_mesh.indices.clone())));
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
-        let mut normals: Vec<[f32; 3]> = Vec::new();
+        // let mut normals: Vec<[f32; 3]> = Vec::new();
+
         terrain_mesh
             .vertices
             .iter()
             .enumerate()
             .step_by(terrain_mesh.encoding.stride as usize)
             .for_each(|(i, x)| {
-                positions.push([
-                    terrain_mesh.vertices[i] as f32,     //x
-                    terrain_mesh.vertices[i + 1] as f32, //y
-                    terrain_mesh.vertices[i + 2] as f32, //z
-                                                         // terrain_mesh.vertices[i + 3] as f32, //height
-                ]);
-                uvs.push([
-                    terrain_mesh.vertices[i + 4] as f32, //u
-                    terrain_mesh.vertices[i + 5] as f32, //v
-                ]);
-                // normals.push([
-                //     terrain_mesh.vertices[i + 7] as f32, //u
-                //     terrain_mesh.vertices[i + 8] as f32, //v
-                //     terrain_mesh.vertices[i + 9] as f32, //v
-                // ])
+                if terrain_mesh.encoding.quantization == TerrainQuantization::NONE {
+                    positions.push([
+                        terrain_mesh.vertices[i] as f32,     //x
+                        terrain_mesh.vertices[i + 1] as f32, //y
+                        terrain_mesh.vertices[i + 2] as f32, //z
+                                                             // terrain_mesh.vertices[i + 3] as f32, //height
+                    ]);
+                    uvs.push([
+                        terrain_mesh.vertices[i + 4] as f32, //u
+                        terrain_mesh.vertices[i + 5] as f32, //v
+                    ]);
+                    // normals.push([
+                    //     terrain_mesh.vertices[i + 7] as f32, //u
+                    //     terrain_mesh.vertices[i + 8] as f32, //v
+                    //     terrain_mesh.vertices[i + 9] as f32, //v
+                    // ])
+                } else {
+                    let xy = decompressTextureCoordinates(terrain_mesh.vertices[i] as f64);
+                    let zh = decompressTextureCoordinates(terrain_mesh.vertices[i + 1] as f64);
+                    let uv = decompressTextureCoordinates(terrain_mesh.vertices[i + 2] as f64);
+                    positions.push([xy.x as f32, xy.y as f32, zh.x as f32]);
+                    uvs.push([uv.x as f32, uv.y as f32]);
+                }
             });
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         // mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);

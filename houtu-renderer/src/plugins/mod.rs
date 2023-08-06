@@ -7,7 +7,6 @@ pub mod globe;
 pub mod helpers;
 pub mod pan_orbit_camera;
 pub mod quadtree;
-pub mod tileset;
 pub mod wmts;
 //https://github.com/valkum/terrain_tests
 //https://github.com/Dimev/lodtree

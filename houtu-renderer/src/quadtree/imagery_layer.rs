@@ -12,6 +12,7 @@ use bevy::{
     utils::{HashMap, Uuid},
 };
 
+use bevy_egui::egui::epaint::image;
 use houtu_scene::{lerp_f32, Matrix4, Rectangle, TilingScheme};
 
 use crate::{
@@ -20,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    imagery::{Imagery, ImageryState, ShareMutImagery},
+    imagery::{Imagery, ImageryKey, ImageryState},
     imagery_layer_storage::ImageryLayerStorage,
     imagery_provider::ImageryProvider,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
@@ -49,7 +50,7 @@ pub struct ImageryLayer {
     pub color_to_alpha_threshold: f64,
     pub _rectangle: Rectangle,
     // pub skeleton_placeholder: TileImagery,
-    pub imagery_cache: HashMap<TileKey, ShareMutImagery>,
+    pub imagery_cache: HashMap<ImageryKey, Imagery>,
     pub imagery_provider: Box<dyn ImageryProvider>,
     pub show: bool,
 }
@@ -119,8 +120,8 @@ impl ImageryLayer {
                 y: 0,
                 level: 0,
             };
-            let imagery = self.add_imagery(&key).unwrap();
-            tile.data.add_imagery(imagery.clone(), None, false);
+            let imagery_key = self.add_imagery(&key);
+            tile.data.add_imagery(imagery_key, None, false);
             return true;
         }
 
@@ -389,9 +390,9 @@ impl ImageryLayer {
 
                 let tex_coords_rectangle = DVec4::new(min_u, min_v, max_u, max_v);
                 let key = TileKey::new(i, j, imagery_level);
-                let imagery = self.add_imagery(&key).unwrap();
+                let imagery_key = self.add_imagery(&key);
                 tile.data.add_imagery(
-                    imagery.clone(),
+                    imagery_key.clone(),
                     Some(tex_coords_rectangle),
                     use_web_mercator_t,
                 );
@@ -404,36 +405,38 @@ impl ImageryLayer {
     // pub fn get_imagery_mut(&mut self, key: &TileKey) -> Option<&mut Imagery> {
     //     return self.imagery_cache.get_mut(key);
     // }
-    pub fn get_imagery(&self, key: &TileKey) -> Option<&ShareMutImagery> {
+    pub fn get_imagery(&self, key: &ImageryKey) -> Option<&Imagery> {
         return self.imagery_cache.get(key);
     }
-    pub fn get_imagery_mut(&mut self, key: &TileKey) -> Option<&mut ShareMutImagery> {
+    pub fn get_imagery_mut(&mut self, key: &ImageryKey) -> Option<&mut Imagery> {
         return self.imagery_cache.get_mut(key);
     }
-    pub fn add_imagery(&mut self, key: &TileKey) -> Option<&ShareMutImagery> {
-        let imagery = self.imagery_cache.get(key);
+
+    ///新增一个Imagery，并返回ImageryKey
+    pub fn add_imagery(&mut self, key: &TileKey) -> ImageryKey {
+        let imagery_key = ImageryKey::new(*key, self.id);
+        let imagery = self.imagery_cache.get(&imagery_key);
         if imagery.is_none() {
-            let parent = key.parent().and_then(|parent_key| {
-                self.imagery_cache
-                    .get(&parent_key)
-                    .and_then(|parent| Some(parent.clone()))
-            });
-            let new_imagery = ShareMutImagery::new(key.clone(), self.id.clone(), parent);
-            self.imagery_cache.insert(*key, new_imagery);
+            let new_imagery = Imagery::new(
+                key.clone(),
+                self.id.clone(),
+                key.parent().and_then(|x| Some(ImageryKey::new(x, self.id))),
+            );
+            let key = new_imagery.key.clone();
+            self.imagery_cache.insert(new_imagery.key, new_imagery);
+            bevy::log::info!("add imagery,{:?}", key.key);
+            return key;
         }
-        return self.get_imagery(key);
+        return imagery_key;
     }
 
     pub fn calculate_texture_translation_and_scale(
         &mut self,
         tile_rectangle: Rectangle,
         tile_imagery: &TileImagery,
+        imagery_rectangle: Rectangle,
     ) -> DVec4 {
-        let mut imagery_rectangle = tile_imagery
-            .ready_imagery
-            .as_ref()
-            .unwrap()
-            .get_reactangle();
+        let mut imagery_rectangle = imagery_rectangle;
         let mut quand_tile_rectangle = tile_rectangle;
 
         if tile_imagery.use_web_mercator_t {
@@ -456,7 +459,7 @@ impl ImageryLayer {
         );
     }
     pub fn reproject_texture(
-        imagery: &Imagery,
+        imagery: &mut Imagery,
         _need_geographic_projection: bool,
         images: &mut Assets<Image>,
         width: u32,
@@ -466,27 +469,6 @@ impl ImageryLayer {
         render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
     ) {
-        info!("reproject texture key={:?}", imagery.key);
-        let output_texture = images.add(Image {
-            texture_descriptor: TextureDescriptor {
-                label: "reproject_texture".into(),
-                size: Extent3d {
-                    width: width,
-
-                    height: height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 0,
-                sample_count: 0,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Bgra8UnormSrgb,
-                usage: TextureUsages::COPY_DST
-                    | TextureUsages::RENDER_ATTACHMENT
-                    | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            },
-            ..Default::default()
-        });
         let rectangle = &imagery.rectangle;
         let mut sin_latitude = rectangle.south.sin() as f32;
         let south_mercator_y = 0.5 * ((1.0 + sin_latitude) / (1.0 - sin_latitude)).ln();
@@ -524,7 +506,7 @@ impl ImageryLayer {
         let index_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
             label: Some("indices_buffer"),
             contents: cast_slice(&indices),
-            usage: BufferUsages::VERTEX,
+            usage: BufferUsages::VERTEX | BufferUsages::INDEX,
         });
         let v = &globe_camera.viewport;
         let _viewport_orthographic_matrix = DMat4::compute_orthographic_off_center(
@@ -548,31 +530,114 @@ impl ImageryLayer {
             contents: &buffer.into_inner(),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
+        let size = Extent3d {
+            width: width,
+            height: height,
+            depth_or_array_layers: 1,
+        };
+        let mut image = Image {
+            texture_descriptor: TextureDescriptor {
+                label: "reproject_texture".into(),
+                size: size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8UnormSrgb,
+                usage: TextureUsages::COPY_DST
+                    | TextureUsages::RENDER_ATTACHMENT
+                    | TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            },
+            ..Default::default()
+        };
+        image.resize(size);
+        let image_handle = images.add(image);
         let task = ReprojectTextureTask {
-            key: imagery.key,
-            output_texture,
+            key: imagery.get_tile_key().clone(),
+            output_texture: image_handle,
             image: imagery.texture.as_ref().expect("imagery.texture").clone(),
             webmercartor_buffer,
             index_buffer,
             uniform_buffer: buffer,
-            imagery_layer_id: imagery.imagery_layer_id.clone(),
+            imagery_layer_id: imagery.get_layer_id().clone(),
+            ok: false,
         };
         render_world_queue.push(task);
     }
 
     pub fn destroy(&mut self) {}
+    pub fn process_imagery_state_machine(
+        &mut self,
+        imagery_key: &ImageryKey,
+        asset_server: &AssetServer,
+        need_geographic_projection: bool,
+        skip_loading: bool,
+        images: &mut Assets<Image>,
+        render_world_queue: &mut ReprojectTextureTaskQueue,
+        indices_and_edges_cache: &IndicesAndEdgesCacheArc,
+        render_device: &RenderDevice,
+        globe_camera: &GlobeCamera,
+    ) {
+        let loading_imagery = self.get_imagery_mut(imagery_key).unwrap();
+
+        if loading_imagery.state == ImageryState::UNLOADED && !skip_loading {
+            loading_imagery.state = ImageryState::TRANSITIONING;
+            let request = self
+                .imagery_provider
+                .request_image(&imagery_key.key.clone(), asset_server);
+            let loading_imagery = self.get_imagery_mut(imagery_key).unwrap();
+            if let Some(v) = request {
+                loading_imagery.texture = Some(v);
+                loading_imagery.state = ImageryState::RECEIVED;
+            } else {
+                loading_imagery.state = ImageryState::UNLOADED;
+            }
+        }
+        let loading_imagery = self.get_imagery_mut(imagery_key).unwrap();
+
+        if loading_imagery.state == ImageryState::RECEIVED {
+            loading_imagery.state = ImageryState::TRANSITIONING;
+            loading_imagery.state = ImageryState::TEXTURE_LOADED;
+        }
+
+        // If the imagery is already ready, but we need a geographic version and don't have it yet,
+        // we still need to do the reprojection step. imagery can happen if the Web Mercator version
+        // is fine initially, but the geographic one is needed later.
+        let needsReprojection =
+            loading_imagery.state != ImageryState::READY && need_geographic_projection;
+
+        if loading_imagery.state == ImageryState::TEXTURE_LOADED || needsReprojection {
+            loading_imagery.state = ImageryState::TRANSITIONING;
+            ImageryLayer::reproject_texture(
+                loading_imagery,
+                need_geographic_projection,
+                images,
+                256,
+                256,
+                render_world_queue,
+                indices_and_edges_cache,
+                render_device,
+                globe_camera,
+            );
+        }
+    }
 }
 pub fn finish_reproject_texture_system(
-    render_world_queue: ResMut<ReprojectTextureTaskQueue>,
+    mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
     mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
 ) {
     let (_, receiver) = render_world_queue.status_channel.clone();
     for _i in 0..render_world_queue.count() {
         let Ok((imagery_layer_id,key))  =receiver.try_recv()else{continue;};
-        let task = render_world_queue.get(&key).expect("task");
-        let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
-        let imagery = imagery_layer.get_imagery_mut(&key).unwrap();
-        imagery.set_texture(task.output_texture.clone());
-        imagery.set_state(ImageryState::READY);
+        if let Some(task) = render_world_queue.remove(&key) {
+            bevy::log::info!("queue length {}", render_world_queue.count());
+            let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
+            let imagery = imagery_layer
+                .get_imagery_mut(&ImageryKey::new(key, imagery_layer_id))
+                .unwrap();
+            imagery.texture = Some(task.output_texture.clone());
+            imagery.state = ImageryState::READY;
+        } else {
+        }
     }
 }

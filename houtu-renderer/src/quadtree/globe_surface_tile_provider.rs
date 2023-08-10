@@ -1,3 +1,5 @@
+use std::ptr::read;
+
 use bevy::{
     math::DVec3,
     prelude::{AssetServer, Assets, Image},
@@ -226,28 +228,24 @@ impl GlobeSurfaceTileProvider {
         for imagery in tile.data.imagery.iter_mut() {
             let is_ready = {
                 let ready = imagery.loading_imagery.is_none();
-                let loading_imagery = imagery.loading_imagery.as_ref().unwrap().lock();
-                ready
-                    || loading_imagery.state == ImageryState::FAILED
-                    || loading_imagery.state == ImageryState::INVALID
+                if !ready {
+                    ready
+                } else {
+                    let loading_imagery = imagery_layer_storage
+                        .get_imagery(imagery.loading_imagery.as_ref().unwrap())
+                        .unwrap();
+                    ready
+                        || loading_imagery.state == ImageryState::FAILED
+                        || loading_imagery.state == ImageryState::INVALID
+                }
             };
             let layer_id = {
                 let mut id = Uuid::new_v4();
                 if imagery.loading_imagery.is_some() {
-                    id = imagery
-                        .loading_imagery
-                        .as_ref()
-                        .unwrap()
-                        .lock()
-                        .imagery_layer_id
+                    id = imagery.loading_imagery.as_ref().unwrap().layer_id
                 }
                 if imagery.ready_imagery.is_some() {
-                    id = imagery
-                        .ready_imagery
-                        .as_ref()
-                        .unwrap()
-                        .lock()
-                        .imagery_layer_id
+                    id = imagery.ready_imagery.as_ref().unwrap().layer_id
                 }
                 id
             };
@@ -294,13 +292,17 @@ impl GlobeSurfaceTileProvider {
                 for descendant_tile_imagery in descendant.data.imagery.iter() {
                     let descendant_is_ready = {
                         let v = descendant_tile_imagery.loading_imagery.is_none();
-                        let descendant_loading_imagery = descendant_tile_imagery
-                            .loading_imagery
-                            .as_ref()
-                            .unwrap()
-                            .lock();
-                        v || descendant_loading_imagery.state == ImageryState::FAILED
-                            || descendant_loading_imagery.state == ImageryState::INVALID
+                        if !v {
+                            v
+                        } else {
+                            let descendant_loading_imagery = imagery_layer_storage
+                                .get_imagery(
+                                    descendant_tile_imagery.loading_imagery.as_ref().unwrap(),
+                                )
+                                .unwrap();
+                            v || descendant_loading_imagery.state == ImageryState::FAILED
+                                || descendant_loading_imagery.state == ImageryState::INVALID
+                        }
                     };
                     let descentant_layer_id = {
                         let mut id = Uuid::new_v4();
@@ -309,16 +311,14 @@ impl GlobeSurfaceTileProvider {
                                 .loading_imagery
                                 .as_ref()
                                 .unwrap()
-                                .lock()
-                                .imagery_layer_id
+                                .layer_id
                         }
                         if descendant_tile_imagery.ready_imagery.is_some() {
                             id = descendant_tile_imagery
                                 .ready_imagery
                                 .as_ref()
                                 .unwrap()
-                                .lock()
-                                .imagery_layer_id
+                                .layer_id
                         }
                         id
                     };

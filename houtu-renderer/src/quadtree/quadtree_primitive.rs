@@ -255,7 +255,7 @@ fn process_tile_load_queue(
     let size = primitive.tile_cache_size;
     primitive
         .tile_replacement_queue
-        .trimTiles(&mut primitive.storage, size);
+        .trimTiles(&mut primitive.storage, size, imagery_layer_storage);
 
     let end_time = time.elapsed_seconds_f64() + primitive.load_queue_time_slice;
 
@@ -650,13 +650,14 @@ fn visit_tile(
                     // Remove all descendants from the load queues.
                     primitive
                         .tile_load_queue_high
-                        .splice(load_index_low..new_len, []);
-                    primitive
-                        .tile_load_queue_medium
-                        .splice(load_index_medium..new_len, []);
+                        .splice(load_index_high..primitive.tile_load_queue_high.len(), []);
+                    primitive.tile_load_queue_medium.splice(
+                        load_index_medium..primitive.tile_load_queue_medium.len(),
+                        [],
+                    );
                     primitive
                         .tile_load_queue_low
-                        .splice(load_index_high..new_len, []);
+                        .splice(load_index_low..primitive.tile_load_queue_low.len(), []);
                     let renderable = tile.renderable;
                     primitive.queue_tile_load(QueueType::Medium, tile_key.clone(), globe_camera);
                     traversal_details.not_yet_renderable_count = if renderable { 0 } else { 1 };

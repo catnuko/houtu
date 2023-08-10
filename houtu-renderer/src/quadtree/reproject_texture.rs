@@ -60,6 +60,9 @@ impl ReprojectTextureTaskQueue {
     pub fn get(&self, key: &TileKey) -> Option<&ReprojectTextureTask> {
         self.map.get(key)
     }
+    pub fn remove(&mut self, key: &TileKey) -> Option<ReprojectTextureTask> {
+        self.map.remove(key)
+    }
     pub fn new() -> Self {
         Self::default()
     }
@@ -78,6 +81,7 @@ fn extract_reproject_texture_task_queue(
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
 ) {
     render_world_queue.clear();
+    // bevy::log::info!("task queue length is {}", main_world_queue.count());
     main_world_queue
         .map
         .iter()
@@ -91,6 +95,7 @@ pub struct ReprojectTextureTask {
     pub index_buffer: Buffer,
     pub uniform_buffer: Buffer,
     pub imagery_layer_id: Uuid,
+    pub ok: bool,
 }
 impl Clone for ReprojectTextureTask {
     fn clone(&self) -> Self {
@@ -102,6 +107,7 @@ impl Clone for ReprojectTextureTask {
             index_buffer: self.index_buffer.clone(),
             uniform_buffer: self.uniform_buffer.clone(),
             imagery_layer_id: self.imagery_layer_id.clone(),
+            ok: self.ok,
         }
     }
 }
@@ -281,21 +287,21 @@ impl render_graph::Node for ReprojectTextureNode {
         let pipeline = world.resource::<ReprojectTexturePipeline>();
         let task_queue = world.resource::<ReprojectTextureTaskQueue>();
         let gpu_images = world.resource::<RenderAssets<Image>>();
-        let device = render_context.render_device();
         let render_pipeline = pipeline_cache
             .get_render_pipeline(pipeline.pipeline)
             .expect("need a reproject texture pipeline");
-        let sampler = device.create_sampler(&SamplerDescriptor {
-            label: None,
-            ..Default::default()
-        });
-        bevy::log::debug!("task queue length is {}", task_queue.count());
-        for task in task_queue.map.iter() {
-            let view = &gpu_images.get(&task.1.image).expect("task.image");
-            let output_texture = &gpu_images
-                .get(&task.1.output_texture)
-                .expect("task.output_texture");
 
+        // bevy::log::info!("task queue length is {}", task_queue.count());
+        for task in task_queue.map.iter() {
+            let (input_image, output_texture) = if let (Some(v), Some(v2)) = (
+                gpu_images.get(&task.1.image),
+                gpu_images.get(&task.1.output_texture),
+            ) {
+                (v, v2)
+            } else {
+                continue;
+            };
+            // bevy::log::info!("reprojecting texture for tile {:?}", task.1.key);
             let bind_group =
                 render_context
                     .render_device()
@@ -306,11 +312,11 @@ impl render_graph::Node for ReprojectTextureNode {
                         entries: &[
                             BindGroupEntry {
                                 binding: 0,
-                                resource: BindingResource::TextureView(&view.texture_view),
+                                resource: BindingResource::TextureView(&input_image.texture_view),
                             },
                             BindGroupEntry {
                                 binding: 1,
-                                resource: BindingResource::Sampler(&sampler),
+                                resource: BindingResource::Sampler(&input_image.sampler),
                             },
                             BindGroupEntry {
                                 binding: 2,
@@ -340,6 +346,10 @@ impl render_graph::Node for ReprojectTextureNode {
             render_pass.set_vertex_buffer(1, *task.1.webmercartor_buffer.slice(..));
             render_pass.set_index_buffer(*task.1.index_buffer.slice(..), IndexFormat::Uint32);
             render_pass.draw(0..3, 0..1);
+            let _ = task_queue
+                .status_channel
+                .0
+                .send_blocking((task.1.imagery_layer_id, task.1.key));
         }
         Ok(())
     }

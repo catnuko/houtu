@@ -3,7 +3,10 @@ use bevy::{
     utils::{HashMap, Uuid},
 };
 
-use super::imagery_layer::ImageryLayer;
+use super::{
+    imagery::{Imagery, ImageryKey},
+    imagery_layer::ImageryLayer,
+};
 #[derive(Resource)]
 pub struct ImageryLayerStorage {
     pub map: HashMap<Uuid, ImageryLayer>,
@@ -33,5 +36,13 @@ impl ImageryLayerStorage {
     }
     pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut ImageryLayer> {
         return self.map.get_mut(id);
+    }
+    pub fn get_imagery(&self, imagery_key: &ImageryKey) -> Option<&Imagery> {
+        self.get(&imagery_key.layer_id)
+            .and_then(|x| x.get_imagery(imagery_key))
+    }
+    pub fn get_imagery_mut(&mut self, imagery_key: &ImageryKey) -> Option<&mut Imagery> {
+        self.get_mut(&imagery_key.layer_id)
+            .and_then(|x| x.get_imagery_mut(imagery_key))
     }
 }

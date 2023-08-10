@@ -1,11 +1,9 @@
-
-
-
 use bevy::prelude::Entity;
 use houtu_scene::Rectangle;
 
 use super::globe_surface_tile::GlobeSurfaceTile;
 
+use super::imagery_layer_storage::ImageryLayerStorage;
 use super::tile_key::TileKey;
 use super::tile_selection_result::TileSelectionResult;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -43,7 +41,7 @@ impl QuadtreeTile {
         parent: Option<TileKey>,
         rectangle: Rectangle,
     ) -> Self {
-        bevy::log::info!("new quadtree tile,{:?}", key);
+        // bevy::log::info!("new quadtree tile,{:?}", key);
         Self {
             location: location,
             parent: parent,
@@ -66,8 +64,8 @@ impl QuadtreeTile {
             entity: None,
         }
     }
-    pub fn eligible_for_unloading(&self) -> bool {
-        return self.data.eligible_for_unloading();
+    pub fn eligible_for_unloading(&self, imagery_layer_storage: &ImageryLayerStorage) -> bool {
+        return self.data.eligible_for_unloading(imagery_layer_storage);
     }
 }
 

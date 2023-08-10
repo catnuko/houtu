@@ -12,7 +12,7 @@ use crate::camera::GlobeCamera;
 
 use super::{
     create_terrain_mesh_job::CreateTileJob,
-    imagery::{ImageryState, ShareMutImagery},
+    imagery::{ImageryKey, ImageryState},
     imagery_layer_storage::ImageryLayerStorage,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
@@ -66,9 +66,10 @@ impl GlobeSurfaceTile {
             waterMaskTexture: None,
         }
     }
+    ///新增一个TileImagery
     pub fn add_imagery(
         &mut self,
-        imagery: ShareMutImagery,
+        imagery: ImageryKey,
         texture_coordinate_rectangle: Option<DVec4>,
         use_web_mercator_t: bool,
     ) {
@@ -76,7 +77,7 @@ impl GlobeSurfaceTile {
             TileImagery::new(imagery, texture_coordinate_rectangle, use_web_mercator_t);
         self.imagery.push(tile_imagery);
     }
-    pub fn eligible_for_unloading(&self) -> bool {
+    pub fn eligible_for_unloading(&self, imagery_layer_storage: &ImageryLayerStorage) -> bool {
         let loading_is_transitioning = self.terrain_state == TerrainState::RECEIVING
             || self.terrain_state == TerrainState::TRANSFORMING;
 
@@ -87,9 +88,15 @@ impl GlobeSurfaceTile {
         let len = self.imagery.len();
         while should_removeTile && i < len {
             let tile_imagery = self.imagery.get(i).unwrap();
-            should_removeTile = tile_imagery.loading_imagery.is_none()
-                || tile_imagery.loading_imagery.as_ref().unwrap().lock().state
-                    != ImageryState::TRANSITIONING;
+            should_removeTile = if tile_imagery.loading_imagery.is_none() {
+                true
+            } else {
+                let imagery = imagery_layer_storage
+                    .get_imagery(tile_imagery.loading_imagery.as_ref().unwrap())
+                    .unwrap();
+                imagery.state != ImageryState::TRANSITIONING
+            };
+
             i += 1;
         }
         return should_removeTile;
@@ -134,26 +141,22 @@ impl GlobeSurfaceTile {
                 is_upsampled_only = false;
                 continue;
             }
-            if tile_imagery.loading_imagery.as_ref().unwrap().get_state()
-                == ImageryState::PLACEHOLDER
-            {
-                let imagery_layer_id = tile_imagery
-                    .loading_imagery
-                    .as_ref()
-                    .unwrap()
-                    .get_imagery_layer_id();
-                let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
+            let loading_imagery = imagery_layer_storage
+                .get_imagery(tile_imagery.loading_imagery.as_ref().unwrap())
+                .unwrap();
+            if loading_imagery.state == ImageryState::PLACEHOLDER {
+                // TODO: 进不到这里，可删除
+                bevy::log::info!("placeholder");
+                let imagery_layer_id = loading_imagery.key.layer_id;
+                let imagery_layer = imagery_layer_storage.get(&imagery_layer_id).unwrap();
                 if imagery_layer.ready && imagery_layer.imagery_provider.get_ready() {
                 } else {
                     is_upsampled_only = false;
                 }
             }
-            let imagery_layer_id = tile_imagery
-                .loading_imagery
-                .as_ref()
-                .unwrap()
-                .get_imagery_layer_id();
+            let imagery_layer_id = loading_imagery.key.layer_id;
             let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
+            let loading_imagery_key = tile_imagery.loading_imagery.as_ref().unwrap().clone();
             let this_tile_done_loading = TileImagery::process_state_machine(
                 tile,
                 i,
@@ -166,6 +169,9 @@ impl GlobeSurfaceTile {
                 render_device,
                 globe_camera,
             );
+            let loading_imagery = imagery_layer_storage
+                .get_imagery(&loading_imagery_key)
+                .unwrap();
             let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
             is_done_loading = is_done_loading && this_tile_done_loading;
             is_any_tile_loaded = is_any_tile_loaded
@@ -173,10 +179,8 @@ impl GlobeSurfaceTile {
                 || tile_imagery.ready_imagery.is_some();
             is_upsampled_only = is_upsampled_only
                 && tile_imagery.loading_imagery.is_some()
-                && (tile_imagery.loading_imagery.as_ref().unwrap().get_state()
-                    == ImageryState::FAILED
-                    || tile_imagery.loading_imagery.as_ref().unwrap().get_state()
-                        == ImageryState::INVALID);
+                && (loading_imagery.state == ImageryState::FAILED
+                    || loading_imagery.state == ImageryState::INVALID);
         }
         tile.upsampled_from_parent = is_upsampled_only;
         tile.renderable = tile.renderable && (is_any_tile_loaded || is_done_loading);
@@ -336,7 +340,7 @@ fn processTerrainStateMachine(
     if tile.data.terrain_state == TerrainState::TRANSFORMING {}
     if tile.data.terrain_state == TerrainState::TRANSFORMED {
         tile.data.terrain_state = TerrainState::READY;
-        bevy::log::info!("terrain state of tile {:?} is ready", tile.key);
+        // bevy::log::info!("terrain state of tile {:?} is ready", tile.key);
     }
     if tile.data.terrain_state == TerrainState::READY {}
 }

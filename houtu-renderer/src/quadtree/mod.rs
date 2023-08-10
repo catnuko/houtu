@@ -62,13 +62,13 @@ impl bevy::prelude::Plugin for Plugin {
         app.add_startup_system(setup);
         app.add_system(render_system);
         app.add_system(process_terrain_state_machine_system.after(render_system));
-        app.add_system(real_render_system.after(process_terrain_state_machine_system));
         app.add_system(imagery_layer::finish_reproject_texture_system);
+        app.add_system(real_render_system.after(process_terrain_state_machine_system));
     }
 }
 fn setup(mut imagery_layer_storage: ResMut<ImageryLayerStorage>) {
-    let xyz = XYZImageryProvider::new(Box::new(GeographicTilingScheme::default()));
-    imagery_layer_storage.add(ImageryLayer::new(Box::new(xyz)))
+    // let xyz = XYZImageryProvider::new(Box::new(GeographicTilingScheme::default()));
+    // imagery_layer_storage.add(ImageryLayer::new(Box::new(xyz)))
 }
 
 fn render_system(
@@ -161,11 +161,11 @@ fn real_render_system(
                     ),
                     material: terrain_materials.add(TerrainMeshMaterial {
                         color: Color::rgba(r, g, b, 1.0),
-                        image: Some(asset_server.load("icon.png")),
-                        // image:Some( asset_server.load(format!(
-                        //         "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
-                        //         key.level, key.x, key.y,
-                        //     ))),
+                        // image: Some(asset_server.load("icon.png")),
+                        image:Some( asset_server.load(format!(
+                                "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
+                                key.level, key.x, key.y,
+                            ))),
                     }),
                     // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
                     ..Default::default()

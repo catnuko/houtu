@@ -2,7 +2,10 @@ use std::collections::LinkedList;
 
 use bevy::prelude::*;
 
-use super::{quadtree_tile_storage::QuadtreeTileStorage, tile_key::TileKey};
+use super::{
+    imagery_layer_storage::ImageryLayerStorage, quadtree_tile_storage::QuadtreeTileStorage,
+    tile_key::TileKey,
+};
 
 pub struct TileReplacementQueue {
     list: LinkedList<TileKey>,
@@ -38,7 +41,12 @@ impl TileReplacementQueue {
             self.last_before_start_of_frame = None;
         }
     }
-    pub fn trimTiles(&mut self, storage: &mut QuadtreeTileStorage, maximum_tiles: u32) {
+    pub fn trimTiles(
+        &mut self,
+        storage: &mut QuadtreeTileStorage,
+        maximum_tiles: u32,
+        imagery_layer_storage: &ImageryLayerStorage,
+    ) {
         // let mut tile_to_trim = self.get_tail();
         let mut keep_trimming = true;
         let mut count = self.count;
@@ -55,7 +63,7 @@ impl TileReplacementQueue {
             let tile = storage.get(&tile_key).unwrap();
             let previous = tile.replacement_previous;
 
-            if tile.eligible_for_unloading() {
+            if tile.eligible_for_unloading(imagery_layer_storage) {
                 let entity = tile_key.clone();
                 self.remove(storage, &entity);
             }

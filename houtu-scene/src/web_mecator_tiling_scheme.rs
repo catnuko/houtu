@@ -83,6 +83,9 @@ impl WebMercatorTilingScheme {
     }
 }
 impl TilingScheme for WebMercatorTilingScheme {
+    fn get_name(&self) -> &'static str {
+        "WebMercatorTilingScheme"
+    }
     fn get_ellipsoid(&self) -> Ellipsoid {
         return self.ellipsoid;
     }

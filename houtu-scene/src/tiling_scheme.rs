@@ -15,4 +15,5 @@ pub trait TilingScheme: Send + Sync {
     fn tile_x_y_to_rectange(&self, x: u32, y: u32, level: u32) -> Rectangle;
     fn position_to_tile_x_y(&self, position: &Cartographic, level: u32) -> Option<UVec2>;
     fn rectangle_to_native_rectangle(&self, rectangle: &Rectangle) -> Rectangle;
+    fn get_name(&self) -> &'static str;
 }

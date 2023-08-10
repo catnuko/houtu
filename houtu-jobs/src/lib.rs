@@ -45,9 +45,9 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
         bevy::tasks::AsyncComputeTaskPool::get()
             .spawn(async move {
                 let instant = instant::Instant::now();
-                bevy::log::info!("Starting job '{}'", job_name);
+                // bevy::log::info!("Starting job '{}'", job_name);
                 let outcome = self.perform(Context { progress_tx }).await;
-                bevy::log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
+                // bevy::log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
                 if let Err(e) = outcome_tx
                     .send(JobOutcomePayload {
                         job_outcome_type_id: any::TypeId::of::<Self>(),
@@ -80,7 +80,7 @@ fn check_system(
         }
 
         if let Ok(outcome) = in_progress_job.outcome_recv.try_recv() {
-            bevy::log::info!("Job finished");
+            // bevy::log::info!("Job finished");
             commands.entity(entity).despawn();
             finished_jobs.outcomes.0.push(outcome);
         }

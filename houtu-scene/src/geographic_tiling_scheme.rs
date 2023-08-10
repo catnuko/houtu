@@ -57,6 +57,9 @@ impl GeographicTilingScheme {
     }
 }
 impl TilingScheme for GeographicTilingScheme {
+    fn get_name(&self) -> &'static str {
+        "GeographicTilingScheme"
+    }
     fn get_ellipsoid(&self) -> Ellipsoid {
         return self.ellipsoid;
     }

@@ -19,12 +19,16 @@
 
 ![瓦片网格](./website/public/assets/tutieshi_640x344_11s.gif)
 
+## 🔥介绍
+使用bevy作为渲染引擎，面向web端，目标成为国内一流的开源免费三维地球渲染引擎。
+
+项目极早期阶段，望与诸位才子共建未来。
+
+野蛮时代将去，未来是科技的未来。
 ## 🚀特性
-三维webgis史上最强工具组合rust+ecs+wasm+webgpu+cesium
-1. bevy作为渲染引擎，具备ECS的高性能，高度的可扩展性。
-2. wgpu作为图形API，具备跨平台，现代化图形API
-3. rust作为开发语言，具备安全性，工具链完备性，可直接编译至WASM，充分发挥web端的性能。
-4. cesium作为参考应用，具备实用性，GIS图形的精确性。
+1. bevy作为渲染引擎，高度可拆卸，定制自己需要的功能。
+2. 使用wasm+webgpu渲染web端，主打高性能高颜值。
+3. 参考cesium，具备实用性，GIS图形的精确性。
 ## 路线
 详情查看仓库的[Projects](https://github.com/users/catnuko/projects/1)
 1. - [x] 3d globe

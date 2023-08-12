@@ -73,7 +73,7 @@ pub fn pan_orbit_camera(
                     // let ray = globe_camera.getPickRay(&window_position, &window_size);
 
                     let height = Ellipsoid::WGS84
-                        .cartesianToCartographic(&globe_camera.position)
+                        .cartesian_to_cartographic(&globe_camera.position)
                         .unwrap()
                         .height;
 
@@ -348,7 +348,7 @@ pub fn pan_orbit_camera(
 
                     if (!same_start_position && zoom_on_vector) || zooming_on_vector {
                         let ray;
-                        let zoomMouseStart = SceneTransforms::wgs84ToWindowCoordinates(
+                        let zoomMouseStart = SceneTransforms::wgs84_to_window_coordinates(
                             &globe_camera_control._zoom_world_position,
                             &window_size,
                             &to_mat4_64(&global_transform.compute_matrix()),
@@ -428,7 +428,7 @@ fn tilt3DOnEllipsoid(
     let ellipsoid = Ellipsoid::WGS84;
     let min_height = controller.minimum_zoom_distance * 0.25;
     let height = ellipsoid
-        .cartesianToCartographic(&camera.get_position_wc())
+        .cartesian_to_cartographic(&camera.get_position_wc())
         .unwrap()
         .height;
     if height - min_height - 1.0 < EPSILON3
@@ -443,7 +443,7 @@ fn tilt3DOnEllipsoid(
     let ray = camera.getPickRay(&window_position, window_size);
 
     let center;
-    let intersection = IntersectionTests::rayEllipsoid(&ray, Some(&ellipsoid));
+    let intersection = IntersectionTests::ray_ellipsoid(&ray, Some(&ellipsoid));
     if intersection.is_some() {
         let intersection = intersection.unwrap();
         center = Ray::getPoint(&ray, intersection.start);
@@ -455,13 +455,13 @@ fn tilt3DOnEllipsoid(
         }
         let grazing_altitude_location = grazing_altitude_location.unwrap();
         let mut grazing_altitude_cart = ellipsoid
-            .cartesianToCartographic(&grazing_altitude_location)
+            .cartesian_to_cartographic(&grazing_altitude_location)
             .unwrap();
         grazing_altitude_cart.height = 0.0;
-        center = ellipsoid.cartographicToCartesian(&grazing_altitude_cart);
+        center = ellipsoid.cartographic_to_cartesian(&grazing_altitude_cart);
     } else {
         controller._looking = true;
-        let up = ellipsoid.geodeticSurfaceNormal(&camera.position);
+        let up = ellipsoid.geodetic_surface_normal(&camera.position);
         look3D(
             controller,
             camera,
@@ -523,7 +523,7 @@ fn tilt3D(
     }
 
     if controller._looking {
-        let up = Ellipsoid::WGS84.geodeticSurfaceNormal(&camera.position);
+        let up = Ellipsoid::WGS84.geodetic_surface_normal(&camera.position);
         look3D(
             controller,
             camera,
@@ -535,7 +535,7 @@ fn tilt3D(
         return;
     }
     let cartographic = Ellipsoid::WGS84
-        .cartesianToCartographic(&camera.position)
+        .cartesian_to_cartographic(&camera.position)
         .unwrap();
 
     if controller._tilt_on_ellipsoid
@@ -577,7 +577,7 @@ fn spin3D(
     let magnitude;
     let mut radii;
 
-    let up = ellipsoid.geodeticSurfaceNormal(&camera.position);
+    let up = ellipsoid.geodetic_surface_normal(&camera.position);
 
     if start_position.eq(&controller._rotate_mouse_position) {
         if controller._looking {
@@ -621,7 +621,7 @@ fn spin3D(
     controller._rotating = false;
     controller._strafing = false;
     let height = ellipsoid
-        .cartesianToCartographic(&camera.get_position_wc())
+        .cartesian_to_cartographic(&camera.get_position_wc())
         .unwrap()
         .height;
     let _globe = false;
@@ -936,7 +936,7 @@ fn strafe(
     let ray = camera.getPickRay(&movement.end_position, window_size);
 
     let mut direction = camera.direction.clone();
-    let plane = Plane::fromPointNormal(&strafe_start_position, &direction);
+    let plane = Plane::from_point_normal(&strafe_start_position, &direction);
     let intersection = IntersectionTests::rayPlane(&ray, &plane);
     if intersection.is_none() {
         return;

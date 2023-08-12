@@ -360,7 +360,7 @@ impl ImageryLayer {
             };
 
             let clipped_imagery_rectangle_res =
-                imagery_rectangle.simpleIntersection(&imagery_bounds);
+                imagery_rectangle.simple_intersection(&imagery_bounds);
 
             if clipped_imagery_rectangle_res.is_none() {
                 continue;
@@ -401,7 +401,7 @@ impl ImageryLayer {
                         .tile_x_y_to_rectange(i, j, imagery_level)
                 };
                 let clipped_imagery_rectangle_res =
-                    imagery_rectangle.simpleIntersection(&imagery_bounds);
+                    imagery_rectangle.simple_intersection(&imagery_bounds);
 
                 if clipped_imagery_rectangle_res.is_none() {
                     continue;
@@ -553,7 +553,7 @@ impl ImageryLayer {
                 .clone()
                 .lock()
                 .unwrap()
-                .getRegularGridIndices(2, 64);
+                .get_regular_grid_indices(2, 64);
             let index_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
                 label: Some("indices_buffer"),
                 contents: cast_slice(&indices),

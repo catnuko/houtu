@@ -9,9 +9,9 @@ use bevy::{
 
 use crate::{Cartesian3, Matrix3, Matrix4, PerspectiveFrustum, PerspectiveOffCenterFrustum};
 pub struct FrustumGeometryInfo {
-    scratchXDirection: DVec3,
-    scratchYDirection: DVec3,
-    scratchZDirection: DVec3,
+    scratch_x_direction: DVec3,
+    scratch_y_direction: DVec3,
+    scratch_z_direction: DVec3,
     positions: [f64; 72],
 }
 #[derive(Clone)]
@@ -29,26 +29,26 @@ impl FrustumGeometry {
         }
     }
     pub fn compute_near_planes(&mut self) -> FrustumGeometryInfo {
-        let rotationMatrix = DMat3::from_quaternion(&self.orientation);
+        let rotation_matrix = DMat3::from_quaternion(&self.orientation);
         let mut x = DVec3::ZERO;
         let mut y = DVec3::ZERO;
         let mut z = DVec3::ZERO;
 
-        x = rotationMatrix.get_column(0).normalize();
-        y = rotationMatrix.get_column(1).normalize();
-        z = rotationMatrix.get_column(2).normalize();
+        x = rotation_matrix.get_column(0).normalize();
+        y = rotation_matrix.get_column(1).normalize();
+        z = rotation_matrix.get_column(2).normalize();
 
         x = x.negate();
 
         let view = DMat4::compute_view(&self.origin, &z, &y, &x);
         let mut positions = [0.0; 72]; //3*4*6
         let projection = self.frustum.get_projection_matrix();
-        let viewProjection = *projection * view;
-        let inverseViewProjection = viewProjection.inverse();
-        let mut frustumSplits = [0.0; 3];
-        frustumSplits[0] = self.frustum.near;
-        frustumSplits[1] = self.frustum.far;
-        let frustumCornersNDC = [
+        let view_projection = *projection * view;
+        let inverse_view_projection = view_projection.inverse();
+        let mut frustum_splits = [0.0; 3];
+        frustum_splits[0] = self.frustum.near;
+        frustum_splits[1] = self.frustum.far;
+        let frustum_corners_ndc = [
             DVec4::new(-1.0, -1.0, 1.0, 1.0),
             DVec4::new(1.0, -1.0, 1.0, 1.0),
             DVec4::new(1.0, 1.0, 1.0, 1.0),
@@ -56,9 +56,9 @@ impl FrustumGeometry {
         ];
         for i in 0..2 {
             for j in 0..4 {
-                let mut corner = frustumCornersNDC[j].clone();
+                let mut corner = frustum_corners_ndc[j].clone();
 
-                corner = inverseViewProjection.multiply_by_vector(&corner);
+                corner = inverse_view_projection.multiply_by_vector(&corner);
 
                 // Reverse perspective divide
                 let w = 1.0 / corner.w;
@@ -67,7 +67,7 @@ impl FrustumGeometry {
                 new_corner = new_corner.normalize();
 
                 let fac = z.dot(new_corner);
-                new_corner = new_corner * frustumSplits[i] / fac;
+                new_corner = new_corner * frustum_splits[i] / fac;
                 new_corner = new_corner + self.origin;
 
                 positions[12 * i + j * 3] = new_corner.x;
@@ -76,9 +76,9 @@ impl FrustumGeometry {
             }
         }
         return FrustumGeometryInfo {
-            scratchXDirection: x,
-            scratchYDirection: y,
-            scratchZDirection: z,
+            scratch_x_direction: x,
+            scratch_y_direction: y,
+            scratch_z_direction: z,
             positions,
         };
     }
@@ -152,17 +152,17 @@ impl From<FrustumGeometry> for Mesh {
         let number_of_planes = 6;
         let info = value.clone().get_positions();
         let positions = info.positions;
-        let x = info.scratchXDirection;
-        let y = info.scratchYDirection;
-        let z = info.scratchZDirection;
+        let x = info.scratch_x_direction;
+        let y = info.scratch_y_direction;
+        let z = info.scratch_z_direction;
         let negative_x = x.negate();
         let negative_y = y.negate();
         let negative_z = z.negate();
-        let mut endPositions: Vec<[f32; 3]> = Vec::new();
-        let mut endNormals: Vec<[f32; 3]> = Vec::new();
-        let mut endST: Vec<[f32; 2]> = Vec::new();
+        let mut end_positions: Vec<[f32; 3]> = Vec::new();
+        let mut end_normals: Vec<[f32; 3]> = Vec::new();
+        let mut end_st: Vec<[f32; 2]> = Vec::new();
         positions.iter().enumerate().step_by(3).for_each(|(i, x)| {
-            endPositions.push([
+            end_positions.push([
                 positions[i] as f32,
                 positions[i + 1] as f32,
                 positions[i + 2] as f32,
@@ -185,37 +185,37 @@ impl From<FrustumGeometry> for Mesh {
         let mut normals = [0.0; 72];
         let mut st = [0.0; 48];
         let mut offset = 0;
-        getAttributes(offset, &mut normals, &mut st, &negative_z); //near
+        get_attributes(offset, &mut normals, &mut st, &negative_z); //near
         offset += 3 * 4;
-        getAttributes(offset, &mut normals, &mut st, &z); //far
+        get_attributes(offset, &mut normals, &mut st, &z); //far
         offset += 3 * 4;
-        getAttributes(offset, &mut normals, &mut st, &negative_x); //-x
+        get_attributes(offset, &mut normals, &mut st, &negative_x); //-x
         offset += 3 * 4;
-        getAttributes(offset, &mut normals, &mut st, &negative_y); //-y
+        get_attributes(offset, &mut normals, &mut st, &negative_y); //-y
         offset += 3 * 4;
-        getAttributes(offset, &mut normals, &mut st, &x); //+x
+        get_attributes(offset, &mut normals, &mut st, &x); //+x
         offset += 3 * 4;
-        getAttributes(offset, &mut normals, &mut st, &y); //+y
+        get_attributes(offset, &mut normals, &mut st, &y); //+y
         normals.iter().enumerate().step_by(3).for_each(|(i, x)| {
-            endNormals.push([
+            end_normals.push([
                 normals[i] as f32,
                 normals[i + 1] as f32,
                 normals[i + 2] as f32,
             ]);
         });
         st.iter().enumerate().step_by(2).for_each(|(i, x)| {
-            endST.push([st[i] as f32, st[i + 1] as f32]);
+            end_st.push([st[i] as f32, st[i + 1] as f32]);
         });
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, endPositions);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, endNormals);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, endST);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, end_positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, end_normals);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, end_st);
         mesh.set_indices(Some(indices2));
         mesh
     }
 }
-fn getAttributes(offset: usize, normals: &mut [f64; 72], st: &mut [f64; 48], normal: &DVec3) {
-    let stOffset = (offset / 3) * 2;
+fn get_attributes(offset: usize, normals: &mut [f64; 72], st: &mut [f64; 48], normal: &DVec3) {
+    let st_offset = (offset / 3) * 2;
     let mut offset = offset;
     for i in 0..4 {
         normals[offset] = normal.x;
@@ -224,14 +224,14 @@ fn getAttributes(offset: usize, normals: &mut [f64; 72], st: &mut [f64; 48], nor
         offset += 3;
     }
 
-    st[stOffset] = 0.0;
-    st[stOffset + 1] = 0.0;
-    st[stOffset + 2] = 1.0;
-    st[stOffset + 3] = 0.0;
-    st[stOffset + 4] = 1.0;
-    st[stOffset + 5] = 1.0;
-    st[stOffset + 6] = 0.0;
-    st[stOffset + 7] = 1.0;
+    st[st_offset] = 0.0;
+    st[st_offset + 1] = 0.0;
+    st[st_offset + 2] = 1.0;
+    st[st_offset + 3] = 0.0;
+    st[st_offset + 4] = 1.0;
+    st[st_offset + 5] = 1.0;
+    st[st_offset + 6] = 0.0;
+    st[st_offset + 7] = 1.0;
 }
 #[cfg(test)]
 mod tests {

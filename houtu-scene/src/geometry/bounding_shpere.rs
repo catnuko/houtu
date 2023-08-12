@@ -21,9 +21,9 @@ impl BoundingSphere {
     pub fn new(center: DVec3, radius: f64) -> Self {
         Self { center, radius }
     }
-    // pub fn fromRectangle3D(rectangle,ellipsoid:Ellipsoid,surfaceHeight,)->Self{
+    // pub fn fromRectangle3D(rectangle,ellipsoid:Ellipsoid,surface_height,)->Self{
     //     ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
-    //     surfaceHeight = defaultValue(surfaceHeight, 0.0);
+    //     surface_height = defaultValue(surface_height, 0.0);
 
     //     if !defined(result) {
     //       result = new BoundingSphere();
@@ -38,7 +38,7 @@ impl BoundingSphere {
     //     const positions = Rectangle.subsample(
     //       rectangle,
     //       ellipsoid,
-    //       surfaceHeight,
+    //       surface_height,
     //       fromRectangle3DScratch
     //     );
     //     return BoundingSphere.from_points(positions, result);
@@ -103,9 +103,9 @@ impl BoundingSphere {
         }
         return Self { center, radius };
     }
-    pub fn from_corner_points(corner: DVec3, oppositeCorner: DVec3) -> Self {
-        let center = (corner + oppositeCorner) * 0.5;
-        let radius = center.distance(oppositeCorner);
+    pub fn from_corner_points(corner: DVec3, opposite_corner: DVec3) -> Self {
+        let center = (corner + opposite_corner) * 0.5;
+        let radius = center.distance(opposite_corner);
         Self { center, radius }
     }
     pub fn from_ellipsoid(ellipsoid: &Ellipsoid) -> Self {
@@ -117,127 +117,127 @@ impl BoundingSphere {
         if positions.len() == 0 {
             return Self::default();
         }
-        let currentPos = positions[0].clone();
+        let current_pos = positions[0].clone();
 
-        let mut xMin = currentPos.clone();
-        let mut yMin = currentPos.clone();
-        let mut zMin = currentPos.clone();
+        let mut x_min = current_pos.clone();
+        let mut y_min = current_pos.clone();
+        let mut z_min = current_pos.clone();
 
-        let mut xMax = currentPos.clone();
-        let mut yMax = currentPos.clone();
-        let mut zMax = currentPos.clone();
+        let mut x_max = current_pos.clone();
+        let mut y_max = current_pos.clone();
+        let mut z_max = current_pos.clone();
 
-        let numPositions = positions.len();
-        for i in 1..numPositions {
-            let currentPos = positions[i].clone();
-            let x = currentPos.x;
-            let y = currentPos.y;
-            let z = currentPos.z;
+        let num_positions = positions.len();
+        for i in 1..num_positions {
+            let current_pos = positions[i].clone();
+            let x = current_pos.x;
+            let y = current_pos.y;
+            let z = current_pos.z;
 
             // Store points containing the the smallest and largest components
-            if x < xMin.x {
-                xMin = currentPos.clone();
+            if x < x_min.x {
+                x_min = current_pos.clone();
             }
 
-            if x > xMax.x {
-                xMax = currentPos.clone();
+            if x > x_max.x {
+                x_max = current_pos.clone();
             }
 
-            if y < yMin.y {
-                yMin = currentPos.clone();
+            if y < y_min.y {
+                y_min = current_pos.clone();
             }
 
-            if y > yMax.y {
-                yMax = currentPos.clone();
+            if y > y_max.y {
+                y_max = current_pos.clone();
             }
 
-            if z < zMin.z {
-                zMin = currentPos.clone();
+            if z < z_min.z {
+                z_min = current_pos.clone();
             }
 
-            if z > zMax.z {
-                zMax = currentPos.clone();
+            if z > z_max.z {
+                z_max = current_pos.clone();
             }
         }
 
         // Compute x-, y-, and z-spans (Squared distances b/n each component's min. and max.).
-        let mut xSpan = (xMax - xMin).magnitude_squared();
-        let mut ySpan = (yMax - yMin).magnitude_squared();
-        let mut zSpan = (zMax - zMin).magnitude_squared();
+        let mut x_span = (x_max - x_min).magnitude_squared();
+        let mut y_span = (y_max - y_min).magnitude_squared();
+        let mut z_span = (z_max - z_min).magnitude_squared();
 
         // Set the diameter endpoints to the largest span.
-        let mut diameter1 = xMin;
-        let mut diameter2 = xMax;
-        let mut maxSpan = xSpan;
-        if ySpan > maxSpan {
-            maxSpan = ySpan;
-            diameter1 = yMin;
-            diameter2 = yMax;
+        let mut diameter1 = x_min;
+        let mut diameter2 = x_max;
+        let mut max_span = x_span;
+        if y_span > max_span {
+            max_span = y_span;
+            diameter1 = y_min;
+            diameter2 = y_max;
         }
-        if zSpan > maxSpan {
-            maxSpan = zSpan;
-            diameter1 = zMin;
-            diameter2 = zMax;
+        if z_span > max_span {
+            max_span = z_span;
+            diameter1 = z_min;
+            diameter2 = z_max;
         }
 
         // Calculate the center of the initial sphere found by Ritter's algorithm
-        let mut ritterCenter = DVec3::ZERO;
-        ritterCenter.x = (diameter1.x + diameter2.x) * 0.5;
-        ritterCenter.y = (diameter1.y + diameter2.y) * 0.5;
-        ritterCenter.z = (diameter1.z + diameter2.z) * 0.5;
+        let mut ritter_center = DVec3::ZERO;
+        ritter_center.x = (diameter1.x + diameter2.x) * 0.5;
+        ritter_center.y = (diameter1.y + diameter2.y) * 0.5;
+        ritter_center.z = (diameter1.z + diameter2.z) * 0.5;
 
         // Calculate the radius of the initial sphere found by Ritter's algorithm
-        let mut radiusSquared = (diameter2 - ritterCenter).magnitude_squared();
-        let mut ritterRadius = radiusSquared.sqrt();
+        let mut radius_squared = (diameter2 - ritter_center).magnitude_squared();
+        let mut ritter_radius = radius_squared.sqrt();
 
         // Find the center of the sphere found using the Naive method.
-        let mut minBoxPt = DVec3::ZERO;
-        minBoxPt.x = xMin.x;
-        minBoxPt.y = yMin.y;
-        minBoxPt.z = zMin.z;
+        let mut min_box_pt = DVec3::ZERO;
+        min_box_pt.x = x_min.x;
+        min_box_pt.y = y_min.y;
+        min_box_pt.z = z_min.z;
 
-        let mut maxBoxPt = DVec3::ZERO;
-        maxBoxPt.x = xMax.x;
-        maxBoxPt.y = yMax.y;
-        maxBoxPt.z = zMax.z;
+        let mut max_box_pt = DVec3::ZERO;
+        max_box_pt.x = x_max.x;
+        max_box_pt.y = y_max.y;
+        max_box_pt.z = z_max.z;
 
-        let mut naiveCenter = (minBoxPt + maxBoxPt) * 0.5;
+        let mut naive_center = (min_box_pt + max_box_pt) * 0.5;
 
         // Begin 2nd pass to find naive radius and modify the ritter sphere.
-        let mut naiveRadius: f64 = 0.;
-        for i in 0..numPositions {
-            let currentPos = positions[i].clone();
+        let mut naive_radius: f64 = 0.;
+        for i in 0..num_positions {
+            let current_pos = positions[i].clone();
 
             // Find the furthest point from the naive center to calculate the naive radius.
-            let r = (currentPos - naiveCenter).magnitude();
-            if r > naiveRadius {
-                naiveRadius = r;
+            let r = (current_pos - naive_center).magnitude();
+            if r > naive_radius {
+                naive_radius = r;
             }
 
             // Make adjustments to the Ritter Sphere to include all points.
-            let oldCenterToPointSquared = (currentPos - ritterCenter).magnitude_squared();
-            if oldCenterToPointSquared > radiusSquared {
-                let oldCenterToPoint = oldCenterToPointSquared.sqrt();
+            let old_center_to_point_squared = (current_pos - ritter_center).magnitude_squared();
+            if old_center_to_point_squared > radius_squared {
+                let old_center_to_point = old_center_to_point_squared.sqrt();
                 // Calculate new radius to include the point that lies outside
-                ritterRadius = (ritterRadius + oldCenterToPoint) * 0.5;
-                radiusSquared = ritterRadius * ritterRadius;
+                ritter_radius = (ritter_radius + old_center_to_point) * 0.5;
+                radius_squared = ritter_radius * ritter_radius;
                 // Calculate center of new Ritter sphere
-                let oldToNew = oldCenterToPoint - ritterRadius;
-                ritterCenter.x =
-                    (ritterRadius * ritterCenter.x + oldToNew * currentPos.x) / oldCenterToPoint;
-                ritterCenter.y =
-                    (ritterRadius * ritterCenter.y + oldToNew * currentPos.y) / oldCenterToPoint;
-                ritterCenter.z =
-                    (ritterRadius * ritterCenter.z + oldToNew * currentPos.z) / oldCenterToPoint;
+                let old_to_new = old_center_to_point - ritter_radius;
+                ritter_center.x = (ritter_radius * ritter_center.x + old_to_new * current_pos.x)
+                    / old_center_to_point;
+                ritter_center.y = (ritter_radius * ritter_center.y + old_to_new * current_pos.y)
+                    / old_center_to_point;
+                ritter_center.z = (ritter_radius * ritter_center.z + old_to_new * current_pos.z)
+                    / old_center_to_point;
             }
         }
         let mut result = Self::default();
-        if ritterRadius < naiveRadius {
-            result.center = ritterCenter;
-            result.radius = ritterRadius;
+        if ritter_radius < naive_radius {
+            result.center = ritter_center;
+            result.radius = ritter_radius;
         } else {
-            result.center = naiveCenter;
-            result.radius = naiveRadius;
+            result.center = naive_center;
+            result.radius = naive_radius;
         }
         return result;
     }
@@ -265,17 +265,17 @@ impl BoundingSphere {
         &self,
         rectangle: &Rectangle,
         ellipsoid: Option<&Ellipsoid>,
-        surfaceHeight: Option<f64>,
+        surface_height: Option<f64>,
     ) -> Self {
-        let positions = rectangle.subsample(ellipsoid, surfaceHeight);
+        let positions = rectangle.subsample(ellipsoid, surface_height);
         return Self::from_points(&positions);
     }
 
     pub fn from_oriented_bouding_box(oriented_bounding_box: &OrientedBoundingBox) -> Self {
-        let halfAxes = oriented_bounding_box.halfAxes;
-        let mut u = halfAxes.get_column(0);
-        let v = halfAxes.get_column(1);
-        let w = halfAxes.get_column(2);
+        let half_axes = oriented_bounding_box.half_axes;
+        let mut u = half_axes.get_column(0);
+        let v = half_axes.get_column(1);
+        let w = half_axes.get_column(2);
         u = u + v;
         u = u + w;
 
@@ -284,16 +284,16 @@ impl BoundingSphere {
             radius: u.magnitude(),
         };
     }
-    pub fn intersectPlane(&self, plane: &Plane) -> Intersect {
+    pub fn intersect_plane(&self, plane: &Plane) -> Intersect {
         let center = self.center;
         let radius = self.radius;
         let normal = plane.normal;
-        let distanceToPlane = normal.dot(center) + plane.distance;
+        let distance_to_plane = normal.dot(center) + plane.distance;
 
-        if distanceToPlane < -radius {
+        if distance_to_plane < -radius {
             // The center point is negative side of the plane normal
             return Intersect::OUTSIDE;
-        } else if distanceToPlane < radius {
+        } else if distance_to_plane < radius {
             // The center point is positive side of the plane, but radius extends beyond it; partial overlap
             return Intersect::INTERSECTING;
         }
@@ -307,167 +307,168 @@ impl BoundingSphere {
         let center = DVec3::ZERO;
         let stride = 3;
 
-        let mut currentPos = DVec3::ZERO;
-        currentPos.x = positions[0] + center.x;
-        currentPos.y = positions[1] + center.y;
-        currentPos.z = positions[2] + center.z;
+        let mut current_pos = DVec3::ZERO;
+        current_pos.x = positions[0] + center.x;
+        current_pos.y = positions[1] + center.y;
+        current_pos.z = positions[2] + center.z;
 
-        let mut xMin = currentPos.clone();
-        let mut yMin = currentPos.clone();
-        let mut zMin = currentPos.clone();
+        let mut x_min = current_pos.clone();
+        let mut y_min = current_pos.clone();
+        let mut z_min = current_pos.clone();
 
-        let mut xMax = currentPos.clone();
-        let mut yMax = currentPos.clone();
-        let mut zMax = currentPos.clone();
+        let mut x_max = current_pos.clone();
+        let mut y_max = current_pos.clone();
+        let mut z_max = current_pos.clone();
 
-        let numElements = positions.len();
+        let num_elements = positions.len();
         let mut i = 0;
-        while i < numElements {
+        while i < num_elements {
             let x = positions[i] + center.x;
             let y = positions[i + 1] + center.y;
             let z = positions[i + 2] + center.z;
 
-            currentPos.x = x;
-            currentPos.y = y;
-            currentPos.z = z;
+            current_pos.x = x;
+            current_pos.y = y;
+            current_pos.z = z;
 
             // Store points containing the the smallest and largest components
-            if (x < xMin.x) {
-                xMin = currentPos.clone();
+            if (x < x_min.x) {
+                x_min = current_pos.clone();
             }
 
-            if (x > xMax.x) {
-                xMax = currentPos.clone();
+            if (x > x_max.x) {
+                x_max = current_pos.clone();
             }
 
-            if (y < yMin.y) {
-                yMin = currentPos.clone();
+            if (y < y_min.y) {
+                y_min = current_pos.clone();
             }
 
-            if (y > yMax.y) {
-                yMax = currentPos.clone();
+            if (y > y_max.y) {
+                y_max = current_pos.clone();
             }
 
-            if (z < zMin.z) {
-                zMin = currentPos.clone();
+            if (z < z_min.z) {
+                z_min = current_pos.clone();
             }
 
-            if (z > zMax.z) {
-                zMax = currentPos.clone();
+            if (z > z_max.z) {
+                z_max = current_pos.clone();
             }
             i += stride;
         }
 
         // Compute x-, y-, and z-spans (Squared distances b/n each component's min. and max.).
-        let xSpan = xMax.subtract(xMin).magnitude_squared();
-        let ySpan = yMax.subtract(yMin).magnitude_squared();
-        let zSpan = zMax.subtract(zMin).magnitude_squared();
+        let x_span = x_max.subtract(x_min).magnitude_squared();
+        let y_span = y_max.subtract(y_min).magnitude_squared();
+        let z_span = z_max.subtract(z_min).magnitude_squared();
 
         // Set the diameter endpoints to the largest span.
-        let mut diameter1 = xMin;
-        let mut diameter2 = xMax;
-        let mut maxSpan = xSpan;
-        if (ySpan > maxSpan) {
-            maxSpan = ySpan;
-            diameter1 = yMin;
-            diameter2 = yMax;
+        let mut diameter1 = x_min;
+        let mut diameter2 = x_max;
+        let mut max_span = x_span;
+        if (y_span > max_span) {
+            max_span = y_span;
+            diameter1 = y_min;
+            diameter2 = y_max;
         }
-        if (zSpan > maxSpan) {
-            maxSpan = zSpan;
-            diameter1 = zMin;
-            diameter2 = zMax;
+        if (z_span > max_span) {
+            max_span = z_span;
+            diameter1 = z_min;
+            diameter2 = z_max;
         }
 
         // Calculate the center of the initial sphere found by Ritter's algorithm
-        let mut ritterCenter = DVec3::ZERO;
-        ritterCenter.x = (diameter1.x + diameter2.x) * 0.5;
-        ritterCenter.y = (diameter1.y + diameter2.y) * 0.5;
-        ritterCenter.z = (diameter1.z + diameter2.z) * 0.5;
+        let mut ritter_center = DVec3::ZERO;
+        ritter_center.x = (diameter1.x + diameter2.x) * 0.5;
+        ritter_center.y = (diameter1.y + diameter2.y) * 0.5;
+        ritter_center.z = (diameter1.z + diameter2.z) * 0.5;
 
         // Calculate the radius of the initial sphere found by Ritter's algorithm
-        let mut radiusSquared = diameter2.subtract(ritterCenter).magnitude_squared();
-        let mut ritterRadius = radiusSquared.sqrt();
+        let mut radius_squared = diameter2.subtract(ritter_center).magnitude_squared();
+        let mut ritter_radius = radius_squared.sqrt();
 
         // Find the center of the sphere found using the Naive method.
-        let mut minBoxPt = DVec3::ZERO;
-        minBoxPt.x = xMin.x;
-        minBoxPt.y = yMin.y;
-        minBoxPt.z = zMin.z;
+        let mut min_box_pt = DVec3::ZERO;
+        min_box_pt.x = x_min.x;
+        min_box_pt.y = y_min.y;
+        min_box_pt.z = z_min.z;
 
-        let mut maxBoxPt = DVec3::ZERO;
-        maxBoxPt.x = xMax.x;
-        maxBoxPt.y = yMax.y;
-        maxBoxPt.z = zMax.z;
+        let mut max_box_pt = DVec3::ZERO;
+        max_box_pt.x = x_max.x;
+        max_box_pt.y = y_max.y;
+        max_box_pt.z = z_max.z;
 
-        let naiveCenter = minBoxPt.midpoint(maxBoxPt);
+        let naive_center = min_box_pt.midpoint(max_box_pt);
 
         // Begin 2nd pass to find naive radius and modify the ritter sphere.
-        let mut naiveRadius = 0.0;
+        let mut naive_radius = 0.0;
         i = 0;
-        while i < numElements {
-            currentPos.x = positions[i] + center.x;
-            currentPos.y = positions[i + 1] + center.y;
-            currentPos.z = positions[i + 2] + center.z;
+        while i < num_elements {
+            current_pos.x = positions[i] + center.x;
+            current_pos.y = positions[i + 1] + center.y;
+            current_pos.z = positions[i + 2] + center.z;
 
             // Find the furthest point from the naive center to calculate the naive radius.
-            let r = currentPos.subtract(naiveCenter).magnitude();
-            if (r > naiveRadius) {
-                naiveRadius = r;
+            let r = current_pos.subtract(naive_center).magnitude();
+            if (r > naive_radius) {
+                naive_radius = r;
             }
 
             // Make adjustments to the Ritter Sphere to include all points.
-            let oldCenterToPointSquared = currentPos.subtract(ritterCenter).magnitude_squared();
-            if (oldCenterToPointSquared > radiusSquared) {
-                let oldCenterToPoint = oldCenterToPointSquared.sqrt();
+            let old_center_to_point_squared =
+                current_pos.subtract(ritter_center).magnitude_squared();
+            if (old_center_to_point_squared > radius_squared) {
+                let old_center_to_point = old_center_to_point_squared.sqrt();
                 // Calculate new radius to include the point that lies outside
-                ritterRadius = (ritterRadius + oldCenterToPoint) * 0.5;
-                radiusSquared = ritterRadius * ritterRadius;
+                ritter_radius = (ritter_radius + old_center_to_point) * 0.5;
+                radius_squared = ritter_radius * ritter_radius;
                 // Calculate center of new Ritter sphere
-                let oldToNew = oldCenterToPoint - ritterRadius;
-                ritterCenter.x =
-                    (ritterRadius * ritterCenter.x + oldToNew * currentPos.x) / oldCenterToPoint;
-                ritterCenter.y =
-                    (ritterRadius * ritterCenter.y + oldToNew * currentPos.y) / oldCenterToPoint;
-                ritterCenter.z =
-                    (ritterRadius * ritterCenter.z + oldToNew * currentPos.z) / oldCenterToPoint;
+                let old_to_new = old_center_to_point - ritter_radius;
+                ritter_center.x = (ritter_radius * ritter_center.x + old_to_new * current_pos.x)
+                    / old_center_to_point;
+                ritter_center.y = (ritter_radius * ritter_center.y + old_to_new * current_pos.y)
+                    / old_center_to_point;
+                ritter_center.z = (ritter_radius * ritter_center.z + old_to_new * current_pos.z)
+                    / old_center_to_point;
             }
             i += stride;
         }
 
-        if (ritterRadius < naiveRadius) {
-            me.center = ritterCenter.clone();
-            me.radius = ritterRadius;
+        if (ritter_radius < naive_radius) {
+            me.center = ritter_center.clone();
+            me.radius = ritter_radius;
         } else {
-            me.center = naiveCenter.clone();
-            me.radius = naiveRadius;
+            me.center = naive_center.clone();
+            me.radius = naive_radius;
         }
         return me;
     }
 }
 impl BoundingVolume for BoundingSphere {
     fn intersect_plane(&self, plane: &Plane) -> Intersect {
-        return self.intersectPlane(plane);
+        return self.intersect_plane(plane);
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    const positionsCenter: DVec3 = DVec3::new(10000001.0, 0.0, 0.0);
-    const center: DVec3 = DVec3::new(10000000.0, 0.0, 0.0);
-    const positionsRadius: f64 = 1.0;
-    fn getPositions() -> Vec<DVec3> {
+    const POSITIONS_CENTER: DVec3 = DVec3::new(10000001.0, 0.0, 0.0);
+    const CENTER: DVec3 = DVec3::new(10000000.0, 0.0, 0.0);
+    const POSITIONS_RADIUS: f64 = 1.0;
+    fn get_positions() -> Vec<DVec3> {
         return vec![
-            (center + DVec3::new(1.0, 0.0, 0.0)),
-            (center + DVec3::new(2.0, 0.0, 0.0)),
-            (center + DVec3::new(0.0, 0.0, 0.0)),
-            (center + DVec3::new(1.0, 1.0, 0.0)),
-            (center + DVec3::new(1.0, -1.0, 0.0)),
-            (center + DVec3::new(1.0, 0.0, 1.0)),
-            (center + DVec3::new(1.0, 0.0, -1.0)),
+            (CENTER + DVec3::new(1.0, 0.0, 0.0)),
+            (CENTER + DVec3::new(2.0, 0.0, 0.0)),
+            (CENTER + DVec3::new(0.0, 0.0, 0.0)),
+            (CENTER + DVec3::new(1.0, 1.0, 0.0)),
+            (CENTER + DVec3::new(1.0, -1.0, 0.0)),
+            (CENTER + DVec3::new(1.0, 0.0, 1.0)),
+            (CENTER + DVec3::new(1.0, 0.0, -1.0)),
         ];
     }
     fn get_vertices() -> Vec<f64> {
-        let ps = getPositions();
+        let ps = get_positions();
         let mut res = vec![];
         for i in 0..ps.len() {
             res.push(ps[i].x);
@@ -499,17 +500,17 @@ mod tests {
     }
     #[test]
     fn from_points_work_with_one_point() {
-        let expectedCenter = DVec3::new(1.0, 2.0, 3.0);
-        let positions = vec![expectedCenter];
+        let expected_center = DVec3::new(1.0, 2.0, 3.0);
+        let positions = vec![expected_center];
         let sphere = BoundingSphere::from_points(&positions);
-        assert_eq!(sphere.center, expectedCenter);
+        assert_eq!(sphere.center, expected_center);
         assert_eq!(sphere.radius, 0.0);
     }
     #[test]
     fn from_points_compute_center_from_points() {
-        let positions = getPositions();
+        let positions = get_positions();
         let sphere = BoundingSphere::from_points(&positions);
-        assert_eq!(sphere.center, positionsCenter);
+        assert_eq!(sphere.center, POSITIONS_CENTER);
         assert_eq!(sphere.radius, 1.0);
     }
     #[test]
@@ -542,7 +543,7 @@ mod tests {
         let r = DVec3::new(*radius, *radius, *radius);
         let max = r + *new_center;
         let min = *new_center - r;
-        let positions = getPositions();
+        let positions = get_positions();
         for i in 0..positions.len() {
             let cur = positions[i];
             assert!(cur.x <= max.x && cur.x >= min.x);

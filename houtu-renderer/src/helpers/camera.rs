@@ -54,7 +54,8 @@ pub fn debug_system(
                                 "cartesian: x={},y={},z={}",
                                 cartesian.x, cartesian.y, cartesian.z
                             );
-                            let cartographic = Ellipsoid::WGS84.cartesianToCartographic(&cartesian);
+                            let cartographic =
+                                Ellipsoid::WGS84.cartesian_to_cartographic(&cartesian);
                             if cartographic.is_some() {
                                 let cartogaphic = cartographic.unwrap();
                                 println!(

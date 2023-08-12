@@ -49,7 +49,7 @@ pub struct GlobeSurfaceTile {
     pub vertex_array: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,
     pub terrain_data: Option<Arc<Mutex<HeightmapTerrainData>>>,
-    pub waterMaskTexture: Option<Handle<Image>>,
+    pub water_mask_texture: Option<Handle<Image>>,
 }
 impl GlobeSurfaceTile {
     pub fn new() -> Self {
@@ -63,7 +63,7 @@ impl GlobeSurfaceTile {
             vertex_array: None,
             imagery: Vec::new(),
             terrain_data: None,
-            waterMaskTexture: None,
+            water_mask_texture: None,
         }
     }
     ///新增一个TileImagery
@@ -118,7 +118,7 @@ impl GlobeSurfaceTile {
     pub fn has_terrain_data(&self) -> bool {
         return self.terrain_data.is_some();
     }
-    pub fn processImagery(
+    pub fn process_imagery(
         storage: &mut QuadtreeTileStorage,
         tile_key: TileKey,
         imagery_layer_storage: &mut ImageryLayerStorage,
@@ -248,7 +248,7 @@ impl GlobeSurfaceTile {
                 .lock()
                 .unwrap()
                 .was_created_by_upsampling();
-        let is_imagery_done_loading = GlobeSurfaceTile::processImagery(
+        let is_imagery_done_loading = GlobeSurfaceTile::process_imagery(
             storage,
             tile_key,
             imagery_layer_storage,

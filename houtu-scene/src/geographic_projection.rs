@@ -29,9 +29,9 @@ impl GeographicProjection {
 impl Projection for GeographicProjection {
     type Output = GeographicProjection;
     fn project(&self, coord: &Cartographic) -> DVec3 {
-        let semimajorAxis = self.semimajor_axis;
-        let x = coord.longitude * semimajorAxis;
-        let y = coord.latitude * semimajorAxis;
+        let semimajor_axis = self.semimajor_axis;
+        let x = coord.longitude * semimajor_axis;
+        let y = coord.latitude * semimajor_axis;
         let z = coord.height;
         DVec3::new(x, y, z)
     }

@@ -86,15 +86,15 @@ impl WMTSImageryLayerProvider {
             subdomains: subdomains,
         }
     }
-    pub fn getRequestBody(&self, col: u32, row: u32, level: u32) -> HashMap<String, String> {
-        let mut tileMatrix;
+    pub fn get_request_body(&self, col: u32, row: u32, level: u32) -> HashMap<String, String> {
+        let mut tile_matrix;
         if let Some(real_labels) = &self.tile_matrix_labels {
-            tileMatrix = real_labels[level as usize].clone();
+            tile_matrix = real_labels[level as usize].clone();
         } else {
-            tileMatrix = level.to_string();
+            tile_matrix = level.to_string();
         }
         let mut query: HashMap<String, String> = HashMap::new();
-        query.insert("tilematrix".to_string(), tileMatrix);
+        query.insert("tilematrix".to_string(), tile_matrix);
         query.insert("layer".to_string(), self.layer.clone());
         query.insert("style".to_string(), self.style.clone());
         query.insert("tilerow".to_string(), row.to_string());

@@ -6,8 +6,8 @@ use std::{
 use crate::{
     get_estimated_level_zero_geometric_error_for_a_heightmap,
     lerp,
-    // get_estimated_level_zero_geometric_error_for_a_heightmap, getRegularGridAndSkirtIndicesAndEdgeIndices,
-    // getRegularGridIndicesAndEdgeIndices,
+    // get_estimated_level_zero_geometric_error_for_a_heightmap, get_regular_grid_and_skirt_indices_and_edge_indices,
+    // get_regular_grid_indices_and_edge_indices,
     CreateVerticeOptions,
     CreateVerticeReturn,
     GeographicTilingScheme,
@@ -108,10 +108,10 @@ impl HeightmapTerrainData {
         let indices_and_edges;
         if self._skirt_height.unwrap() > 0.0 {
             indices_and_edges = indices_and_edges_cache
-                .getRegularGridAndSkirtIndicesAndEdgeIndices(self._width, self._height);
+                .get_regular_grid_and_skirt_indices_and_edge_indices(self._width, self._height);
         } else {
             indices_and_edges = indices_and_edges_cache
-                .getRegularGridIndicesAndEdgeIndices(self._width, self._height);
+                .get_regular_grid_indices_and_edge_indices(self._width, self._height);
         }
 
         let vertex_count_without_skirts = 0;
@@ -156,7 +156,7 @@ impl HeightmapTerrainData {
         let rectangle = tiling_scheme.tile_x_y_to_rectange(x, y, level);
 
         // Compute the center of the tile for RTC rendering.
-        let center = ellipsoid.cartographicToCartesian(&rectangle.center());
+        let center = ellipsoid.cartographic_to_cartesian(&rectangle.center());
 
         let structure = self._structure;
 
@@ -329,19 +329,19 @@ fn interpolateMeshHeight(
     northInteger = height - 1 - northInteger;
 
     let south_west_height = (encoding
-        .decodeHeight(buffer, (southInteger * width + westInteger) as usize)
+        .decode_height(buffer, (southInteger * width + westInteger) as usize)
         - height_offset)
         / height_scale;
     let south_east_height = (encoding
-        .decodeHeight(buffer, (southInteger * width + eastInteger) as usize)
+        .decode_height(buffer, (southInteger * width + eastInteger) as usize)
         - height_offset)
         / height_scale;
     let north_west_height = (encoding
-        .decodeHeight(buffer, (northInteger * width + westInteger) as usize)
+        .decode_height(buffer, (northInteger * width + westInteger) as usize)
         - height_offset)
         / height_scale;
     let north_east_height = (encoding
-        .decodeHeight(buffer, (northInteger * width + eastInteger) as usize)
+        .decode_height(buffer, (northInteger * width + eastInteger) as usize)
         - height_offset)
         / height_scale;
 

@@ -2,7 +2,7 @@ use crate::{CubicRealPolynomial, QuadraticRealPolynomial, EPSILON14, EPSILON15};
 
 pub struct QuarticRealPolynomial;
 impl QuarticRealPolynomial {
-    // pub fn computeRealRoots(a: f64, b: f64, c: f64, d: f64, e: f64) -> f64 {
+    // pub fn compute_real_roots(a: f64, b: f64, c: f64, d: f64, e: f64) -> f64 {
     //     let a2 = a * a;
     //     let a3 = a2 * a;
     //     let b2 = b * b;
@@ -24,9 +24,9 @@ impl QuarticRealPolynomial {
     //         + e2 * (144.0 * a * b2 * c - 27.0 * b2 * b2 - 128.0 * a2 * c2 - 192.0 * a2 * b * d);
     //     return discriminant;
     // }
-    pub fn computeRealRoots(a: f64, b: f64, c: f64, d: f64, e: f64) -> Option<Vec<f64>> {
+    pub fn compute_real_roots(a: f64, b: f64, c: f64, d: f64, e: f64) -> Option<Vec<f64>> {
         if a.abs() < EPSILON15 {
-            return CubicRealPolynomial::computeRealRoots(b, c, d, e);
+            return CubicRealPolynomial::compute_real_roots(b, c, d, e);
         }
         let a3 = b / a;
         let a2 = c / a;
@@ -61,25 +61,26 @@ impl QuarticRealPolynomial {
 }
 
 fn original(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
-    let a3Squared = a3 * a3;
+    let a3_squared = a3 * a3;
 
-    let p = a2 - (3.0 * a3Squared) / 8.0;
-    let q = a1 - (a2 * a3) / 2.0 + (a3Squared * a3) / 8.0;
-    let r = a0 - (a1 * a3) / 4.0 + (a2 * a3Squared) / 16.0 - (3.0 * a3Squared * a3Squared) / 256.0;
+    let p = a2 - (3.0 * a3_squared) / 8.0;
+    let q = a1 - (a2 * a3) / 2.0 + (a3_squared * a3) / 8.0;
+    let r =
+        a0 - (a1 * a3) / 4.0 + (a2 * a3_squared) / 16.0 - (3.0 * a3_squared * a3_squared) / 256.0;
 
     // Find the roots of the cubic equations:  h^6 + 2 p h^4 + (p^2 - 4 r) h^2 - q^2 = 0.
-    let cubicRoots =
-        CubicRealPolynomial::computeRealRoots(1.0, 2.0 * p, p * p - 4.0 * r, -q * q).unwrap();
+    let cubic_roots =
+        CubicRealPolynomial::compute_real_roots(1.0, 2.0 * p, p * p - 4.0 * r, -q * q).unwrap();
 
-    if cubicRoots.len() > 0 {
+    if cubic_roots.len() > 0 {
         let temp = -a3 / 4.0;
 
         // Use the largest positive root.
-        let hSquared = cubicRoots[cubicRoots.len() - 1];
+        let h_squared = cubic_roots[cubic_roots.len() - 1];
 
-        if hSquared.abs() < EPSILON14 {
+        if h_squared.abs() < EPSILON14 {
             // y^4 + p y^2 + r = 0.
-            let roots = QuadraticRealPolynomial::computeRealRoots(1.0, p, r).unwrap();
+            let roots = QuadraticRealPolynomial::compute_real_roots(1.0, p, r).unwrap();
 
             if roots.len() == 2 {
                 let root0 = roots[0];
@@ -100,15 +101,15 @@ fn original(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
                 }
             }
             return vec![];
-        } else if hSquared > 0.0 {
-            let h = hSquared.sqrt();
+        } else if h_squared > 0.0 {
+            let h = h_squared.sqrt();
 
-            let m = (p + hSquared - q / h) / 2.0;
-            let n = (p + hSquared + q / h) / 2.0;
+            let m = (p + h_squared - q / h) / 2.0;
+            let n = (p + h_squared + q / h) / 2.0;
 
             // Now solve the two quadratic factors:  (y^2 + h y + m)(y^2 - h y + n);
-            let mut roots1 = QuadraticRealPolynomial::computeRealRoots(1.0, h, m).unwrap();
-            let mut roots2 = QuadraticRealPolynomial::computeRealRoots(1.0, -h, n).unwrap();
+            let mut roots1 = QuadraticRealPolynomial::compute_real_roots(1.0, h, m).unwrap();
+            let mut roots2 = QuadraticRealPolynomial::compute_real_roots(1.0, -h, n).unwrap();
 
             if roots1.len() != 0 {
                 roots1[0] += temp;
@@ -147,51 +148,51 @@ fn original(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
 }
 
 fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
-    let a1Squared = a1 * a1;
-    let a2Squared = a2 * a2;
-    let a3Squared = a3 * a3;
+    let a1_squared = a1 * a1;
+    let a2_squared = a2 * a2;
+    let a3_squared = a3 * a3;
 
     let p = -2.0 * a2;
-    let q = a1 * a3 + a2Squared - 4.0 * a0;
-    let r = a3Squared * a0 - a1 * a2 * a3 + a1Squared;
+    let q = a1 * a3 + a2_squared - 4.0 * a0;
+    let r = a3_squared * a0 - a1 * a2 * a3 + a1_squared;
 
-    let cubicRoots = CubicRealPolynomial::computeRealRoots(1.0, p, q, r).unwrap();
+    let cubic_roots = CubicRealPolynomial::compute_real_roots(1.0, p, q, r).unwrap();
 
-    if cubicRoots.len() > 0 {
+    if cubic_roots.len() > 0 {
         // Use the most positive root
-        let y = cubicRoots[0];
+        let y = cubic_roots[0];
 
         let temp = a2 - y;
-        let tempSquared = temp * temp;
+        let temp_squared = temp * temp;
 
         let g1 = a3 / 2.0;
         let h1 = temp / 2.0;
 
-        let m = tempSquared - 4.0 * a0;
-        let mError = tempSquared + 4.0 * a0.abs();
+        let m = temp_squared - 4.0 * a0;
+        let m_error = temp_squared + 4.0 * a0.abs();
 
-        let n = a3Squared - 4.0 * y;
-        let nError = a3Squared + 4.0 * y.abs();
+        let n = a3_squared - 4.0 * y;
+        let n_error = a3_squared + 4.0 * y.abs();
 
         let mut g2;
         let mut h2;
 
-        if y < 0.0 || m * nError < n * mError {
-            let squareRootOfN = n.sqrt();
-            g2 = squareRootOfN / 2.0;
-            h2 = if squareRootOfN == 0.0 {
+        if y < 0.0 || m * n_error < n * m_error {
+            let square_root_of_n = n.sqrt();
+            g2 = square_root_of_n / 2.0;
+            h2 = if square_root_of_n == 0.0 {
                 0.0
             } else {
-                (a3 * h1 - a1) / squareRootOfN
+                (a3 * h1 - a1) / square_root_of_n
             };
         } else {
-            let squareRootOfM = m.sqrt();
-            g2 = if squareRootOfM == 0.0 {
+            let square_root_of_m = m.sqrt();
+            g2 = if square_root_of_m == 0.0 {
                 0.0
             } else {
-                (a3 * h1 - a1) / squareRootOfM
+                (a3 * h1 - a1) / square_root_of_m
             };
-            h2 = squareRootOfM / 2.0;
+            h2 = square_root_of_m / 2.0;
         }
 
         let mut G;
@@ -221,8 +222,8 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
         }
 
         // Now solve the two quadratic factors:  (y^2 + G y + H)(y^2 + g y + h);
-        let roots1 = QuadraticRealPolynomial::computeRealRoots(1.0, G, H).unwrap();
-        let roots2 = QuadraticRealPolynomial::computeRealRoots(1.0, g, h).unwrap();
+        let roots1 = QuadraticRealPolynomial::compute_real_roots(1.0, G, H).unwrap();
+        let roots2 = QuadraticRealPolynomial::compute_real_roots(1.0, g, h).unwrap();
 
         if roots1.len() != 0 {
             if roots2.len() != 0 {

@@ -192,16 +192,16 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let mut minimum_height: f64 = 65536.0;
     let mut maximum_height: f64 = -65536.0;
 
-    let fromENU = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
-    let toENU = fromENU.inverse_transformation();
+    let from_enu = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
+    let to_enu = from_enu.inverse_transformation();
     let webMercatorProjection = WebMercatorProjection::default();
     let mut south_mercator_y = 0.;
     let mut one_over_mercator_height = 0.;
     if includeWebMercatorT {
         south_mercator_y =
-            webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicSouth);
+            webMercatorProjection.geodetic_latitude_to_mercator_angle(geographicSouth);
         one_over_mercator_height = 1.0
-            / (webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicNorth)
+            / (webMercatorProjection.geodetic_latitude_to_mercator_angle(geographicNorth)
                 - south_mercator_y);
     }
 
@@ -217,8 +217,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let mut hMin = MAX;
 
-    let gridVertexCount: u32 = width * height;
-    let edgeVertexCount: u32 = {
+    let grid_vertex_count: u32 = width * height;
+    let edge_vertex_count: u32 = {
         if skirt_height > 0.0 {
             width * 2 + height * 2
         } else {
@@ -226,18 +226,18 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         }
     };
 
-    let vertexCount = gridVertexCount + edgeVertexCount;
-    let mut positions: Vec<DVec3> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-    positions.extend(std::iter::repeat(DVec3::ZERO).take(vertexCount as usize));
-    let mut heights: Vec<f64> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-    heights.extend(std::iter::repeat(0.).take(vertexCount as usize));
-    let mut uvs: Vec<DVec2> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-    uvs.extend(std::iter::repeat(DVec2::ZERO).take(vertexCount as usize));
+    let vertex_count = grid_vertex_count + edge_vertex_count;
+    let mut positions: Vec<DVec3> = Vec::with_capacity(vertex_count as usize); // 预分配内存空间
+    positions.extend(std::iter::repeat(DVec3::ZERO).take(vertex_count as usize));
+    let mut heights: Vec<f64> = Vec::with_capacity(vertex_count as usize); // 预分配内存空间
+    heights.extend(std::iter::repeat(0.).take(vertex_count as usize));
+    let mut uvs: Vec<DVec2> = Vec::with_capacity(vertex_count as usize); // 预分配内存空间
+    uvs.extend(std::iter::repeat(DVec2::ZERO).take(vertex_count as usize));
 
     let mut webMercatorTsOption = {
         if includeWebMercatorT {
-            let mut tmp = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-            tmp.extend(std::iter::repeat(0.).take(vertexCount as usize));
+            let mut tmp = Vec::with_capacity(vertex_count as usize); // 预分配内存空间
+            tmp.extend(std::iter::repeat(0.).take(vertex_count as usize));
             Some(tmp)
         } else {
             None
@@ -245,8 +245,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     };
     let mut geodeticSurfaceNormalsOption = {
         if includeGeodeticSurfaceNormals {
-            let mut tmp: Vec<DVec3> = Vec::with_capacity(vertexCount as usize); // 预分配内存空间
-            tmp.extend(std::iter::repeat(DVec3::ZERO).take(vertexCount as usize));
+            let mut tmp: Vec<DVec3> = Vec::with_capacity(vertex_count as usize); // 预分配内存空间
+            tmp.extend(std::iter::repeat(DVec3::ZERO).take(vertex_count as usize));
             Some(tmp)
         } else {
             None
@@ -295,13 +295,13 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             }
         }
 
-        let cosLatitude = (latitude).cos();
+        let cos_latitude = (latitude).cos();
         let nZ = (latitude).sin();
         let kZ = radiiSquaredZ * nZ;
 
         let mut web_mercator_t: f64 = 0.;
         if includeWebMercatorT {
-            web_mercator_t = (webMercatorProjection.geodeticLatitude_to_mercator_angle(latitude)
+            web_mercator_t = (webMercatorProjection.geodetic_latitude_to_mercator_angle(latitude)
                 - south_mercator_y)
                 * one_over_mercator_height;
         }
@@ -367,24 +367,24 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
                     if isWestEdge {
                         // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
-                        index = gridVertexCount + (height - (row as u32) - 1);
+                        index = grid_vertex_count + (height - (row as u32) - 1);
                         longitude -= skirtOffsetPercentage * rectangleWidth;
                     } else if isSouthEdge {
                         // Add after west indices. South indices are ordered east to west.
-                        index = gridVertexCount + height + (width - (col as u32) - 1);
+                        index = grid_vertex_count + height + (width - (col as u32) - 1);
                     } else if isEastEdge {
                         // Add after west and south indices. East indices are ordered north to south. The index is flipped like above.
-                        index = gridVertexCount + height + width + (row as u32);
+                        index = grid_vertex_count + height + width + (row as u32);
                         longitude += skirtOffsetPercentage * rectangleWidth;
                     } else if isNorthEdge {
                         // Add after west, south, and east indices. North indices are ordered west to east.
-                        index = gridVertexCount + height + width + height + (col as u32);
+                        index = grid_vertex_count + height + width + height + (col as u32);
                     }
                 }
             }
 
-            let nX = cosLatitude * longitude.cos();
-            let nY = cosLatitude * longitude.sin();
+            let nX = cos_latitude * longitude.cos();
+            let nY = cos_latitude * longitude.sin();
 
             let kX = radiiSquaredX * nX;
             let kY = radiiSquaredY * nY;
@@ -400,9 +400,9 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             position.x = rSurfaceX + nX * heightSample;
             position.y = rSurfaceY + nY * heightSample;
             position.z = rSurfaceZ + nZ * heightSample;
-            let cartesian3Scratch = toENU.multiply_by_point(&position);
-            minimum = cartesian3Scratch.minimum_by_component(minimum);
-            maximum = cartesian3Scratch.maximum_by_component(maximum);
+            let cartesian3_scratch = to_enu.multiply_by_point(&position);
+            minimum = cartesian3_scratch.minimum_by_component(minimum);
+            maximum = cartesian3_scratch.maximum_by_component(maximum);
 
             hMin = hMin.min(heightSample);
 
@@ -418,7 +418,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             if includeGeodeticSurfaceNormals {
                 let mut geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_mut().unwrap();
                 geodeticSurfaceNormals[index as usize] =
-                    ellipsoid.geodeticSurfaceNormal(&position).unwrap();
+                    ellipsoid.geodetic_surface_normal(&position).unwrap();
             }
         }
     }
@@ -426,7 +426,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let bounding_sphere_3d = BoundingSphere::from_points(&positions);
     let mut oriented_bounding_box = OrientedBoundingBox::default();
     if let Some(rectangle) = rectangleOption {
-        oriented_bounding_box = OrientedBoundingBox::fromRectangle(
+        oriented_bounding_box = OrientedBoundingBox::from_rectangle(
             &rectangle,
             Some(minimum_height),
             Some(maximum_height),
@@ -437,11 +437,12 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let mut occludee_point_in_scaled_space: Option<DVec3> = None;
     if hasRelativeToCenter {
         let occluder = EllipsoidalOccluder::new(&ellipsoid);
-        occludee_point_in_scaled_space = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
-            &relativeToCenter,
-            &positions,
-            minimum_height,
-        );
+        occludee_point_in_scaled_space = occluder
+            .compute_horizon_culling_point_possibly_under_ellipsoid(
+                &relativeToCenter,
+                &positions,
+                minimum_height,
+            );
     }
 
     let aaBox = AxisAlignedBoundingBox::new(minimum, maximum, relativeToCenter);
@@ -450,23 +451,23 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         Some(aaBox),
         Some(hMin),
         Some(maximum_height),
-        Some(fromENU),
+        Some(from_enu),
         false,
         Some(includeWebMercatorT),
         Some(includeGeodeticSurfaceNormals),
         Some(exaggeration),
         Some(exaggeration_relative_height),
     );
-    let lenth = (vertexCount * encoding.stride as u32) as usize;
+    let lenth = (vertex_count * encoding.stride as u32) as usize;
     let mut vertices = Vec::with_capacity(lenth); // 预分配内存空间
     vertices.extend(std::iter::repeat(0.).take(lenth));
 
-    let mut bufferIndex: i64 = 0;
-    for j in 0..vertexCount {
+    let mut buffer_index: i64 = 0;
+    for j in 0..vertex_count {
         let jj = j as usize;
-        bufferIndex = encoding.encode(
+        buffer_index = encoding.encode(
             &mut vertices,
-            bufferIndex,
+            buffer_index,
             &mut positions[jj],
             &uvs[jj],
             heights[jj],
@@ -573,7 +574,7 @@ mod tests {
                 let heightSample =
                     (heightmap[heightSampleIndex] + heightmap[heightSampleIndex + 1] * 10.0) as f64;
 
-                let expectedVertexPosition = ellipsoid.cartographicToCartesian(&Cartographic {
+                let expectedVertexPosition = ellipsoid.cartographic_to_cartesian(&Cartographic {
                     longitude: longitude,
                     latitude: latitude,
                     height: heightSample,

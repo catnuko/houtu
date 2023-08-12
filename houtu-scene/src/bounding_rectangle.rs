@@ -54,7 +54,7 @@ impl BoundingRectangle {
 
         return DMat4::from_cols_array(&result);
     }
-    pub fn fromPoints(positions: &Vec<DVec2>) -> Self {
+    pub fn from_points(positions: &Vec<DVec2>) -> Self {
         let mut result = BoundingRectangle::new();
 
         if positions.len() == 0 {
@@ -86,7 +86,7 @@ impl BoundingRectangle {
         result.height = maximum_y - minimum_y;
         return result;
     }
-    pub fn fromRectangle(rectangle: Rectangle) -> Self {
+    pub fn from_rectangle(rectangle: Rectangle) -> Self {
         let mut result = BoundingRectangle::new();
         let projection = GeographicProjection::default();
 

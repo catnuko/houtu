@@ -44,10 +44,10 @@ impl Cartographic {
     }
     pub fn from_cartesian(cartesian: DVec3, ellipsoid: Option<&Ellipsoid>) -> Option<Self> {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
-        let one_over_radii = ellipsoid.oneOverRadii;
-        let one_over_radii_squared = ellipsoid.oneOverRadiiSquared;
-        let centerToleranceSquared = ellipsoid.centerToleranceSquared;
-        if let Some(p) = ellipsoid.scaleToGeodeticSurface(&cartesian) {
+        let one_over_radii = ellipsoid.one_over_radii;
+        let one_over_radii_squared = ellipsoid.one_over_radii_squared;
+        let center_tolerance_squared = ellipsoid.center_tolerance_squared;
+        if let Some(p) = ellipsoid.scale_to_geodetic_surface(&cartesian) {
             let n = p * one_over_radii_squared.normalize();
             let h = cartesian - p;
             let longitude = n.y.atan2(n.x);
@@ -101,13 +101,13 @@ mod tests {
     use std::f64::consts::PI;
 
     use super::*;
-    const surfaceCartographic: Cartographic = Cartographic {
+    const SURFACE_CARTOGRAPHIC: Cartographic = Cartographic {
         longitude: 25.0 * PI / 180.0,
         latitude: 45.0 * PI / 180.0,
         height: 0.0,
     };
 
-    const surfaceCartesian: DVec3 = DVec3 {
+    const SURFACE_CARTESIAN: DVec3 = DVec3 {
         x: 4094327.7921465295,
         y: 1909216.4044747739,
         z: 4487348.4088659193,
@@ -119,13 +119,13 @@ mod tests {
         let height = 100000.0;
         let ellipsoid = Ellipsoid::WGS84;
         let actual = Cartographic::new(lon, lat, height).to_cartesian(None);
-        let expected = ellipsoid.cartographicToCartesian(&Cartographic::new(lon, lat, height));
+        let expected = ellipsoid.cartographic_to_cartesian(&Cartographic::new(lon, lat, height));
         assert!(actual.equals(expected));
     }
     #[test]
     fn test_from_cartesian() {
         let ellipsoid = Ellipsoid::WGS84;
-        let c = Cartographic::from_cartesian(surfaceCartesian, None).unwrap();
-        assert!(c.equals_epsilon(surfaceCartographic, 1e-5));
+        let c = Cartographic::from_cartesian(SURFACE_CARTESIAN, None).unwrap();
+        assert!(c.equals_epsilon(SURFACE_CARTOGRAPHIC, 1e-5));
     }
 }

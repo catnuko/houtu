@@ -167,16 +167,16 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     let minimum_height: f64 = 65536.0;
     let maximum_height: f64 = -65536.0;
 
-    let fromENU = eastNorthUpToFixedFrame(relativeToCenter, Some(ellipsoid));
-    let toENU = fromENU.inverse_transformation();
+    let from_enu = eastNorthUpToFixedFrame(relativeToCenter, Some(ellipsoid));
+    let to_enu = from_enu.inverse_transformation();
     let webMercatorProjection = WebMercatorProjection::default();
     let mut south_mercator_y;
     let mut one_over_mercator_height;
     if includeWebMercatorT {
         south_mercator_y =
-            webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicSouth);
+            webMercatorProjection.geodetic_latitude_to_mercator_angle(geographicSouth);
         one_over_mercator_height = 1.0
-            / (webMercatorProjection.geodeticLatitude_to_mercator_angle(geographicNorth)
+            / (webMercatorProjection.geodetic_latitude_to_mercator_angle(geographicNorth)
                 - south_mercator_y);
     }
 
@@ -192,8 +192,8 @@ pub fn create_vertice(options: CreateVerticeOptions) {
 
     let mut hMin = MAX;
 
-    let gridVertexCount: i64 = width * height;
-    let edgeVertexCount: i64 = {
+    let grid_vertex_count: i64 = width * height;
+    let edge_vertex_count: i64 = {
         if skirt_height > 0.0 {
             width * 2 + height * 2
         } else {
@@ -201,18 +201,18 @@ pub fn create_vertice(options: CreateVerticeOptions) {
         }
     };
 
-    let vertexCount = gridVertexCount + edgeVertexCount;
-    let mut positions = Vec::with_capacity(vertexCount); // 预分配内存空间
-    positions.extend(std::iter::repeat(0.).take(vertexCount)); // 填充初始值
-    let mut heights = Vec::with_capacity(vertexCount); // 预分配内存空间
-    heights.extend(std::iter::repeat(0.).take(vertexCount)); // 填充初始值
-    let mut uvs = Vec::with_capacity(vertexCount); // 预分配内存空间
-    uvs.extend(std::iter::repeat(0.)..take(vertexCount)); // 填充初始值
+    let vertex_count = grid_vertex_count + edge_vertex_count;
+    let mut positions = Vec::with_capacity(vertex_count); // 预分配内存空间
+    positions.extend(std::iter::repeat(0.).take(vertex_count)); // 填充初始值
+    let mut heights = Vec::with_capacity(vertex_count); // 预分配内存空间
+    heights.extend(std::iter::repeat(0.).take(vertex_count)); // 填充初始值
+    let mut uvs = Vec::with_capacity(vertex_count); // 预分配内存空间
+    uvs.extend(std::iter::repeat(0.)..take(vertex_count)); // 填充初始值
 
     let webMercatorTs = {
         if includeWebMercatorT {
-            let mut tmp = Vec::with_capacity(vertexCount); // 预分配内存空间
-            tmp.extend(std::iter::repeat(0.)..take(vertexCount)); // 填充初始值
+            let mut tmp = Vec::with_capacity(vertex_count); // 预分配内存空间
+            tmp.extend(std::iter::repeat(0.)..take(vertex_count)); // 填充初始值
             tmp
         } else {
             vec![]
@@ -220,8 +220,8 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     };
     let geodeticSurfaceNormals = {
         if includeGeodeticSurfaceNormals {
-            let mut tmp = Vec::with_capacity(vertexCount); // 预分配内存空间
-            tmp.extend(std::iter::repeat(0.)..take(vertexCount)); // 填充初始值
+            let mut tmp = Vec::with_capacity(vertex_count); // 预分配内存空间
+            tmp.extend(std::iter::repeat(0.)..take(vertex_count)); // 填充初始值
             tmp
         } else {
             vec![]
@@ -270,13 +270,13 @@ pub fn create_vertice(options: CreateVerticeOptions) {
             }
         }
 
-        let cosLatitude = (latitude).cos();
+        let cos_latitude = (latitude).cos();
         let nZ = (latitude).sin();
         let kZ = radiiSquaredZ * nZ;
 
         let web_mercator_t;
         if includeWebMercatorT {
-            web_mercator_t = (webMercatorProjection.geodeticLatitude_to_mercator_angle(latitude)
+            web_mercator_t = (webMercatorProjection.geodetic_latitude_to_mercator_angle(latitude)
                 - south_mercator_y)
                 * one_over_mercator_height;
         }
@@ -343,24 +343,24 @@ pub fn create_vertice(options: CreateVerticeOptions) {
 
                     if isWestEdge {
                         // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
-                        index = gridVertexCount + (height - row - 1);
+                        index = grid_vertex_count + (height - row - 1);
                         longitude -= skirtOffsetPercentage * rectangleWidth;
                     } else if isSouthEdge {
                         // Add after west indices. South indices are ordered east to west.
-                        index = gridVertexCount + height + (width - col - 1);
+                        index = grid_vertex_count + height + (width - col - 1);
                     } else if isEastEdge {
                         // Add after west and south indices. East indices are ordered north to south. The index is flipped like above.
-                        index = gridVertexCount + height + width + row;
+                        index = grid_vertex_count + height + width + row;
                         longitude += skirtOffsetPercentage * rectangleWidth;
                     } else if isNorthEdge {
                         // Add after west, south, and east indices. North indices are ordered west to east.
-                        index = gridVertexCount + height + width + height + col;
+                        index = grid_vertex_count + height + width + height + col;
                     }
                 }
             }
 
-            let nX = cosLatitude * longitude.cos();
-            let nY = cosLatitude * longitude.sin();
+            let nX = cos_latitude * longitude.cos();
+            let nY = cos_latitude * longitude.sin();
 
             let kX = radiiSquaredX * nX;
             let kY = radiiSquaredY * nY;
@@ -376,9 +376,9 @@ pub fn create_vertice(options: CreateVerticeOptions) {
             position.x = rSurfaceX + nX * heightSample;
             position.y = rSurfaceY + nY * heightSample;
             position.z = rSurfaceZ + nZ * heightSample;
-            let cartesian3Scratch = toENU.multiply_by_point(position);
-            minimum = cartesian3Scratch.minimum_by_component(minimum);
-            maximum = cartesian3Scratch.maximum_by_component(maximum);
+            let cartesian3_scratch = to_enu.multiply_by_point(position);
+            minimum = cartesian3_scratch.minimum_by_component(minimum);
+            maximum = cartesian3_scratch.maximum_by_component(maximum);
 
             hMin = hMin.min(heightSample);
 
@@ -391,15 +391,16 @@ pub fn create_vertice(options: CreateVerticeOptions) {
             }
 
             if includeGeodeticSurfaceNormals {
-                geodeticSurfaceNormals[index as usize] = ellipsoid.geodeticSurfaceNormal(&position);
+                geodeticSurfaceNormals[index as usize] =
+                    ellipsoid.geodetic_surface_normal(&position);
             }
         }
     }
 
-    let bounding_sphere_3d = BoundingSphere.fromPoints(positions);
+    let bounding_sphere_3d = BoundingSphere.from_points(positions);
     let oriented_bounding_box;
     if defined(rectangle) {
-        oriented_bounding_box = OrientedBoundingBox::fromRectangle(
+        oriented_bounding_box = OrientedBoundingBox::from_rectangle(
             rectangle,
             minimum_height,
             maximum_height,
@@ -410,11 +411,12 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     let occludee_point_in_scaled_space;
     if hasRelativeToCenter {
         let occluder = EllipsoidalOccluder::new(&ellipsoid);
-        occludee_point_in_scaled_space = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
-            relativeToCenter,
-            positions,
-            minimum_height,
-        );
+        occludee_point_in_scaled_space = occluder
+            .compute_horizon_culling_point_possibly_under_ellipsoid(
+                relativeToCenter,
+                positions,
+                minimum_height,
+            );
     }
 
     let aaBox = AxisAlignedBoundingBox::new(minimum, maximum, relativeToCenter);
@@ -423,20 +425,20 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     //   aaBox,
     //   hMin,
     //   maximum_height,
-    //   fromENU,
+    //   from_enu,
     //   false,
     //   includeWebMercatorT,
     //   includeGeodeticSurfaceNormals,
     //   exaggeration,
     //   exaggeration_relative_height
     // );
-    // let vertices = new Float32Array(vertexCount * encoding.stride);
+    // let vertices = new Float32Array(vertex_count * encoding.stride);
 
-    // let bufferIndex = 0;
-    // for (let j = 0; j < vertexCount; j+=1) {
-    //   bufferIndex = encoding.encode(
+    // let buffer_index = 0;
+    // for (let j = 0; j < vertex_count; j+=1) {
+    //   buffer_index = encoding.encode(
     //     vertices,
-    //     bufferIndex,
+    //     buffer_index,
     //     positions[j],
     //     uvs[j],
     //     heights[j],

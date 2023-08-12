@@ -10,14 +10,14 @@ pub struct TileBoundingRegion {
     pub rectangle: Rectangle,
     pub minimum_height: f64,
     pub maximum_height: f64,
-    pub southwestCornerCartesian: DVec3,
-    pub northeastCornerCartesian: DVec3,
-    pub westNormal: DVec3,
-    pub southNormal: DVec3,
-    pub eastNormal: DVec3,
-    pub northNormal: DVec3,
+    pub south_west_corner_cartesian: DVec3,
+    pub north_east_corner_cartesian: DVec3,
+    pub west_normal: DVec3,
+    pub south_normal: DVec3,
+    pub east_normal: DVec3,
+    pub north_normal: DVec3,
     pub oriented_bounding_box: Option<OrientedBoundingBox>,
-    pub boundingSphere: Option<BoundingSphere>,
+    pub bounding_sphere: Option<BoundingSphere>,
 }
 impl TileBoundingRegion {
     pub fn new(
@@ -25,93 +25,93 @@ impl TileBoundingRegion {
         minimum_height: Option<f64>,
         maximum_height: Option<f64>,
         ellipsoid: Option<&Ellipsoid>,
-        computeBoundingVolumes: Option<bool>,
+        compute_bounding_volumes: Option<bool>,
     ) -> Self {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
         let mut me = Self {
             rectangle: rectangle.clone(),
             minimum_height: minimum_height.unwrap_or(0.0),
             maximum_height: maximum_height.unwrap_or(0.0),
-            southwestCornerCartesian: DVec3::ZERO,
-            northeastCornerCartesian: DVec3::ZERO,
-            westNormal: DVec3::ZERO,
-            southNormal: DVec3::ZERO,
-            eastNormal: DVec3::ZERO,
-            northNormal: DVec3::ZERO,
+            south_west_corner_cartesian: DVec3::ZERO,
+            north_east_corner_cartesian: DVec3::ZERO,
+            west_normal: DVec3::ZERO,
+            south_normal: DVec3::ZERO,
+            east_normal: DVec3::ZERO,
+            north_normal: DVec3::ZERO,
             oriented_bounding_box: None,
-            boundingSphere: None,
+            bounding_sphere: None,
         };
-        me.computeBox(&rectangle, &ellipsoid);
-        if let Some(v) = computeBoundingVolumes {
+        me.compute_box(&rectangle, &ellipsoid);
+        if let Some(v) = compute_bounding_volumes {
             if v == true {
-                me.computeBoundingVolumes(ellipsoid);
+                me.compute_bounding_volumes(ellipsoid);
             }
         }
         return me;
     }
-    pub fn distanceToCamera<P: Projection>(
+    pub fn distance_to_camera<P: Projection>(
         &self,
-        positionWC: &DVec3,
-        positionCartographic: &Cartographic,
+        position_wc: &DVec3,
+        position_cartographic: &Cartographic,
         projection: &P,
     ) -> f64 {
-        let regionResult =
-            self.distanceToCameraRegion(positionWC, positionCartographic, projection);
+        let region_result =
+            self.distance_to_camera_region(position_wc, position_cartographic, projection);
         if let Some(v) = &self.oriented_bounding_box {
-            let obbResult = v.distanceSquaredTo(&positionWC).sqrt();
-            return regionResult.max(obbResult);
+            let obb_result = v.distance_squared_to(&position_wc).sqrt();
+            return region_result.max(obb_result);
         }
-        return regionResult;
+        return region_result;
     }
-    pub fn distanceToCameraRegion<P: Projection>(
+    pub fn distance_to_camera_region<P: Projection>(
         &self,
-        positionWC: &DVec3,
-        positionCartographic: &Cartographic,
+        position_wc: &DVec3,
+        position_cartographic: &Cartographic,
         projection: &P,
     ) -> f64 {
         let mut result = 0.0;
-        if !self.rectangle.contains(positionCartographic) {
-            let southwestCornerCartesian = self.southwestCornerCartesian;
-            let northeastCornerCartesian = self.northeastCornerCartesian;
-            let westNormal = self.westNormal;
-            let southNormal = self.southNormal;
-            let eastNormal = self.eastNormal;
-            let northNormal = self.northNormal;
-            let vectorFromSouthwestCorner = positionWC.subtract(southwestCornerCartesian);
-            let distanceToWestPlane = vectorFromSouthwestCorner.dot(westNormal);
-            let distanceToSouthPlane = vectorFromSouthwestCorner.dot(southNormal);
+        if !self.rectangle.contains(position_cartographic) {
+            let south_west_corner_cartesian = self.south_west_corner_cartesian;
+            let north_east_corner_cartesian = self.north_east_corner_cartesian;
+            let west_normal = self.west_normal;
+            let south_normal = self.south_normal;
+            let east_normal = self.east_normal;
+            let north_normal = self.north_normal;
+            let vector_from_south_west_corner = position_wc.subtract(south_west_corner_cartesian);
+            let distance_to_west_plane = vector_from_south_west_corner.dot(west_normal);
+            let distance_to_south_plane = vector_from_south_west_corner.dot(south_normal);
 
-            let vectorFromNortheastCorner = positionWC.subtract(northeastCornerCartesian);
-            let distanceToEastPlane = vectorFromNortheastCorner.dot(eastNormal);
-            let distanceToNorthPlane = vectorFromNortheastCorner.dot(northNormal);
+            let vector_from_north_east_corner = position_wc.subtract(north_east_corner_cartesian);
+            let distance_to_east_plane = vector_from_north_east_corner.dot(east_normal);
+            let distance_to_north_plane = vector_from_north_east_corner.dot(north_normal);
 
-            if distanceToWestPlane > 0.0 {
-                result += distanceToWestPlane * distanceToWestPlane;
-            } else if distanceToEastPlane > 0.0 {
-                result += distanceToEastPlane * distanceToEastPlane;
+            if distance_to_west_plane > 0.0 {
+                result += distance_to_west_plane * distance_to_west_plane;
+            } else if distance_to_east_plane > 0.0 {
+                result += distance_to_east_plane * distance_to_east_plane;
             }
 
-            if distanceToSouthPlane > 0.0 {
-                result += distanceToSouthPlane * distanceToSouthPlane;
-            } else if distanceToNorthPlane > 0.0 {
-                result += distanceToNorthPlane * distanceToNorthPlane;
+            if distance_to_south_plane > 0.0 {
+                result += distance_to_south_plane * distance_to_south_plane;
+            } else if distance_to_north_plane > 0.0 {
+                result += distance_to_north_plane * distance_to_north_plane;
             }
         }
 
-        let cameraHeight;
+        let camera_height;
         let minimum_height;
         let maximum_height;
 
-        cameraHeight = positionCartographic.height;
+        camera_height = position_cartographic.height;
         minimum_height = self.minimum_height;
         maximum_height = self.maximum_height;
 
-        if cameraHeight > maximum_height {
-            let distanceAboveTop = cameraHeight - maximum_height;
-            result += distanceAboveTop * distanceAboveTop;
-        } else if cameraHeight < minimum_height {
-            let distanceBelowBottom = minimum_height - cameraHeight;
-            result += distanceBelowBottom * distanceBelowBottom;
+        if camera_height > maximum_height {
+            let distance_above_top = camera_height - maximum_height;
+            result += distance_above_top * distance_above_top;
+        } else if camera_height < minimum_height {
+            let distance_below_bottom = minimum_height - camera_height;
+            result += distance_below_bottom * distance_below_bottom;
         }
 
         return result.sqrt();
@@ -120,99 +120,101 @@ impl TileBoundingRegion {
         self.oriented_bounding_box.as_ref()
     }
     pub fn get_bounding_sphere(&self) -> Option<&BoundingSphere> {
-        self.boundingSphere.as_ref()
+        self.bounding_sphere.as_ref()
     }
-    pub fn computeBoundingVolumes(&mut self, ellipsoid: &Ellipsoid) {
-        let obb = OrientedBoundingBox::fromRectangle(
+    pub fn compute_bounding_volumes(&mut self, ellipsoid: &Ellipsoid) {
+        let obb = OrientedBoundingBox::from_rectangle(
             &self.rectangle,
             Some(self.minimum_height),
             Some(self.maximum_height),
             Some(ellipsoid),
         );
-        self.boundingSphere = Some(BoundingSphere::from_oriented_bouding_box(&obb));
+        self.bounding_sphere = Some(BoundingSphere::from_oriented_bouding_box(&obb));
         self.oriented_bounding_box = Some(obb);
     }
-    pub fn computeBox(&mut self, rectangle: &Rectangle, ellipsoid: &Ellipsoid) {
-        self.southwestCornerCartesian = ellipsoid.cartographicToCartesian(&rectangle.south_west());
-        self.northeastCornerCartesian = ellipsoid.cartographicToCartesian(&rectangle.north_east());
+    pub fn compute_box(&mut self, rectangle: &Rectangle, ellipsoid: &Ellipsoid) {
+        self.south_west_corner_cartesian =
+            ellipsoid.cartographic_to_cartesian(&rectangle.south_west());
+        self.north_east_corner_cartesian =
+            ellipsoid.cartographic_to_cartesian(&rectangle.north_east());
 
-        let mut cartographicScratch = Cartographic::ZERO;
-        cartographicScratch.longitude = rectangle.west;
-        cartographicScratch.latitude = (rectangle.south + rectangle.north) * 0.5;
-        cartographicScratch.height = 0.0;
-        let westernMidpointCartesian = ellipsoid.cartographicToCartesian(&cartographicScratch);
+        let mut cartographic_scratch = Cartographic::ZERO;
+        cartographic_scratch.longitude = rectangle.west;
+        cartographic_scratch.latitude = (rectangle.south + rectangle.north) * 0.5;
+        cartographic_scratch.height = 0.0;
+        let western_midpoint_cartesian = ellipsoid.cartographic_to_cartesian(&cartographic_scratch);
 
         // Compute the normal of the plane on the western edge of the tile.
-        let westNormal = westernMidpointCartesian.cross(DVec3::UNIT_Z);
-        self.westNormal = westNormal.normalize();
+        let west_normal = western_midpoint_cartesian.cross(DVec3::UNIT_Z);
+        self.west_normal = west_normal.normalize();
 
         // The middle latitude on the eastern edge.
-        cartographicScratch.longitude = rectangle.east;
-        let easternMidpointCartesian = ellipsoid.cartographicToCartesian(&cartographicScratch);
+        cartographic_scratch.longitude = rectangle.east;
+        let eastern_midpoint_cartesian = ellipsoid.cartographic_to_cartesian(&cartographic_scratch);
 
         // Compute the normal of the plane on the eastern edge of the tile.
-        let eastNormal = DVec3::ZERO.cross(easternMidpointCartesian);
-        self.eastNormal = eastNormal.normalize();
+        let east_normal = DVec3::ZERO.cross(eastern_midpoint_cartesian);
+        self.east_normal = east_normal.normalize();
 
-        let mut westVector = westernMidpointCartesian.subtract(easternMidpointCartesian);
+        let mut west_vector = western_midpoint_cartesian.subtract(eastern_midpoint_cartesian);
 
-        if westVector.magnitude() == 0.0 {
-            westVector = westNormal.clone();
+        if west_vector.magnitude() == 0.0 {
+            west_vector = west_normal.clone();
         }
 
-        let eastWestNormal = westVector.normalize();
-        let mut rayScratch = Ray::default();
+        let east_west_normal = west_vector.normalize();
+        let mut ray_scratch = Ray::default();
 
         // Compute the normal of the plane bounding the southern edge of the tile.
         let south = rectangle.south;
-        let southSurfaceNormal;
+        let south_surface_normal;
 
         if south > 0.0 {
             // Compute a plane that doesn't cut through the tile.
-            cartographicScratch.longitude = (rectangle.west + rectangle.east) * 0.5;
-            cartographicScratch.latitude = south;
-            let southCenterCartesian = ellipsoid.cartographicToCartesian(&cartographicScratch);
-            rayScratch.origin = southCenterCartesian;
-            rayScratch.direction = eastWestNormal.clone();
-            let westPlane =
-                Plane::fromPointNormal(&self.southwestCornerCartesian, &self.westNormal);
+            cartographic_scratch.longitude = (rectangle.west + rectangle.east) * 0.5;
+            cartographic_scratch.latitude = south;
+            let south_center_cartesian = ellipsoid.cartographic_to_cartesian(&cartographic_scratch);
+            ray_scratch.origin = south_center_cartesian;
+            ray_scratch.direction = east_west_normal.clone();
+            let west_plane =
+                Plane::from_point_normal(&self.south_west_corner_cartesian, &self.west_normal);
             // Find a point that is on the west and the south planes
-            self.southwestCornerCartesian =
-                IntersectionTests::rayPlane(&rayScratch, &westPlane).unwrap();
-            southSurfaceNormal = ellipsoid
-                .geodeticSurfaceNormal(&southCenterCartesian)
+            self.south_west_corner_cartesian =
+                IntersectionTests::rayPlane(&ray_scratch, &west_plane).unwrap();
+            south_surface_normal = ellipsoid
+                .geodetic_surface_normal(&south_center_cartesian)
                 .unwrap();
         } else {
-            southSurfaceNormal =
-                ellipsoid.geodeticSurfaceNormalCartographic(&rectangle.south_east());
+            south_surface_normal =
+                ellipsoid.geodetic_surface_normal_cartographic(&rectangle.south_east());
         }
-        let southNormal = southSurfaceNormal.cross(westVector);
-        self.southNormal = southNormal.normalize();
+        let south_normal = south_surface_normal.cross(west_vector);
+        self.south_normal = south_normal.normalize();
 
         // Compute the normal of the plane bounding the northern edge of the tile.
         let north = rectangle.north;
-        let northSurfaceNormal;
+        let north_surface_normal;
 
         if north < 0.0 {
             // Compute a plane that doesn't cut through the tile.
-            cartographicScratch.longitude = (rectangle.west + rectangle.east) * 0.5;
-            cartographicScratch.latitude = north;
-            let northCenterCartesian = ellipsoid.cartographicToCartesian(&cartographicScratch);
-            rayScratch.origin = northCenterCartesian;
-            rayScratch.direction = eastWestNormal.negate();
-            let eastPlane =
-                Plane::fromPointNormal(&self.northeastCornerCartesian, &self.eastNormal);
+            cartographic_scratch.longitude = (rectangle.west + rectangle.east) * 0.5;
+            cartographic_scratch.latitude = north;
+            let north_center_cartesian = ellipsoid.cartographic_to_cartesian(&cartographic_scratch);
+            ray_scratch.origin = north_center_cartesian;
+            ray_scratch.direction = east_west_normal.negate();
+            let east_plane =
+                Plane::from_point_normal(&self.north_east_corner_cartesian, &self.east_normal);
             // Find a point that is on the east and the north planes
-            self.northeastCornerCartesian =
-                IntersectionTests::rayPlane(&rayScratch, &eastPlane).unwrap();
-            northSurfaceNormal = ellipsoid
-                .geodeticSurfaceNormal(&northCenterCartesian)
+            self.north_east_corner_cartesian =
+                IntersectionTests::rayPlane(&ray_scratch, &east_plane).unwrap();
+            north_surface_normal = ellipsoid
+                .geodetic_surface_normal(&north_center_cartesian)
                 .unwrap();
         } else {
-            northSurfaceNormal =
-                ellipsoid.geodeticSurfaceNormalCartographic(&rectangle.north_west());
+            north_surface_normal =
+                ellipsoid.geodetic_surface_normal_cartographic(&rectangle.north_west());
         }
-        let northNormal = westVector.cross(northSurfaceNormal);
-        self.northNormal = northNormal.normalize();
+        let north_normal = west_vector.cross(north_surface_normal);
+        self.north_normal = north_normal.normalize();
     }
 }

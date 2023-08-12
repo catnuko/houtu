@@ -104,7 +104,7 @@ impl QuadtreePrimitive {
         let tiling_scheme = self.get_tiling_scheme().clone();
         self.storage.create_level_zero_tiles(&tiling_scheme);
     }
-    pub fn beginFrame(&mut self) {
+    pub fn begin_frame(&mut self) {
         if self.tiles_invalidated {
             self.invalidate_all_tiles();
             self.tiles_invalidated = false;
@@ -113,7 +113,7 @@ impl QuadtreePrimitive {
         if self.debug.suspend_lod_update {
             return;
         }
-        self.tile_replacement_queue.markStartOfRenderFrame();
+        self.tile_replacement_queue.mark_start_of_render_frame();
     }
     fn queue_tile_load(
         &mut self,
@@ -175,7 +175,7 @@ impl QuadtreePrimitive {
         let camera_frame_origin = globe_camera.get_transform().get_translation();
         self.camera_position_cartographic = Some(p.clone());
         self.camera_reference_frame_origin_cartographic =
-            Ellipsoid::WGS84.cartesianToCartographic(&camera_frame_origin);
+            Ellipsoid::WGS84.cartesian_to_cartographic(&camera_frame_origin);
         for key in self.storage.root.clone().iter() {
             self.tile_replacement_queue
                 .mark_tile_rendered(&mut self.storage, *key);
@@ -203,7 +203,7 @@ impl QuadtreePrimitive {
             }
         }
     }
-    pub fn endFrame(
+    pub fn end_frame(
         &mut self,
         frame_count: &FrameCount,
         time: &Res<Time>,
@@ -261,7 +261,7 @@ fn process_tile_load_queue(
     let size = primitive.tile_cache_size;
     primitive
         .tile_replacement_queue
-        .trimTiles(&mut primitive.storage, size, imagery_storage);
+        .trim_tiles(&mut primitive.storage, size, imagery_storage);
 
     let end_time = time.elapsed_seconds_f64() + primitive.load_queue_time_slice;
 

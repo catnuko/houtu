@@ -33,7 +33,7 @@ impl TileReplacementQueue {
     pub fn get_count(&self) -> usize {
         return self.list.len();
     }
-    pub fn markStartOfRenderFrame(&mut self) {
+    pub fn mark_start_of_render_frame(&mut self) {
         let head = self.get_head();
         if let Some(v) = head {
             self.last_before_start_of_frame = Some(v.clone());
@@ -41,7 +41,7 @@ impl TileReplacementQueue {
             self.last_before_start_of_frame = None;
         }
     }
-    pub fn trimTiles(
+    pub fn trim_tiles(
         &mut self,
         storage: &mut QuadtreeTileStorage,
         maximum_tiles: u32,

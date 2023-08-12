@@ -96,35 +96,35 @@ impl Rectangle {
         return Cartographic::new(longitude, latitude, 0.0);
     }
 
-    pub fn intersection(&self, otherRectangle: &Rectangle) -> Option<Rectangle> {
+    pub fn intersection(&self, other_rectangle: &Rectangle) -> Option<Rectangle> {
         let rectangle = self;
-        let mut rectangleEast = rectangle.east;
-        let mut rectangleWest = rectangle.west;
+        let mut rectangle_east = rectangle.east;
+        let mut rectangle_west = rectangle.west;
 
-        let mut otherRectangleEast = otherRectangle.east;
-        let mut otherRectangleWest = otherRectangle.west;
+        let mut other_rectangle_east = other_rectangle.east;
+        let mut other_rectangle_west = other_rectangle.west;
 
-        if rectangleEast < rectangleWest && otherRectangleEast > 0.0 {
-            rectangleEast += FRAC_PI_2;
-        } else if otherRectangleEast < otherRectangleWest && rectangleEast > 0.0 {
-            otherRectangleEast += FRAC_PI_2;
+        if rectangle_east < rectangle_west && other_rectangle_east > 0.0 {
+            rectangle_east += FRAC_PI_2;
+        } else if other_rectangle_east < other_rectangle_west && rectangle_east > 0.0 {
+            other_rectangle_east += FRAC_PI_2;
         }
 
-        if rectangleEast < rectangleWest && otherRectangleWest < 0.0 {
-            otherRectangleWest += FRAC_PI_2;
-        } else if otherRectangleEast < otherRectangleWest && rectangleWest < 0.0 {
-            rectangleWest += FRAC_PI_2;
+        if rectangle_east < rectangle_west && other_rectangle_west < 0.0 {
+            other_rectangle_west += FRAC_PI_2;
+        } else if other_rectangle_east < other_rectangle_west && rectangle_west < 0.0 {
+            rectangle_west += FRAC_PI_2;
         }
-        let west = nagetive_pi_to_pi(rectangleWest.max(otherRectangleWest));
-        let east = nagetive_pi_to_pi(rectangleEast.min(otherRectangleEast));
+        let west = nagetive_pi_to_pi(rectangle_west.max(other_rectangle_west));
+        let east = nagetive_pi_to_pi(rectangle_east.min(other_rectangle_east));
 
-        if (rectangle.west < rectangle.east || otherRectangle.west < otherRectangle.east)
+        if (rectangle.west < rectangle.east || other_rectangle.west < other_rectangle.east)
             && east <= west
         {
             return None;
         }
-        let south = rectangle.south.max(otherRectangle.south);
-        let north = rectangle.north.min(otherRectangle.north);
+        let south = rectangle.south.max(other_rectangle.south);
+        let north = rectangle.north.min(other_rectangle.north);
 
         if south >= north {
             return None;
@@ -132,44 +132,44 @@ impl Rectangle {
 
         return Some(Rectangle::new(west, south, east, north));
     }
-    pub fn simple_intersection(&self, otherRectangle: &Rectangle) -> Option<Rectangle> {
-        let west = self.west.max(otherRectangle.west);
-        let south = self.south.max(otherRectangle.south);
-        let east = self.east.min(otherRectangle.east);
-        let north = self.north.min(otherRectangle.north);
+    pub fn simple_intersection(&self, other_rectangle: &Rectangle) -> Option<Rectangle> {
+        let west = self.west.max(other_rectangle.west);
+        let south = self.south.max(other_rectangle.south);
+        let east = self.east.min(other_rectangle.east);
+        let north = self.north.min(other_rectangle.north);
         if west >= east || south >= north {
             return None;
         }
         return Some(Rectangle::new(west, south, east, north));
     }
-    pub fn union(&self, otherRectangle: &Rectangle) -> Rectangle {
+    pub fn union(&self, other_rectangle: &Rectangle) -> Rectangle {
         let rectangle = self;
         let mut result = Rectangle::default();
-        let mut rectangleEast = rectangle.east;
-        let mut rectangleWest = rectangle.west;
+        let mut rectangle_east = rectangle.east;
+        let mut rectangle_west = rectangle.west;
 
-        let mut otherRectangleEast = otherRectangle.east;
-        let mut otherRectangleWest = otherRectangle.west;
+        let mut other_rectangle_east = other_rectangle.east;
+        let mut other_rectangle_west = other_rectangle.west;
 
-        if rectangleEast < rectangleWest && otherRectangleEast > 0.0 {
-            rectangleEast += FRAC_PI_2;
-        } else if otherRectangleEast < otherRectangleWest && rectangleEast > 0.0 {
-            otherRectangleEast += FRAC_PI_2;
+        if rectangle_east < rectangle_west && other_rectangle_east > 0.0 {
+            rectangle_east += FRAC_PI_2;
+        } else if other_rectangle_east < other_rectangle_west && rectangle_east > 0.0 {
+            other_rectangle_east += FRAC_PI_2;
         }
 
-        if rectangleEast < rectangleWest && otherRectangleWest < 0.0 {
-            otherRectangleWest += FRAC_PI_2;
-        } else if otherRectangleEast < otherRectangleWest && rectangleWest < 0.0 {
-            rectangleWest += FRAC_PI_2;
+        if rectangle_east < rectangle_west && other_rectangle_west < 0.0 {
+            other_rectangle_west += FRAC_PI_2;
+        } else if other_rectangle_east < other_rectangle_west && rectangle_west < 0.0 {
+            rectangle_west += FRAC_PI_2;
         }
 
-        let west = nagetive_pi_to_pi(rectangleWest.max(otherRectangleWest));
-        let east = nagetive_pi_to_pi(rectangleEast.min(otherRectangleEast));
+        let west = nagetive_pi_to_pi(rectangle_west.max(other_rectangle_west));
+        let east = nagetive_pi_to_pi(rectangle_east.min(other_rectangle_east));
 
         result.west = west;
-        result.south = rectangle.south.min(otherRectangle.south);
+        result.south = rectangle.south.min(other_rectangle.south);
         result.east = east;
-        result.north = rectangle.north.max(otherRectangle.north);
+        result.north = rectangle.north.max(other_rectangle.north);
         return result;
     }
     pub fn expand(&self, cartographic: &Cartographic) -> Rectangle {
@@ -202,11 +202,11 @@ impl Rectangle {
     pub fn subsample(
         &self,
         ellipsoid: Option<&Ellipsoid>,
-        surfaceHeight: Option<f64>,
+        surface_height: Option<f64>,
     ) -> Vec<DVec3> {
         let rectangle = self;
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
-        let surfaceHeight = surfaceHeight.unwrap_or(0.0);
+        let surface_height = surface_height.unwrap_or(0.0);
         let mut result: Vec<DVec3> = vec![];
         let mut length = 0;
 
@@ -216,23 +216,23 @@ impl Rectangle {
         let west = rectangle.west;
 
         let mut lla = Cartographic::default();
-        lla.height = surfaceHeight;
+        lla.height = surface_height;
 
         lla.longitude = west;
         lla.latitude = north;
-        result[length] = ellipsoid.cartographicToCartesian(&lla);
+        result[length] = ellipsoid.cartographic_to_cartesian(&lla);
         length += 1;
 
         lla.longitude = east;
-        result[length] = ellipsoid.cartographicToCartesian(&lla);
+        result[length] = ellipsoid.cartographic_to_cartesian(&lla);
         length += 1;
 
         lla.latitude = south;
-        result[length] = ellipsoid.cartographicToCartesian(&lla);
+        result[length] = ellipsoid.cartographic_to_cartesian(&lla);
         length += 1;
 
         lla.longitude = west;
-        result[length] = ellipsoid.cartographicToCartesian(&lla);
+        result[length] = ellipsoid.cartographic_to_cartesian(&lla);
         length += 1;
 
         if north < 0.0 {
@@ -245,31 +245,20 @@ impl Rectangle {
         for i in 1..8 {
             lla.longitude = west + (i as f64) * FRAC_PI_2;
             if rectangle.contains(&lla) {
-                result[length] = ellipsoid.cartographicToCartesian(&lla);
+                result[length] = ellipsoid.cartographic_to_cartesian(&lla);
                 length += 1;
             }
         }
 
         if lla.latitude == 0.0 {
             lla.longitude = west;
-            result[length] = ellipsoid.cartographicToCartesian(&lla);
+            result[length] = ellipsoid.cartographic_to_cartesian(&lla);
             length += 1;
             lla.longitude = east;
-            result[length] = ellipsoid.cartographicToCartesian(&lla);
+            result[length] = ellipsoid.cartographic_to_cartesian(&lla);
             length += 1;
         }
         return result;
-    }
-    pub fn simpleIntersection(&self, otherRectangle: &Rectangle) -> Option<Rectangle> {
-        let west = self.west.max(otherRectangle.west);
-        let south = self.south.max(otherRectangle.south);
-        let east = self.east.min(otherRectangle.east);
-        let north = self.north.min(otherRectangle.north);
-
-        if south >= north || west >= east {
-            return None;
-        }
-        return Some(Rectangle::new(west, south, east, north));
     }
 }
 //单元测试

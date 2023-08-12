@@ -7,18 +7,18 @@ pub struct PerspectiveFrustum {
     pub fov: f64,
     pub near: f64,
     pub far: f64,
-    pub xOffset: f64,
-    pub yOffset: f64,
+    pub x_offset: f64,
+    pub y_offset: f64,
     pub aspect_ratio: f64,
     _fov: f64,
     _fovy: f64,
     _near: f64,
     _far: f64,
-    _xOffset: f64,
-    _yOffset: f64,
+    _x_offset: f64,
+    _y_offset: f64,
     _aspect_ratio: f64,
-    _sseDenominator: f64,
-    _offCenterFrustum: PerspectiveOffCenterFrustum,
+    _sse_denominator: f64,
+    _off_center_frustum: PerspectiveOffCenterFrustum,
 }
 // 0.660105980317941
 impl Default for PerspectiveFrustum {
@@ -34,25 +34,25 @@ impl PerspectiveFrustum {
         aspect_ratio: f64,
         near: f64,
         far: f64,
-        xOffset: f64,
-        yOffset: f64,
+        x_offset: f64,
+        y_offset: f64,
     ) -> Self {
         return Self {
             fov: fov,
             near: near,
             far: far,
-            xOffset: xOffset,
-            yOffset: yOffset,
+            x_offset: x_offset,
+            y_offset: y_offset,
             aspect_ratio: aspect_ratio,
             _fov: -1.0,
             _fovy: -1.0,
             _near: near,
             _far: far,
-            _xOffset: xOffset,
-            _yOffset: yOffset,
+            _x_offset: x_offset,
+            _y_offset: y_offset,
             _aspect_ratio: -1.0,
-            _sseDenominator: -1.0,
-            _offCenterFrustum: PerspectiveOffCenterFrustum::new(),
+            _sse_denominator: -1.0,
+            _off_center_frustum: PerspectiveOffCenterFrustum::new(),
         };
     }
     pub fn get_fovy(&mut self) -> f64 {
@@ -61,20 +61,20 @@ impl PerspectiveFrustum {
     }
     pub fn get_projection_matrix(&mut self) -> &DMat4 {
         self.update_self();
-        return self._offCenterFrustum.get_projection_matrix();
+        return self._off_center_frustum.get_projection_matrix();
     }
     pub fn get_infinite_projection_matrix(&mut self) -> &DMat4 {
         self.update_self();
-        return self._offCenterFrustum.get_infinite_projection_matrix();
+        return self._off_center_frustum.get_infinite_projection_matrix();
     }
     pub fn get_sse_denominator(&mut self) -> f64 {
         self.update_self();
-        return self._sseDenominator;
+        return self._sse_denominator;
     }
 
     pub fn get_off_center_frustum(&mut self) -> &PerspectiveOffCenterFrustum {
         self.update_self();
-        return &self._offCenterFrustum;
+        return &self._off_center_frustum;
     }
     pub fn computeCullingVolume(
         &mut self,
@@ -84,7 +84,7 @@ impl PerspectiveFrustum {
     ) -> &CullingVolume {
         self.update_self();
         return self
-            ._offCenterFrustum
+            ._off_center_frustum
             .computeCullingVolume(position, direction, up);
     }
     pub fn update_self(&mut self) {
@@ -92,10 +92,10 @@ impl PerspectiveFrustum {
             || self.aspect_ratio != self._aspect_ratio
             || self.near != self._near
             || self.far != self._far
-            || self.xOffset != self._xOffset
-            || self.yOffset != self._yOffset
+            || self.x_offset != self._x_offset
+            || self.y_offset != self._y_offset
         {
-            let f = &mut self._offCenterFrustum;
+            let f = &mut self._off_center_frustum;
             self._aspect_ratio = self.aspect_ratio;
             self._fov = self.fov;
             self._fovy = if self.aspect_ratio <= 1.0 {
@@ -105,9 +105,9 @@ impl PerspectiveFrustum {
             };
             self._near = self.near;
             self._far = self.far;
-            self._sseDenominator = 2.0 * (0.5 * self._fovy).tan();
-            self._xOffset = self.xOffset;
-            self._yOffset = self.yOffset;
+            self._sse_denominator = 2.0 * (0.5 * self._fovy).tan();
+            self._x_offset = self.x_offset;
+            self._y_offset = self.y_offset;
 
             f.top = self.near * (0.5 * self._fovy).tan();
             f.bottom = -f.top;
@@ -116,10 +116,10 @@ impl PerspectiveFrustum {
             f.near = self.near;
             f.far = self.far;
 
-            f.right += self.xOffset;
-            f.left += self.xOffset;
-            f.top += self.yOffset;
-            f.bottom += self.yOffset;
+            f.right += self.x_offset;
+            f.left += self.x_offset;
+            f.top += self.y_offset;
+            f.bottom += self.y_offset;
         }
     }
 }
@@ -149,8 +149,8 @@ mod tests {
         assert!(f.aspect_ratio == 1.0);
         assert!(f.near == 1.0);
         assert!(f.far == 500000000.0);
-        assert!(f.xOffset == 0.0);
-        assert!(f.yOffset == 0.0);
+        assert!(f.x_offset == 0.0);
+        assert!(f.y_offset == 0.0);
     }
     #[test]
     fn get_left_plane() {

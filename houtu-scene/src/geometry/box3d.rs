@@ -91,6 +91,6 @@ impl Box3d {
         }
     }
     pub fn frmo_obb(obb: OrientedBoundingBox) -> Self {
-        Box3d::from_center_halfaxes(obb.center, obb.halfAxes)
+        Box3d::from_center_halfaxes(obb.center, obb.half_axes)
     }
 }

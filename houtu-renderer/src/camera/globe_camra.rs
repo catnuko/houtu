@@ -509,7 +509,7 @@ impl GlobeCamera {
             // Compute the Cartographic position of the self.
 
             self._positionCartographic = Ellipsoid::WGS84
-                .cartesianToCartographic(&self._positionWC)
+                .cartesian_to_cartographic(&self._positionWC)
                 .unwrap_or(Cartographic::default());
         }
 
@@ -647,7 +647,7 @@ impl GlobeCamera {
     ) -> Option<DVec3> {
         let _ellipsoid = Ellipsoid::WGS84;
         let ray = self.getPickRay(window_position, window_size);
-        let intersection = IntersectionTests::rayEllipsoid(&ray, None);
+        let intersection = IntersectionTests::ray_ellipsoid(&ray, None);
         let intersection = if let Some(v) = intersection {
             v
         } else {
@@ -727,22 +727,22 @@ impl GlobeCamera {
 
         let center_cartographic = Cartographic::from_radians(longitude, latitude, 0.0);
 
-        let center = ellipsoid.cartographicToCartesian(&center_cartographic);
+        let center = ellipsoid.cartographic_to_cartesian(&center_cartographic);
 
         let mut cart = Cartographic::default();
         cart.longitude = east;
         cart.latitude = north;
-        let mut north_east = ellipsoid.cartographicToCartesian(&cart);
+        let mut north_east = ellipsoid.cartographic_to_cartesian(&cart);
         cart.longitude = west;
-        let mut north_west = ellipsoid.cartographicToCartesian(&cart);
+        let mut north_west = ellipsoid.cartographic_to_cartesian(&cart);
         cart.longitude = longitude;
-        let mut north_center = ellipsoid.cartographicToCartesian(&cart);
+        let mut north_center = ellipsoid.cartographic_to_cartesian(&cart);
         cart.latitude = south;
-        let mut south_center = ellipsoid.cartographicToCartesian(&cart);
+        let mut south_center = ellipsoid.cartographic_to_cartesian(&cart);
         cart.longitude = east;
-        let mut south_east = ellipsoid.cartographicToCartesian(&cart);
+        let mut south_east = ellipsoid.cartographic_to_cartesian(&cart);
         cart.longitude = west;
-        let mut south_west = ellipsoid.cartographicToCartesian(&cart);
+        let mut south_west = ellipsoid.cartographic_to_cartesian(&cart);
 
         north_west = north_west.subtract(center);
         south_east = south_east.subtract(center);
@@ -751,7 +751,7 @@ impl GlobeCamera {
         north_center = north_center.subtract(center);
         south_center = south_center.subtract(center);
 
-        let direction = ellipsoid.geodeticSurfaceNormal(&center);
+        let direction = ellipsoid.geodetic_surface_normal(&center);
         let mut direction = if let Some(v) = direction {
             v
         } else {
@@ -790,7 +790,7 @@ impl GlobeCamera {
         // widest part of the rectangle when projected onto the globe.
         if south < 0. && north > 0. {
             let mut equatorCartographic = Cartographic::from_radians(west, 0.0, 0.0);
-            let mut equatorPosition = ellipsoid.cartographicToCartesian(&equatorCartographic);
+            let mut equatorPosition = ellipsoid.cartographic_to_cartesian(&equatorCartographic);
             equatorPosition = equatorPosition.subtract(center);
             d = [
                 d,
@@ -801,7 +801,7 @@ impl GlobeCamera {
             .fold(NEG_INFINITY, |a, &b| a.max(b));
 
             equatorCartographic.longitude = east;
-            equatorPosition = ellipsoid.cartographicToCartesian(&equatorCartographic);
+            equatorPosition = ellipsoid.cartographic_to_cartesian(&equatorCartographic);
             equatorPosition = equatorPosition.subtract(center);
             d = [
                 d,
@@ -1141,7 +1141,7 @@ mod tests {
         let windowSize = DVec2::new((drawing_buffer_width), (drawing_buffer_height));
 
         let p = camera.pick_ellipsoid(&window_coord, &windowSize).unwrap();
-        let c = ellipsoid.cartesianToCartographic(&p).unwrap();
+        let c = ellipsoid.cartesian_to_cartographic(&p).unwrap();
         assert!(c == Cartographic::new(0.0, 0.0, 0.0));
         let q = camera.pick_ellipsoid(&DVec2::ZERO, &windowSize);
         assert!(q.is_none())

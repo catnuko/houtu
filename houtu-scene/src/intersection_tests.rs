@@ -37,11 +37,11 @@ impl IntersectionTests {
 
         return Some(origin + direction.multiply_by_scalar(t));
     }
-    pub fn rayEllipsoid(ray: &Ray, ellipsoid: Option<&Ellipsoid>) -> Option<Interval> {
+    pub fn ray_ellipsoid(ray: &Ray, ellipsoid: Option<&Ellipsoid>) -> Option<Interval> {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
-        let inverseRadii = ellipsoid.oneOverRadii;
-        let q = inverseRadii.multiply_components(&ray.origin);
-        let w = inverseRadii.multiply_components(&ray.direction);
+        let inverse_radii = ellipsoid.one_over_radii;
+        let q = inverse_radii.multiply_components(&ray.origin);
+        let w = inverse_radii.multiply_components(&ray.direction);
 
         let q2 = q.magnitude_squared();
         let qw = q.dot(w);
@@ -108,90 +108,90 @@ impl IntersectionTests {
         let direction = ray.direction;
 
         if !position.equals(DVec3::ZERO) {
-            let normal = ellipsoid.geodeticSurfaceNormal(&position).unwrap();
+            let normal = ellipsoid.geodetic_surface_normal(&position).unwrap();
             if direction.dot(normal) >= 0.0 {
                 // The location provided is the closest point in altitude
                 return Some(position);
             }
         }
 
-        let intersects = IntersectionTests::rayEllipsoid(&ray, Some(ellipsoid)).is_some();
+        let intersects = IntersectionTests::ray_ellipsoid(&ray, Some(ellipsoid)).is_some();
 
         // Compute the scaled direction vector.
-        let f = ellipsoid.transformPositionToScaledSpace(&direction);
+        let f = ellipsoid.transform_position_to_scaled_space(&direction);
 
         // letructs a basis from the unit scaled direction vector. letruct its rotation and transpose.
-        let firstAxis = f.normalize();
+        let first_axis = f.normalize();
         let reference = f.most_orthogonal_axis();
-        let secondAxis = (reference.cross(firstAxis)).normalize();
-        let thirdAxis = (firstAxis.cross(secondAxis)).normalize();
-        let mut BB: [f64; 9] = [0.; 9];
-        BB[0] = firstAxis.x;
-        BB[1] = firstAxis.y;
-        BB[2] = firstAxis.z;
-        BB[3] = secondAxis.x;
-        BB[4] = secondAxis.y;
-        BB[5] = secondAxis.z;
-        BB[6] = thirdAxis.x;
-        BB[7] = thirdAxis.y;
-        BB[8] = thirdAxis.z;
-        let B = DMat3::from_raw_list(BB);
-        let B_T = B.transpose();
+        let second_axis = (reference.cross(first_axis)).normalize();
+        let third_axis = (first_axis.cross(second_axis)).normalize();
+        let mut bb: [f64; 9] = [0.; 9];
+        bb[0] = first_axis.x;
+        bb[1] = first_axis.y;
+        bb[2] = first_axis.z;
+        bb[3] = second_axis.x;
+        bb[4] = second_axis.y;
+        bb[5] = second_axis.z;
+        bb[6] = third_axis.x;
+        bb[7] = third_axis.y;
+        bb[8] = third_axis.z;
+        let B = DMat3::from_raw_list(bb);
+        let b_t = B.transpose();
 
         // Get the scaling matrix and its inverse.
-        let D_I = DMat3::from_scale3(ellipsoid.radii);
-        let D = DMat3::from_scale3(ellipsoid.oneOverRadii);
+        let d_i = DMat3::from_scale3(ellipsoid.radii);
+        let D = DMat3::from_scale3(ellipsoid.one_over_radii);
 
-        let mut CC: [f64; 9] = [0.; 9];
-        CC[0] = 0.0;
-        CC[1] = -direction.z;
-        CC[2] = direction.y;
-        CC[3] = direction.z;
-        CC[4] = 0.0;
-        CC[5] = -direction.x;
-        CC[6] = -direction.y;
-        CC[7] = direction.x;
-        CC[8] = 0.0;
-        let C = DMat3::from_raw_list(CC);
+        let mut cc: [f64; 9] = [0.; 9];
+        cc[0] = 0.0;
+        cc[1] = -direction.z;
+        cc[2] = direction.y;
+        cc[3] = direction.z;
+        cc[4] = 0.0;
+        cc[5] = -direction.x;
+        cc[6] = -direction.y;
+        cc[7] = direction.x;
+        cc[8] = 0.0;
+        let C = DMat3::from_raw_list(cc);
 
-        let temp = B_T.mul_mat3(&D).mul_mat3(&C);
-        let A = temp.mul_mat3(&D_I).mul_mat3(&B);
+        let temp = b_t.mul_mat3(&D).mul_mat3(&C);
+        let A = temp.mul_mat3(&d_i).mul_mat3(&B);
         let b = temp.mul_vec3(position);
 
         // Solve for the solutions to the expression in standard form:
-        let solutions = quadraticVectorExpression(&A, &b.negate(), 0.0, 0.0, 1.0);
+        let solutions = quadratic_vector_expression(&A, &b.negate(), 0.0, 0.0, 1.0);
 
         let mut s;
         let mut altitude;
         let length = solutions.len();
         if length > 0 {
             let mut closest = DVec3::ZERO.clone();
-            let mut maximumValue = NEG_INFINITY;
+            let mut maximum_value = NEG_INFINITY;
             for i in 0..length {
-                s = D_I.mul_vec3(B.mul_vec3(solutions[i]));
+                s = d_i.mul_vec3(B.mul_vec3(solutions[i]));
                 let v = (s.subtract(position)).normalize();
                 let dot_product = v.dot(direction);
 
-                if dot_product > maximumValue {
-                    maximumValue = dot_product;
+                if dot_product > maximum_value {
+                    maximum_value = dot_product;
                     closest = s.clone();
                 }
             }
 
-            let mut surfacePoint = ellipsoid.cartesianToCartographic(&closest).unwrap();
-            maximumValue = maximumValue.clamp(0.0, 1.0);
-            altitude =
-                closest.subtract(position).magnitude() * (1.0 - maximumValue * maximumValue).sqrt();
+            let mut surface_point = ellipsoid.cartesian_to_cartographic(&closest).unwrap();
+            maximum_value = maximum_value.clamp(0.0, 1.0);
+            altitude = closest.subtract(position).magnitude()
+                * (1.0 - maximum_value * maximum_value).sqrt();
             altitude = if intersects { -altitude } else { altitude };
 
-            surfacePoint.height = altitude;
-            return Some(ellipsoid.cartographicToCartesian(&surfacePoint));
+            surface_point.height = altitude;
+            return Some(ellipsoid.cartographic_to_cartesian(&surface_point));
         }
 
         return None;
     }
 }
-fn addWithCancellationCheck(left: f64, right: f64, tolerance: f64) -> f64 {
+fn add_with_cancellation_check(left: f64, right: f64, tolerance: f64) -> f64 {
     let difference = left + right;
     if left.signum() != right.signum()
         && (difference / left.abs().max(right.abs())).abs() < tolerance
@@ -201,29 +201,35 @@ fn addWithCancellationCheck(left: f64, right: f64, tolerance: f64) -> f64 {
 
     return difference;
 }
-fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Vec<DVec3> {
-    let mut AA: [f64; 9] = [0.; 9];
-    A.write_cols_to_slice(&mut AA);
+fn quadratic_vector_expression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Vec<DVec3> {
+    let mut aa: [f64; 9] = [0.; 9];
+    A.write_cols_to_slice(&mut aa);
 
-    let xSquared = x * x;
-    let wSquared = w * w;
+    let x_squared = x * x;
+    let w_squared = w * w;
 
-    let l2 = (AA[DMat3::COLUMN1ROW1] - AA[DMat3::COLUMN2ROW2]) * wSquared;
+    let l2 = (aa[DMat3::COLUMN1ROW1] - aa[DMat3::COLUMN2ROW2]) * w_squared;
     let l1 = w
-        * (x * addWithCancellationCheck(AA[DMat3::COLUMN1ROW0], AA[DMat3::COLUMN0ROW1], EPSILON15)
-            + b.y);
-    let l0 = AA[DMat3::COLUMN0ROW0] * xSquared + AA[DMat3::COLUMN2ROW2] * wSquared + x * b.x + c;
+        * (x * add_with_cancellation_check(
+            aa[DMat3::COLUMN1ROW0],
+            aa[DMat3::COLUMN0ROW1],
+            EPSILON15,
+        ) + b.y);
+    let l0 = aa[DMat3::COLUMN0ROW0] * x_squared + aa[DMat3::COLUMN2ROW2] * w_squared + x * b.x + c;
 
-    let r1 = wSquared
-        * addWithCancellationCheck(AA[DMat3::COLUMN2ROW1], AA[DMat3::COLUMN1ROW2], EPSILON15);
+    let r1 = w_squared
+        * add_with_cancellation_check(aa[DMat3::COLUMN2ROW1], aa[DMat3::COLUMN1ROW2], EPSILON15);
     let r0 = w
-        * (x * addWithCancellationCheck(AA[DMat3::COLUMN2ROW0], AA[DMat3::COLUMN0ROW2], EPSILON15)
-            + b.z);
+        * (x * add_with_cancellation_check(
+            aa[DMat3::COLUMN2ROW0],
+            aa[DMat3::COLUMN0ROW2],
+            EPSILON15,
+        ) + b.z);
 
     let cosines;
     let mut solutions = vec![];
     if r0 == 0.0 && r1 == 0.0 {
-        cosines = QuadraticRealPolynomial::computeRealRoots(l2, l1, l0).unwrap();
+        cosines = QuadraticRealPolynomial::compute_real_roots(l2, l1, l0).unwrap();
         if cosines.len() == 0 {
             return solutions;
         }
@@ -243,43 +249,43 @@ fn quadraticVectorExpression(A: &DMat3, b: &DVec3, c: f64, x: f64, w: f64) -> Ve
         return solutions;
     }
 
-    let r0Squared = r0 * r0;
-    let r1Squared = r1 * r1;
-    let l2Squared = l2 * l2;
+    let r0_squared = r0 * r0;
+    let r1_squared = r1 * r1;
+    let l2_squared = l2 * l2;
     let r0r1 = r0 * r1;
 
-    let c4 = l2Squared + r1Squared;
+    let c4 = l2_squared + r1_squared;
     let c3 = 2.0 * (l1 * l2 + r0r1);
-    let c2 = 2.0 * l0 * l2 + l1 * l1 - r1Squared + r0Squared;
+    let c2 = 2.0 * l0 * l2 + l1 * l1 - r1_squared + r0_squared;
     let c1 = 2.0 * (l0 * l1 - r0r1);
-    let c0 = l0 * l0 - r0Squared;
+    let c0 = l0 * l0 - r0_squared;
 
     if c4 == 0.0 && c3 == 0.0 && c2 == 0.0 && c1 == 0.0 {
         return solutions;
     }
 
-    cosines = QuarticRealPolynomial::computeRealRoots(c4, c3, c2, c1, c0).unwrap();
+    cosines = QuarticRealPolynomial::compute_real_roots(c4, c3, c2, c1, c0).unwrap();
     let length = cosines.len();
     if length == 0 {
         return solutions;
     }
     for i in 0..length {
         let cosine = cosines[i];
-        let cosineSquared = cosine * cosine;
-        let sineSquared = (1.0 - cosineSquared).max(0.0);
-        let sine = sineSquared.sqrt();
+        let cosine_squared = cosine * cosine;
+        let sine_squared = (1.0 - cosine_squared).max(0.0);
+        let sine = sine_squared.sqrt();
 
-        //let left = l2 * cosineSquared + l1 * cosine + l0;
+        //let left = l2 * cosine_squared + l1 * cosine + l0;
         let left;
         if l2.signum() == l0.signum() {
-            left = addWithCancellationCheck(l2 * cosineSquared + l0, l1 * cosine, EPSILON12);
+            left = add_with_cancellation_check(l2 * cosine_squared + l0, l1 * cosine, EPSILON12);
         } else if l0.signum() == (l1 * cosine).signum() {
-            left = addWithCancellationCheck(l2 * cosineSquared, l1 * cosine + l0, EPSILON12);
+            left = add_with_cancellation_check(l2 * cosine_squared, l1 * cosine + l0, EPSILON12);
         } else {
-            left = addWithCancellationCheck(l2 * cosineSquared + l1 * cosine, l0, EPSILON12);
+            left = add_with_cancellation_check(l2 * cosine_squared + l1 * cosine, l0, EPSILON12);
         }
 
-        let right = addWithCancellationCheck(r1 * cosine, r0, EPSILON15);
+        let right = add_with_cancellation_check(r1 * cosine, r0, EPSILON15);
         let product = left * right;
 
         if product < 0.0 {
@@ -310,7 +316,7 @@ mod tests {
         let origin = DVec3::new(20000.0, 0.0, 0.0);
         let direction = origin.normalize().negate();
         let ray = Ray::new(origin, direction);
-        let actual = IntersectionTests::rayEllipsoid(&ray, None);
+        let actual = IntersectionTests::ray_ellipsoid(&ray, None);
         let actual = actual.unwrap();
         assert!(actual.start == 0.0);
         assert!(actual.stop == Ellipsoid::WGS84.radii.x + origin.x);
@@ -320,7 +326,7 @@ mod tests {
         let origin = DVec3::new(20000.0, 0.0, 0.0);
         let direction = origin.normalize();
         let ray = Ray::new(origin, direction);
-        let actual = IntersectionTests::rayEllipsoid(&ray, None);
+        let actual = IntersectionTests::ray_ellipsoid(&ray, None);
         let actual = actual.unwrap();
         assert!(actual.start == 0.0);
         assert!(actual.stop == Ellipsoid::WGS84.radii.x - origin.x);
@@ -328,11 +334,11 @@ mod tests {
     #[test]
     fn tangent_intersections() {
         let ray = Ray::new(DVec3::UNIT_X, DVec3::UNIT_Z);
-        let actual = IntersectionTests::rayEllipsoid(&ray, Some(&Ellipsoid::UNIT_SPHERE));
+        let actual = IntersectionTests::ray_ellipsoid(&ray, Some(&Ellipsoid::UNIT_SPHERE));
         assert!(actual.is_none());
     }
     #[test]
-    fn grazingAltitudeLocation_inside_ellipsoid() {
+    fn grazing_altitude_location_inside_ellipsoid() {
         let ellipsoid = Ellipsoid::UNIT_SPHERE;
         let ray = Ray::new(DVec3::new(0.5, 0.0, 0.0), DVec3::UNIT_Z);
         let actual = IntersectionTests::grazing_altitude_location(&ray, Some(&ellipsoid));

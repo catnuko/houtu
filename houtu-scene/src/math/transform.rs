@@ -45,7 +45,7 @@ pub fn eastNorthUpToFixedFrame(origin: &DVec3, ellipsoid: Option<Ellipsoid>) -> 
         scratchThirdCartesian = DVec3::from_array([0., 0., 1.]);
     } else {
         let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
-        scratchCalculateCartesian_up = ellipsoid.geodeticSurfaceNormal(&origin).unwrap();
+        scratchCalculateCartesian_up = ellipsoid.geodetic_surface_normal(&origin).unwrap();
 
         let mut up = scratchCalculateCartesian_up;
         let mut east = scratchCalculateCartesian_east;

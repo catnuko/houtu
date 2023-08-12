@@ -91,7 +91,7 @@ fn render_system(
     let mut globe_camera = globe_camera_query
         .get_single_mut()
         .expect("GlobeCamera不存在");
-    primitive.beginFrame();
+    primitive.begin_frame();
     primitive.render(
         &mut globe_camera,
         &frame_count,
@@ -102,7 +102,7 @@ fn render_system(
         &mut imagery_storage,
     );
 
-    primitive.endFrame(
+    primitive.end_frame(
         &frame_count,
         &time,
         &mut globe_camera,

@@ -14,7 +14,7 @@ impl TerrainExaggeration {
         terrain_exaggeration_relative_height: f64,
     ) -> DVec3 {
         let cartographic = ellipsoid
-            .cartesianToCartographic(position)
+            .cartesian_to_cartographic(position)
             .expect("TerrainExaggeration get_position error");
         let new_height = TerrainExaggeration::get_height(
             cartographic.height,

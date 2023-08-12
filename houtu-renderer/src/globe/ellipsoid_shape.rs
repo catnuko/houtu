@@ -1,9 +1,7 @@
 use std::f64::consts::{PI, TAU};
 
-
-
 use bevy::math::DVec3;
-use bevy::prelude::{Mesh};
+use bevy::prelude::Mesh;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use houtu_scene::*;
@@ -140,17 +138,17 @@ impl From<EllipsoidShape> for Mesh {
                 extraIndices += 1;
             }
         }
-        let vertexCount = (numThetas * numPhis * vertexMultiplier) as i32;
-        let mut positions = (0..vertexCount * 3).map(|_i| 0.).collect::<Vec<f64>>();
-        let mut normals = (0..vertexCount * 3).map(|_i| 0.).collect::<Vec<f64>>();
-        let mut st = (0..vertexCount * 2).map(|_i| 0.).collect::<Vec<f64>>();
-        let mut isInner = (0..vertexCount).map(|_i| false).collect::<Vec<bool>>();
-        let mut negateNormal = (0..vertexCount).map(|_i| false).collect::<Vec<bool>>();
+        let vertex_count = (numThetas * numPhis * vertexMultiplier) as i32;
+        let mut positions = (0..vertex_count * 3).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut normals = (0..vertex_count * 3).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut st = (0..vertex_count * 2).map(|_i| 0.).collect::<Vec<f64>>();
+        let mut isInner = (0..vertex_count).map(|_i| false).collect::<Vec<bool>>();
+        let mut negateNormal = (0..vertex_count).map(|_i| false).collect::<Vec<bool>>();
 
         // Multiply by 6 because there are two triangles per sector
-        let indexCount = slicePartitions * stackPartitions * vertexMultiplier;
+        let index_count = slicePartitions * stackPartitions * vertexMultiplier;
         let numIndices = 6
-            * (indexCount + extraIndices + 1
+            * (index_count + extraIndices + 1
                 - (slicePartitions + stackPartitions) * vertexMultiplier);
         let mut indices = (0..numIndices).map(|_i| 0).collect::<Vec<i32>>();
 
@@ -178,7 +176,7 @@ impl From<EllipsoidShape> for Mesh {
             }
         }
         // Create inner surface
-        let mut vertexIndex = vertexCount / 2;
+        let mut vertex_index = vertex_count / 2;
         if hasInnerSurface {
             for i in 0..numPhis {
                 for j in 0..numThetas {
@@ -190,11 +188,11 @@ impl From<EllipsoidShape> for Mesh {
                     index += 1;
                     // Keep track of which vertices are the inner and which ones
                     // need the normal to be negated
-                    isInner[vertexIndex as usize] = true;
+                    isInner[vertex_index as usize] = true;
                     if i > 0 && i != numPhis - 1 && j != 0 && j != numThetas - 1 {
-                        negateNormal[vertexIndex as usize] = true;
+                        negateNormal[vertex_index as usize] = true;
                     }
-                    vertexIndex += 1;
+                    vertex_index += 1;
                 }
             }
         }
@@ -346,7 +344,7 @@ impl From<EllipsoidShape> for Mesh {
         let ellipsoid_inner = Ellipsoid::new(innerRadii.x, innerRadii.y, innerRadii.z);
         let mut stIndex = 0;
         let mut normalIndex = 0;
-        for i in 0..vertexCount {
+        for i in 0..vertex_count {
             let ellipsoid: Ellipsoid = {
                 if isInner[i as usize] {
                     ellipsoid_outer.clone()
@@ -359,7 +357,7 @@ impl From<EllipsoidShape> for Mesh {
             let y = positions[(i * 3 + 1) as usize];
             let z = positions[(i * 3 + 2) as usize];
             let position = DVec3::new(x, y, z);
-            let mut normal: DVec3 = ellipsoid.geodeticSurfaceNormal(&position).unwrap();
+            let mut normal: DVec3 = ellipsoid.geodetic_surface_normal(&position).unwrap();
             if negateNormal[i as usize] {
                 normal = normal.negate();
             }
@@ -376,31 +374,31 @@ impl From<EllipsoidShape> for Mesh {
             normalIndex += 1;
         }
 
-        let mut endPositions: Vec<[f32; 3]> = Vec::new();
-        let mut endNormals: Vec<[f32; 3]> = Vec::new();
-        let mut endST: Vec<[f32; 2]> = Vec::new();
+        let mut end_positions: Vec<[f32; 3]> = Vec::new();
+        let mut end_normals: Vec<[f32; 3]> = Vec::new();
+        let mut end_st: Vec<[f32; 2]> = Vec::new();
         positions.iter().enumerate().step_by(3).for_each(|(i, _x)| {
-            endPositions.push([
+            end_positions.push([
                 positions[i] as f32,
                 positions[i + 1] as f32,
                 positions[i + 2] as f32,
             ])
         });
         normals.iter().enumerate().step_by(3).for_each(|(i, _x)| {
-            endNormals.push([
+            end_normals.push([
                 normals[i] as f32,
                 normals[i + 1] as f32,
                 normals[i + 2] as f32,
             ]);
         });
         st.iter().enumerate().step_by(2).for_each(|(i, _x)| {
-            endST.push([st[i] as f32, st[i + 1] as f32]);
+            end_st.push([st[i] as f32, st[i + 1] as f32]);
         });
         let indices2 = Indices::U32(indices.iter().map(|&x| x as u32).collect());
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, endPositions);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, endNormals);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, endST);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, end_positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, end_normals);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, end_st);
         mesh.set_indices(Some(indices2));
         mesh
     }

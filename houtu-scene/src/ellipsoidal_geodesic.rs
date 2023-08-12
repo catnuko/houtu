@@ -131,8 +131,8 @@ impl EllipsoidGeodesic {
         return Cartographic::new(self.start.longitude + l, latitude, 0.0);
     }
     fn computeProperties(&mut self, start: &Cartographic, end: &Cartographic) {
-        let firstCartesian = self.ellipsoid.cartographicToCartesian(start).normalize();
-        let lastCartesian = self.ellipsoid.cartographicToCartesian(end).normalize();
+        let firstCartesian = self.ellipsoid.cartographic_to_cartesian(start).normalize();
+        let lastCartesian = self.ellipsoid.cartographic_to_cartesian(end).normalize();
 
         if (firstCartesian.angle_between(lastCartesian).abs() - PI).abs() < 0.0125 {
             panic!("")
@@ -142,7 +142,7 @@ impl EllipsoidGeodesic {
 
         self.vincentyInverseFormula(
             self.ellipsoid.maximum_radius,
-            self.ellipsoid.minimumRadius,
+            self.ellipsoid.minimum_radius,
             start.longitude,
             start.latitude,
             end.longitude,
@@ -266,7 +266,7 @@ impl EllipsoidGeodesic {
     fn setConstants(&mut self) {
         let uSquared = self.uSquared;
         let a = self.ellipsoid.maximum_radius;
-        let b = self.ellipsoid.minimumRadius;
+        let b = self.ellipsoid.minimum_radius;
         let f = (a - b) / a;
 
         let cosineHeading = self.startHeading.cos();

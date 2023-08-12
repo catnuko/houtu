@@ -12,7 +12,6 @@
 mod attribute_compression;
 mod bounding_rectangle;
 mod bounding_volume;
-mod camera;
 mod cubic_real_polynomial;
 mod culling_volume;
 mod ellipsoid;
@@ -46,7 +45,6 @@ mod wmts_imagery_provider;
 pub use attribute_compression::*;
 pub use bounding_rectangle::*;
 pub use bounding_volume::*;
-pub use camera::*;
 pub use cubic_real_polynomial::*;
 pub use culling_volume::*;
 pub use ellipsoid::Ellipsoid;

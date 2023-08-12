@@ -16,7 +16,7 @@ pub struct PerspectiveOffCenterFrustum {
     _near: f64,
     pub far: f64,
     _far: f64,
-    _cullingVolume: CullingVolume,
+    _culling_volume: CullingVolume,
     pub perspective_matrix: DMat4,
     pub infinite_perspective: DMat4,
 }
@@ -35,7 +35,7 @@ impl PerspectiveOffCenterFrustum {
             _near: -1.0,
             far: -1.0,
             _far: -1.0,
-            _cullingVolume: CullingVolume::new(None),
+            _culling_volume: CullingVolume::new(None),
             infinite_perspective: DMat4::ZERO,
             perspective_matrix: DMat4::ZERO,
         }
@@ -86,7 +86,7 @@ impl PerspectiveOffCenterFrustum {
         direction: &DVec3,
         up: &DVec3,
     ) -> &CullingVolume {
-        let planes = &mut self._cullingVolume.planes;
+        let planes = &mut self._culling_volume.planes;
         let position = *position;
         let direction = *direction;
         let up = *up;
@@ -102,8 +102,8 @@ impl PerspectiveOffCenterFrustum {
         let mut near_center = direction * n;
         near_center = position + near_center;
 
-        let mut farCenter = direction * f;
-        farCenter = position + farCenter;
+        let mut far_center = direction * f;
+        far_center = position + far_center;
 
         //LEFT plane computation
         let mut normal = right.multiply_by_scalar(l);
@@ -160,9 +160,9 @@ impl PerspectiveOffCenterFrustum {
         plane.x = normal.x;
         plane.y = normal.y;
         plane.z = normal.z;
-        plane.w = -normal.dot(farCenter);
-        // self._cullingVolume = CullingVolume::new(Some([]))
-        return &self._cullingVolume;
+        plane.w = -normal.dot(far_center);
+        // self._culling_volume = CullingVolume::new(Some([]))
+        return &self._culling_volume;
     }
 }
 

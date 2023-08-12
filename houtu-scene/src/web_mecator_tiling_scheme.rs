@@ -20,16 +20,16 @@ pub struct WebMercatorTilingScheme {
     pub projection: WebMercatorProjection,
     pub number_of_level_zero_tiles_x: u32,
     pub number_of_level_zero_tiles_y: u32,
-    rectangleSouthwestInMeters: DVec2,
-    rectangleNortheastInMeters: DVec2,
+    rectangle_south_west_in_meters: DVec2,
+    rectangle_north_east_in_meters: DVec2,
 }
 pub struct WebMercatorTilingSchemeOptions {
     ellipsoid: Ellipsoid,
     projection: WebMercatorProjection,
     number_of_level_zero_tiles_x: u32,
     number_of_level_zero_tiles_y: u32,
-    rectangleSouthwestInMeters: Option<DVec2>,
-    rectangleNortheastInMeters: Option<DVec2>,
+    rectangle_south_west_in_meters: Option<DVec2>,
+    rectangle_north_east_in_meters: Option<DVec2>,
 }
 impl Default for WebMercatorTilingSchemeOptions {
     fn default() -> Self {
@@ -39,8 +39,8 @@ impl Default for WebMercatorTilingSchemeOptions {
             projection: WebMercatorProjection::from_ellipsoid(&e),
             number_of_level_zero_tiles_x: 1,
             number_of_level_zero_tiles_y: 1,
-            rectangleSouthwestInMeters: None,
-            rectangleNortheastInMeters: None,
+            rectangle_south_west_in_meters: None,
+            rectangle_north_east_in_meters: None,
         }
     }
 }
@@ -51,20 +51,27 @@ impl Default for WebMercatorTilingScheme {
 }
 impl WebMercatorTilingScheme {
     fn new(options: WebMercatorTilingSchemeOptions) -> Self {
-        let mut rectangleNortheastInMeters: DVec2;
-        let mut rectangleSouthwestInMeters: DVec2;
-        if options.rectangleNortheastInMeters.is_some()
-            && options.rectangleSouthwestInMeters.is_some()
+        let mut rectangle_north_east_in_meters: DVec2;
+        let mut rectangle_south_west_in_meters: DVec2;
+        if options.rectangle_north_east_in_meters.is_some()
+            && options.rectangle_south_west_in_meters.is_some()
         {
-            rectangleNortheastInMeters = options.rectangleNortheastInMeters.unwrap().clone();
-            rectangleSouthwestInMeters = options.rectangleSouthwestInMeters.unwrap().clone();
+            rectangle_north_east_in_meters =
+                options.rectangle_north_east_in_meters.unwrap().clone();
+            rectangle_south_west_in_meters =
+                options.rectangle_south_west_in_meters.unwrap().clone();
         } else {
             let semimajorAxisTimesPi = options.ellipsoid.maximum_radius * PI;
-            rectangleSouthwestInMeters = DVec2::new(-semimajorAxisTimesPi, -semimajorAxisTimesPi);
-            rectangleNortheastInMeters = DVec2::new(semimajorAxisTimesPi, semimajorAxisTimesPi);
+            rectangle_south_west_in_meters =
+                DVec2::new(-semimajorAxisTimesPi, -semimajorAxisTimesPi);
+            rectangle_north_east_in_meters = DVec2::new(semimajorAxisTimesPi, semimajorAxisTimesPi);
         }
-        let southwest = options.projection.un_project(&rectangleSouthwestInMeters);
-        let northeast = options.projection.un_project(&rectangleNortheastInMeters);
+        let southwest = options
+            .projection
+            .un_project(&rectangle_south_west_in_meters);
+        let northeast = options
+            .projection
+            .un_project(&rectangle_north_east_in_meters);
         let rectangle = Rectangle::new(
             southwest.longitude,
             southwest.latitude,
@@ -77,8 +84,8 @@ impl WebMercatorTilingScheme {
             projection: options.projection,
             number_of_level_zero_tiles_x: options.number_of_level_zero_tiles_x,
             number_of_level_zero_tiles_y: options.number_of_level_zero_tiles_y,
-            rectangleSouthwestInMeters,
-            rectangleNortheastInMeters,
+            rectangle_south_west_in_meters,
+            rectangle_north_east_in_meters,
         };
     }
 }
@@ -103,18 +110,20 @@ impl TilingScheme for WebMercatorTilingScheme {
             * self.get_number_of_y_tiles_at_level(level);
     }
     fn tile_x_y_to_native_rectange(&self, x: u32, y: u32, level: u32) -> Rectangle {
-        let xTiles = self.get_number_of_x_tiles_at_level(level);
-        let yTiles = self.get_number_of_y_tiles_at_level(level);
+        let x_tiles = self.get_number_of_x_tiles_at_level(level);
+        let y_tiles = self.get_number_of_y_tiles_at_level(level);
 
-        let xTileWidth =
-            (self.rectangleNortheastInMeters.x - self.rectangleSouthwestInMeters.x) / xTiles as f64;
-        let west = (x as f64) * xTileWidth + self.rectangleSouthwestInMeters.x;
-        let east = ((x + 1) as f64) * xTileWidth + self.rectangleSouthwestInMeters.x;
+        let x_tile_width = (self.rectangle_north_east_in_meters.x
+            - self.rectangle_south_west_in_meters.x)
+            / x_tiles as f64;
+        let west = (x as f64) * x_tile_width + self.rectangle_south_west_in_meters.x;
+        let east = ((x + 1) as f64) * x_tile_width + self.rectangle_south_west_in_meters.x;
 
-        let yTileHeight =
-            (self.rectangleNortheastInMeters.y - self.rectangleSouthwestInMeters.y) / yTiles as f64;
-        let north = self.rectangleNortheastInMeters.y - y as f64 * yTileHeight;
-        let south = self.rectangleNortheastInMeters.y - (y + 1) as f64 * yTileHeight;
+        let y_tile_height = (self.rectangle_north_east_in_meters.y
+            - self.rectangle_south_west_in_meters.y)
+            / y_tiles as f64;
+        let north = self.rectangle_north_east_in_meters.y - y as f64 * y_tile_height;
+        let south = self.rectangle_north_east_in_meters.y - (y + 1) as f64 * y_tile_height;
         return Rectangle::new(west, south, east, north);
     }
     fn tile_x_y_to_rectange(&self, x: u32, y: u32, level: u32) -> Rectangle {
@@ -138,29 +147,31 @@ impl TilingScheme for WebMercatorTilingScheme {
             // outside the bounds of the tiling scheme
             return None;
         }
-        let xTiles = self.get_number_of_x_tiles_at_level(level);
-        let yTiles = self.get_number_of_y_tiles_at_level(level);
+        let x_tiles = self.get_number_of_x_tiles_at_level(level);
+        let y_tiles = self.get_number_of_y_tiles_at_level(level);
 
-        let xTileWidth =
-            (self.rectangleNortheastInMeters.x - self.rectangleSouthwestInMeters.x) / xTiles as f64;
-        let yTileHeight =
-            (self.rectangleNortheastInMeters.y - self.rectangleSouthwestInMeters.y) / yTiles as f64;
+        let x_tile_width = (self.rectangle_north_east_in_meters.x
+            - self.rectangle_south_west_in_meters.x)
+            / x_tiles as f64;
+        let y_tile_height = (self.rectangle_north_east_in_meters.y
+            - self.rectangle_south_west_in_meters.y)
+            / y_tiles as f64;
 
-        let webMercatorPosition = self.projection.project(coord);
-        let distanceFromWest = webMercatorPosition.x - self.rectangleSouthwestInMeters.x;
-        let distanceFromNorth = self.rectangleNortheastInMeters.y - webMercatorPosition.y;
+        let web_mercator_position = self.projection.project(coord);
+        let distance_from_west = web_mercator_position.x - self.rectangle_south_west_in_meters.x;
+        let distance_from_north = self.rectangle_north_east_in_meters.y - web_mercator_position.y;
 
-        let mut xTileCoordinate: u32 = (distanceFromWest / xTileWidth).floor() as u32;
-        if xTileCoordinate >= xTiles {
-            xTileCoordinate = xTiles - 1;
+        let mut x_tile_coordinate: u32 = (distance_from_west / x_tile_width).floor() as u32;
+        if x_tile_coordinate >= x_tiles {
+            x_tile_coordinate = x_tiles - 1;
         }
 
-        let mut yTileCoordinate: u32 = (distanceFromNorth / yTileHeight).floor() as u32;
-        if yTileCoordinate >= yTiles {
-            yTileCoordinate = yTiles - 1;
+        let mut y_tile_coordinate: u32 = (distance_from_north / y_tile_height).floor() as u32;
+        if y_tile_coordinate >= y_tiles {
+            y_tile_coordinate = y_tiles - 1;
         }
 
-        return Some(UVec2::new(xTileCoordinate, yTileCoordinate));
+        return Some(UVec2::new(x_tile_coordinate, y_tile_coordinate));
     }
     fn rectangle_to_native_rectangle(&self, rectangle: &Rectangle) -> Rectangle {
         let west = rectangle.west.to_degrees();
@@ -183,7 +194,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tileXYToRectangle() {
+    fn test_tile_xy_to_rectangle() {
         let tiling_scheme = WebMercatorTilingScheme::default();
         let rectangle = tiling_scheme.tile_x_y_to_rectange(0, 0, 0);
         let tiling_scheme_rectangle = tiling_scheme.rectangle;
@@ -242,18 +253,18 @@ mod tests {
     fn test_return_correct_tile() {
         let tiling_scheme = WebMercatorTilingScheme::default();
 
-        let centerOfSouthwesternChild = Cartographic::new(-PI / 2.0, -PI / 4.0, 0.);
+        let center_of_south_western_child = Cartographic::new(-PI / 2.0, -PI / 4.0, 0.);
         assert!(
             tiling_scheme
-                .position_to_tile_x_y(&centerOfSouthwesternChild, 1)
+                .position_to_tile_x_y(&center_of_south_western_child, 1)
                 .unwrap()
                 == UVec2::new(0, 1)
         );
 
-        let centerOfNortheasternChild = Cartographic::new(PI / 2.0, PI / 4.0, 0.);
+        let center_of_north_eastern_child = Cartographic::new(PI / 2.0, PI / 4.0, 0.);
         assert!(
             tiling_scheme
-                .position_to_tile_x_y(&centerOfNortheasternChild, 1)
+                .position_to_tile_x_y(&center_of_north_eastern_child, 1)
                 .unwrap()
                 == UVec2::new(1, 0)
         );

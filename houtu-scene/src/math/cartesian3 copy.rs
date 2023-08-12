@@ -210,9 +210,9 @@ impl Cartesian3 {
         let height = height.unwrap_or(0.0);
         let mut scratchN = Cartesian3::ZERO;
         let mut scratchK = Cartesian3::ZERO;
-        let cosLatitude = latitude.cos();
-        scratchN.x = cosLatitude * longitude.cos();
-        scratchN.y = cosLatitude * longitude.sin();
+        let cos_latitude = latitude.cos();
+        scratchN.x = cos_latitude * longitude.cos();
+        scratchN.y = cos_latitude * longitude.sin();
         scratchN.z = latitude.sin();
         scratchK = radii_squared.multiply_components(&scratchN);
         let gamma = scratchN.dot(scratchK).sqrt();
@@ -540,7 +540,7 @@ mod tests {
         let ellipsoid = Ellipsoid::WGS84;
         let actual = Cartesian3::from_degrees(lon, lat, Some(height), None);
         let expected =
-            ellipsoid.cartographicToCartesian(&Cartographic::from_degrees(lon, lat, height));
+            ellipsoid.cartographic_to_cartesian(&Cartographic::from_degrees(lon, lat, height));
         // expect(actual).toEqual(expected);
         assert!(actual.equals(&expected));
     }
@@ -550,7 +550,7 @@ mod tests {
         let lat = -40.0.to_radians();
         let ellipsoid = Ellipsoid::WGS84;
         let actual = Cartesian3::from_radians(lon, lat, None, None);
-        let expected = ellipsoid.cartographicToCartesian(&Cartographic::new(lon, lat, 0.0));
+        let expected = ellipsoid.cartographic_to_cartesian(&Cartographic::new(lon, lat, 0.0));
         assert!(actual.equals(&expected));
     }
 }

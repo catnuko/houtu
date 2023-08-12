@@ -197,7 +197,7 @@ impl GlobeSurfaceTileProvider {
             return visibility;
         }
         let occludee_point_in_scaled_space = occludee_point_in_scaled_space.unwrap();
-        let v = ellipsoidal_occluder.isScaledSpacePointVisiblePossiblyUnderEllipsoid(
+        let v = ellipsoidal_occluder.is_scaled_space_point_visible_possibly_under_ellipsoid(
             &occludee_point_in_scaled_space,
             Some(tile_bounding_region.minimum_height),
         );
@@ -399,7 +399,7 @@ fn compute_distance_to_tile(
     }
     tile_bounding_region.minimum_height = min;
     tile_bounding_region.maximum_height = min;
-    let distance = tile_bounding_region.distanceToCameraRegion(
+    let distance = tile_bounding_region.distance_to_camera_region(
         &camera.get_position_wc(),
         &camera.get_position_cartographic(),
         &GeographicProjection::WGS84,
@@ -497,7 +497,7 @@ pub fn update_tile_bounding_region(
 
                     tile_bounding_region.oriented_bounding_box =
                         Some(mesh.oriented_bounding_box.clone());
-                    tile_bounding_region.boundingSphere = Some(mesh.bounding_sphere_3d.clone());
+                    tile_bounding_region.bounding_sphere = Some(mesh.bounding_sphere_3d.clone());
 
                     tile.data.occludee_point_in_scaled_space =
                         mesh.occludee_point_in_scaled_space.clone();
@@ -518,7 +518,7 @@ pub fn update_tile_bounding_region(
                     true
                 } else {
                     false
-                } || if let Some(_) = tile_bounding_region.boundingSphere {
+                } || if let Some(_) = tile_bounding_region.bounding_sphere {
                     true
                 } else {
                     false
@@ -526,7 +526,7 @@ pub fn update_tile_bounding_region(
                 let height_changed = tile_bounding_region.minimum_height != old_minimum_height
                     || tile_bounding_region.maximum_height != old_maximum_height;
                 if height_changed || needs_bounds {
-                    tile_bounding_region.computeBoundingVolumes(&ellipsoidal_occluder.ellipsoid);
+                    tile_bounding_region.compute_bounding_volumes(&ellipsoidal_occluder.ellipsoid);
                     tile.data.occludee_point_in_scaled_space = compute_occludee_point(
                         ellipsoidal_occluder,
                         &tile_bounding_region.oriented_bounding_box.unwrap().center,
@@ -554,7 +554,7 @@ pub fn update_tile_bounding_region(
                 let tile_bounding_region = tile.data.tile_bounding_region.as_mut().unwrap();
                 tile_bounding_region.oriented_bounding_box =
                     Some(mesh.oriented_bounding_box.clone());
-                tile_bounding_region.boundingSphere = Some(mesh.bounding_sphere_3d.clone());
+                tile_bounding_region.bounding_sphere = Some(mesh.bounding_sphere_3d.clone());
 
                 tile.data.occludee_point_in_scaled_space =
                     mesh.occludee_point_in_scaled_space.clone();
@@ -573,7 +573,7 @@ pub fn update_tile_bounding_region(
                 true
             } else {
                 false
-            } || if let Some(_) = tile_bounding_region.boundingSphere {
+            } || if let Some(_) = tile_bounding_region.bounding_sphere {
                 true
             } else {
                 false
@@ -581,7 +581,7 @@ pub fn update_tile_bounding_region(
             let height_changed = tile_bounding_region.minimum_height != old_minimum_height
                 || tile_bounding_region.maximum_height != old_maximum_height;
             if height_changed || needs_bounds {
-                tile_bounding_region.computeBoundingVolumes(&ellipsoidal_occluder.ellipsoid);
+                tile_bounding_region.compute_bounding_volumes(&ellipsoidal_occluder.ellipsoid);
                 tile.data.occludee_point_in_scaled_space = compute_occludee_point(
                     ellipsoidal_occluder,
                     &tile_bounding_region.oriented_bounding_box.unwrap().center,
@@ -630,7 +630,7 @@ fn compute_occludee_point(
         Some(ellipsoid.radii_squared),
     );
 
-    return ellipsoidal_occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
+    return ellipsoidal_occluder.compute_horizon_culling_point_possibly_under_ellipsoid(
         center,
         &corner_positions,
         minimum_height,

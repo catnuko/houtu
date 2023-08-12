@@ -17,6 +17,7 @@ use crate::camera::GlobeCamera;
 use super::{
     globe_surface_tile_provider::{GlobeSurfaceTileProvider, TileVisibility},
     imagery_layer_storage::ImageryLayerStorage,
+    imagery_storage::ImageryStorage,
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive_debug::QuadtreePrimitiveDebug,
     quadtree_tile::{Quadrant, QuadtreeTile, QuadtreeTileLoadState},
@@ -138,6 +139,7 @@ impl QuadtreePrimitive {
         all_traversal_quad_details: &mut AllTraversalQuadDetails,
         root_traversal_details: &mut RootTraversalDetails,
         imagery_layer_storage: &mut ImageryLayerStorage,
+        imagery_storage: &mut ImageryStorage,
     ) {
         if self.debug.suspend_lod_update {
             return;
@@ -196,6 +198,7 @@ impl QuadtreePrimitive {
                     all_traversal_quad_details,
                     root_traversal_details,
                     imagery_layer_storage,
+                    imagery_storage,
                 );
             }
         }
@@ -212,6 +215,7 @@ impl QuadtreePrimitive {
         images: &mut Assets<Image>,
         render_world_queue: &mut ReprojectTextureTaskQueue,
         render_device: &RenderDevice,
+        imagery_storage: &mut ImageryStorage,
     ) {
         process_tile_load_queue(
             self,
@@ -225,6 +229,7 @@ impl QuadtreePrimitive {
             images,
             render_world_queue,
             render_device,
+            imagery_storage,
         );
         update_tile_load_progress_system(self);
     }
@@ -242,6 +247,7 @@ fn process_tile_load_queue(
     images: &mut Assets<Image>,
     render_world_queue: &mut ReprojectTextureTaskQueue,
     render_device: &RenderDevice,
+    imagery_storage: &mut ImageryStorage,
 ) {
     if primitive.tile_load_queue_high.len() == 0
         && primitive.tile_load_queue_medium.len() == 0
@@ -255,7 +261,7 @@ fn process_tile_load_queue(
     let size = primitive.tile_cache_size;
     primitive
         .tile_replacement_queue
-        .trimTiles(&mut primitive.storage, size, imagery_layer_storage);
+        .trimTiles(&mut primitive.storage, size, imagery_storage);
 
     let end_time = time.elapsed_seconds_f64() + primitive.load_queue_time_slice;
 
@@ -275,6 +281,7 @@ fn process_tile_load_queue(
         images,
         render_world_queue,
         render_device,
+        imagery_storage,
     );
     process_single_priority_load_queue(
         primitive,
@@ -291,6 +298,7 @@ fn process_tile_load_queue(
         images,
         render_world_queue,
         render_device,
+        imagery_storage,
     );
     process_single_priority_load_queue(
         primitive,
@@ -307,6 +315,7 @@ fn process_tile_load_queue(
         images,
         render_world_queue,
         render_device,
+        imagery_storage,
     );
 }
 
@@ -325,6 +334,7 @@ fn process_single_priority_load_queue(
     images: &mut Assets<Image>,
     render_world_queue: &mut ReprojectTextureTaskQueue,
     render_device: &RenderDevice,
+    imagery_storage: &mut ImageryStorage,
 ) {
     let load_queue = match queue_type {
         QueueType::High => &primitive.tile_load_queue_high,
@@ -347,6 +357,7 @@ fn process_single_priority_load_queue(
             render_world_queue,
             render_device,
             camera,
+            imagery_storage,
         );
         *did_some_loading = true;
         let seconds = time.elapsed_seconds_f64();
@@ -366,6 +377,7 @@ fn visit_if_visible(
     all_traversal_quad_details: &mut AllTraversalQuadDetails,
     root_traversal_details: &mut RootTraversalDetails,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    imagery_storage: &mut ImageryStorage,
 ) {
     if primitive.tile_provider.compute_tile_visibility(
         &mut primitive.storage,
@@ -385,6 +397,7 @@ fn visit_if_visible(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
     }
     primitive.debug.tiles_culled += 1;
@@ -450,7 +463,9 @@ fn visit_tile(
     all_traversal_quad_details: &mut AllTraversalQuadDetails,
     root_traversal_details: &mut RootTraversalDetails,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    imagery_storage: &mut ImageryStorage,
 ) {
+    // bevy::log::info!("visite tile,{:?}", tile_key);
     let tiling_scheme = primitive.get_tiling_scheme().clone();
     primitive.storage.subdivide(&tile_key, &tiling_scheme);
     primitive.debug.tiles_visited += 1;
@@ -500,6 +515,7 @@ fn visit_tile(
                 tile_key,
                 imagery_layer_storage,
                 primitive,
+                imagery_storage,
             );
             // renderable = false;
         }
@@ -603,6 +619,7 @@ fn visit_tile(
             tile_key.southeast(),
             tile_key.northwest(),
             tile_key.northeast(),
+            imagery_storage,
         );
         if first_rendered_descendant_index != primitive.tiles_to_render.len() {
             let traversal_details = get_traversal_details(
@@ -738,6 +755,7 @@ fn visit_visible_children_near_to_far(
     southeast: TileKey,
     northwest: TileKey,
     northeast: TileKey,
+    imagery_storage: &mut ImageryStorage,
 ) {
     let (east, _west, _south, north) = {
         let v = primitive.storage.get(&southwest).unwrap();
@@ -763,6 +781,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
             visit_if_visible(
                 primitive,
@@ -775,6 +794,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
             visit_if_visible(
                 primitive,
@@ -787,6 +807,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
             visit_if_visible(
                 primitive,
@@ -799,6 +820,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
         } else {
             // Camera in northwest quadrant
@@ -813,6 +835,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
             visit_if_visible(
                 primitive,
@@ -825,6 +848,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
             visit_if_visible(
                 primitive,
@@ -837,6 +861,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
             visit_if_visible(
                 primitive,
@@ -849,6 +874,7 @@ fn visit_visible_children_near_to_far(
                 all_traversal_quad_details,
                 root_traversal_details,
                 imagery_layer_storage,
+                imagery_storage,
             );
         }
     } else if camera_position.latitude < north {
@@ -864,6 +890,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
         visit_if_visible(
             primitive,
@@ -876,6 +903,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
         visit_if_visible(
             primitive,
@@ -888,6 +916,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
         visit_if_visible(
             primitive,
@@ -900,6 +929,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
     } else {
         // Camera in northeast quadrant
@@ -914,6 +944,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
         visit_if_visible(
             primitive,
@@ -926,6 +957,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
         visit_if_visible(
             primitive,
@@ -938,6 +970,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
         visit_if_visible(
             primitive,
@@ -950,6 +983,7 @@ fn visit_visible_children_near_to_far(
             all_traversal_quad_details,
             root_traversal_details,
             imagery_layer_storage,
+            imagery_storage,
         );
     }
     let child_quad_details = all_traversal_quad_details.get(southwest.level);

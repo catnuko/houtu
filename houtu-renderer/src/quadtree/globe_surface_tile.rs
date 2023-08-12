@@ -12,8 +12,8 @@ use crate::camera::GlobeCamera;
 
 use super::{
     create_terrain_mesh_job::CreateTileJob,
-    imagery::{ImageryKey, ImageryState},
     imagery_layer_storage::ImageryLayerStorage,
+    imagery_storage::{Imagery, ImageryKey, ImageryState, ImageryStorage},
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
     quadtree_tile::QuadtreeTileLoadState,
@@ -77,7 +77,7 @@ impl GlobeSurfaceTile {
             TileImagery::new(imagery, texture_coordinate_rectangle, use_web_mercator_t);
         self.imagery.push(tile_imagery);
     }
-    pub fn eligible_for_unloading(&self, imagery_layer_storage: &ImageryLayerStorage) -> bool {
+    pub fn eligible_for_unloading(&self, imagery_storage: &ImageryStorage) -> bool {
         let loading_is_transitioning = self.terrain_state == TerrainState::RECEIVING
             || self.terrain_state == TerrainState::TRANSFORMING;
 
@@ -91,8 +91,8 @@ impl GlobeSurfaceTile {
             should_removeTile = if tile_imagery.loading_imagery.is_none() {
                 true
             } else {
-                let imagery = imagery_layer_storage
-                    .get_imagery(tile_imagery.loading_imagery.as_ref().unwrap())
+                let imagery = imagery_storage
+                    .get(tile_imagery.loading_imagery.as_ref().unwrap())
                     .unwrap();
                 imagery.state != ImageryState::TRANSITIONING
             };
@@ -129,6 +129,7 @@ impl GlobeSurfaceTile {
         indices_and_edges_cache: &IndicesAndEdgesCacheArc,
         render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
+        imagery_storage: &mut ImageryStorage,
     ) -> bool {
         let tile = storage.get_mut(&tile_key).unwrap();
 
@@ -141,9 +142,15 @@ impl GlobeSurfaceTile {
                 is_upsampled_only = false;
                 continue;
             }
-            let loading_imagery = imagery_layer_storage
-                .get_imagery(tile_imagery.loading_imagery.as_ref().unwrap())
-                .unwrap();
+            let loading_imagery = imagery_storage
+                .get(tile_imagery.loading_imagery.as_ref().unwrap())
+                .expect(
+                    format!(
+                        "tile_imagery.loading_imagery is not existed {:?}",
+                        tile_imagery.loading_imagery
+                    )
+                    .as_str(),
+                );
             if loading_imagery.state == ImageryState::PLACEHOLDER {
                 // TODO: 进不到这里，可删除
                 bevy::log::info!("placeholder");
@@ -168,10 +175,9 @@ impl GlobeSurfaceTile {
                 indices_and_edges_cache,
                 render_device,
                 globe_camera,
+                imagery_storage,
             );
-            let loading_imagery = imagery_layer_storage
-                .get_imagery(&loading_imagery_key)
-                .unwrap();
+            let loading_imagery = imagery_storage.get(&loading_imagery_key).unwrap();
             let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
             is_done_loading = is_done_loading && this_tile_done_loading;
             is_any_tile_loaded = is_any_tile_loaded
@@ -199,8 +205,15 @@ impl GlobeSurfaceTile {
         render_world_queue: &mut ReprojectTextureTaskQueue,
         render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
+        imagery_storage: &mut ImageryStorage,
     ) {
-        initialize(storage, tile_key, terrain_provider, imagery_layer_storage);
+        initialize(
+            storage,
+            tile_key,
+            terrain_provider,
+            imagery_layer_storage,
+            imagery_storage,
+        );
         let tile = storage.get_mut(&tile_key).unwrap();
         if tile.state == QuadtreeTileLoadState::LOADING {
             processTerrainStateMachine(
@@ -215,6 +228,7 @@ impl GlobeSurfaceTile {
                 render_world_queue,
                 render_device,
                 globe_camera,
+                imagery_storage,
             );
         }
         if terrain_only {
@@ -245,6 +259,7 @@ impl GlobeSurfaceTile {
             indices_and_edges_cache,
             render_device,
             globe_camera,
+            imagery_storage,
         );
         let tile = storage.get_mut(&tile_key).unwrap();
         if is_terrain_done_loading && is_imagery_done_loading {
@@ -267,6 +282,7 @@ fn processTerrainStateMachine(
     render_world_queue: &mut ReprojectTextureTaskQueue,
     render_device: &RenderDevice,
     globe_camera: &GlobeCamera,
+    imagery_storage: &mut ImageryStorage,
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.data.terrain_state == TerrainState::FAILED && tile.parent.is_some() {
@@ -295,6 +311,7 @@ fn processTerrainStateMachine(
                 render_world_queue,
                 render_device,
                 globe_camera,
+                imagery_storage,
             );
         }
     }
@@ -334,7 +351,7 @@ fn processTerrainStateMachine(
             indices_and_edges_cache: indices_and_edges_cache.get_cloned_cache(),
         });
         tile.data.terrain_state = TerrainState::TRANSFORMING;
-        bevy::log::info!("{:?} is creating mesh", tile.key);
+        // bevy::log::info!("{:?} is creating mesh", tile.key);
     }
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.data.terrain_state == TerrainState::TRANSFORMING {}
@@ -371,10 +388,17 @@ fn initialize(
     tile_key: TileKey,
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    imagery_storage: &mut ImageryStorage,
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.state == QuadtreeTileLoadState::START {
-        prepare_new_tile(storage, tile_key, terrain_provider, imagery_layer_storage);
+        prepare_new_tile(
+            storage,
+            tile_key,
+            terrain_provider,
+            imagery_layer_storage,
+            imagery_storage,
+        );
         let tile = storage.get_mut(&tile_key).unwrap();
         tile.state = QuadtreeTileLoadState::LOADING;
     }
@@ -384,6 +408,7 @@ fn prepare_new_tile(
     tile_key: TileKey,
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
+    imagery_storage: &mut ImageryStorage,
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     let mut available = terrain_provider.get_tile_data_available(&tile_key);
@@ -409,7 +434,7 @@ fn prepare_new_tile(
     }
     for (_, imagery_layer) in imagery_layer_storage.map.iter_mut() {
         if imagery_layer.show {
-            imagery_layer._create_tile_imagery_skeletons(tile, terrain_provider);
+            imagery_layer._create_tile_imagery_skeletons(tile, terrain_provider, imagery_storage);
         }
     }
 }

@@ -76,7 +76,7 @@ impl QuadtreeTileStorage {
         k: &TileKey,
         tiling_scheme: &GeographicTilingScheme,
     ) -> &mut QuadtreeTile {
-        bevy::log::info!("new root tile,key is {:?}", k);
+        // bevy::log::info!("new root tile,key is {:?}", k);
         let tile = self.make_new_root_tile(k, tiling_scheme);
         self.add(tile);
         return self.get_mut(k).unwrap();

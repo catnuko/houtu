@@ -59,7 +59,7 @@ impl ImageryProvider for XYZImageryProvider {
         key: &crate::quadtree::tile_key::TileKey,
         asset_server: &bevy::prelude::AssetServer,
     ) -> Option<bevy::prelude::Handle<bevy::prelude::Image>> {
-        bevy::log::info!("xyz imagery provider is requeting image for tile {:?}", key);
+        // bevy::log::info!("xyz imagery provider is requeting image for tile {:?}", key);
         // let image = asset_server.load(format!(
         //     "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
         //     key.level, key.x, key.y,

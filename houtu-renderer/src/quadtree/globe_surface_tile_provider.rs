@@ -18,8 +18,9 @@ use crate::camera::GlobeCamera;
 use super::{
     ellipsoid_terrain_provider::EllipsoidTerrainProvider,
     globe_surface_tile::{GlobeSurfaceTile, TerrainState},
-    imagery::ImageryState,
+    imagery_layer::ImageryLayerId,
     imagery_layer_storage::ImageryLayerStorage,
+    imagery_storage::{ImageryState, ImageryStorage},
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
     quadtree_tile::QuadtreeTile,
@@ -32,7 +33,7 @@ use super::{
 
 pub struct GlobeSurfaceTileProvider {
     terrain_provider: Box<dyn TerrainProvider>,
-    ready_imagery_scratch: HashMap<Uuid, bool>,
+    ready_imagery_scratch: HashMap<ImageryLayerId, bool>,
     can_render_traversal_stack: Vec<TileKey>,
 }
 #[derive(Debug, PartialEq)]
@@ -62,6 +63,7 @@ impl GlobeSurfaceTileProvider {
         render_world_queue: &mut ReprojectTextureTaskQueue,
         render_device: &RenderDevice,
         globe_camera: &mut GlobeCamera,
+        imagery_storage: &mut ImageryStorage,
     ) {
         let tile = storage.get_mut(&tile_key).unwrap();
         let terrain_state_before;
@@ -81,6 +83,7 @@ impl GlobeSurfaceTileProvider {
             render_world_queue,
             render_device,
             globe_camera,
+            imagery_storage,
         );
         let tile = storage.get_mut(&tile_key).unwrap();
         if terrain_only && terrain_state_before != tile.data.terrain_state {
@@ -107,6 +110,7 @@ impl GlobeSurfaceTileProvider {
                     render_world_queue,
                     render_device,
                     globe_camera,
+                    imagery_storage,
                 );
             }
         }
@@ -215,6 +219,7 @@ impl GlobeSurfaceTileProvider {
         tile_key: TileKey,
         imagery_layer_storage: &mut ImageryLayerStorage,
         primitive: &mut QuadtreePrimitive,
+        imagery_storage: &mut ImageryStorage,
     ) -> bool {
         let tile = primitive.storage.get_mut(&tile_key).unwrap();
         let terrain_ready = tile.data.terrain_state == TerrainState::READY;
@@ -231,8 +236,8 @@ impl GlobeSurfaceTileProvider {
                 if !ready {
                     ready
                 } else {
-                    let loading_imagery = imagery_layer_storage
-                        .get_imagery(imagery.loading_imagery.as_ref().unwrap())
+                    let loading_imagery = imagery_storage
+                        .get(imagery.loading_imagery.as_ref().unwrap())
                         .unwrap();
                     ready
                         || loading_imagery.state == ImageryState::FAILED
@@ -240,7 +245,7 @@ impl GlobeSurfaceTileProvider {
                 }
             };
             let layer_id = {
-                let mut id = Uuid::new_v4();
+                let mut id = ImageryLayerId::new();
                 if imagery.loading_imagery.is_some() {
                     id = imagery.loading_imagery.as_ref().unwrap().layer_id
                 }
@@ -295,17 +300,15 @@ impl GlobeSurfaceTileProvider {
                         if !v {
                             v
                         } else {
-                            let descendant_loading_imagery = imagery_layer_storage
-                                .get_imagery(
-                                    descendant_tile_imagery.loading_imagery.as_ref().unwrap(),
-                                )
+                            let descendant_loading_imagery = imagery_storage
+                                .get(descendant_tile_imagery.loading_imagery.as_ref().unwrap())
                                 .unwrap();
                             v || descendant_loading_imagery.state == ImageryState::FAILED
                                 || descendant_loading_imagery.state == ImageryState::INVALID
                         }
                     };
                     let descentant_layer_id = {
-                        let mut id = Uuid::new_v4();
+                        let mut id = ImageryLayerId::new();
                         if descendant_tile_imagery.loading_imagery.is_some() {
                             id = descendant_tile_imagery
                                 .loading_imagery

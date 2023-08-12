@@ -1,15 +1,12 @@
-use bevy::{
-    prelude::Resource,
-    utils::{HashMap, Uuid},
-};
+use bevy::{prelude::Resource, utils::HashMap};
 
 use super::{
-    imagery::{Imagery, ImageryKey},
-    imagery_layer::ImageryLayer,
+    imagery_layer::{ImageryLayer, ImageryLayerId},
+    imagery_storage::{Imagery, ImageryKey},
 };
 #[derive(Resource)]
 pub struct ImageryLayerStorage {
-    pub map: HashMap<Uuid, ImageryLayer>,
+    pub map: HashMap<ImageryLayerId, ImageryLayer>,
 }
 impl ImageryLayerStorage {
     pub fn new() -> Self {
@@ -23,7 +20,7 @@ impl ImageryLayerStorage {
     pub fn add(&mut self, imagery_layer: ImageryLayer) {
         self.map.insert(imagery_layer.id.clone(), imagery_layer);
     }
-    pub fn remove(&mut self, imagery_layer_id: &Uuid) {
+    pub fn remove(&mut self, imagery_layer_id: &ImageryLayerId) {
         self.map
             .remove(imagery_layer_id)
             .and_then(|mut imagery_layer| {
@@ -31,18 +28,10 @@ impl ImageryLayerStorage {
                 Some(())
             });
     }
-    pub fn get(&self, id: &Uuid) -> Option<&ImageryLayer> {
+    pub fn get(&self, id: &ImageryLayerId) -> Option<&ImageryLayer> {
         return self.map.get(id);
     }
-    pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut ImageryLayer> {
+    pub fn get_mut(&mut self, id: &ImageryLayerId) -> Option<&mut ImageryLayer> {
         return self.map.get_mut(id);
-    }
-    pub fn get_imagery(&self, imagery_key: &ImageryKey) -> Option<&Imagery> {
-        self.get(&imagery_key.layer_id)
-            .and_then(|x| x.get_imagery(imagery_key))
-    }
-    pub fn get_imagery_mut(&mut self, imagery_key: &ImageryKey) -> Option<&mut Imagery> {
-        self.get_mut(&imagery_key.layer_id)
-            .and_then(|x| x.get_imagery_mut(imagery_key))
     }
 }

@@ -12,11 +12,11 @@ use bevy::{
         texture::BevyDefault,
         Extract, RenderApp,
     },
-    utils::{HashMap, Uuid},
+    utils::HashMap,
 };
 use std::mem;
 
-use super::tile_key::TileKey;
+use super::{imagery_layer::ImageryLayerId, imagery_storage::ImageryKey, tile_key::TileKey};
 
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
@@ -42,8 +42,8 @@ impl bevy::prelude::Plugin for Plugin {
 
 #[derive(Resource)]
 pub struct ReprojectTextureTaskQueue {
-    map: HashMap<TileKey, ReprojectTextureTask>,
-    pub status_channel: (Sender<(Uuid, TileKey)>, Receiver<(Uuid, TileKey)>),
+    map: HashMap<ImageryKey, ReprojectTextureTask>,
+    pub status_channel: (Sender<(ImageryKey)>, Receiver<(ImageryKey)>),
 }
 impl Default for ReprojectTextureTaskQueue {
     fn default() -> Self {
@@ -57,22 +57,22 @@ impl ReprojectTextureTaskQueue {
     pub fn count(&self) -> usize {
         self.map.len()
     }
-    pub fn get(&self, key: &TileKey) -> Option<&ReprojectTextureTask> {
+    pub fn get(&self, key: &ImageryKey) -> Option<&ReprojectTextureTask> {
         self.map.get(key)
     }
-    pub fn remove(&mut self, key: &TileKey) -> Option<ReprojectTextureTask> {
+    pub fn remove(&mut self, key: &ImageryKey) -> Option<ReprojectTextureTask> {
         self.map.remove(key)
     }
     pub fn new() -> Self {
         Self::default()
     }
     pub fn push(&mut self, v: ReprojectTextureTask) {
-        self.map.insert(v.key, v);
+        self.map.insert(v.imagery_key, v);
     }
     pub fn clear(&mut self) {
         self.map.clear()
     }
-    pub fn clone_status_channel(&self) -> (Sender<(Uuid, TileKey)>, Receiver<(Uuid, TileKey)>) {
+    pub fn clone_status_channel(&self) -> (Sender<(ImageryKey)>, Receiver<(ImageryKey)>) {
         self.status_channel.clone()
     }
 }
@@ -88,26 +88,28 @@ fn extract_reproject_texture_task_queue(
         .for_each(|x| render_world_queue.push(x.1.clone()))
 }
 pub struct ReprojectTextureTask {
-    pub key: TileKey,
+    // pub key: TileKey,
     pub image: Handle<Image>,
     pub output_texture: Handle<Image>,
     pub webmercartor_buffer: Buffer,
     pub index_buffer: Buffer,
     pub uniform_buffer: Buffer,
-    pub imagery_layer_id: Uuid,
+    // pub imagery_layer_id: ImageryLayerId,
+    pub imagery_key: ImageryKey,
     pub ok: bool,
 }
 impl Clone for ReprojectTextureTask {
     fn clone(&self) -> Self {
         Self {
             image: self.image.clone(),
-            key: self.key.clone(),
+            // key: self.key.clone(),
             output_texture: self.output_texture.clone(),
             webmercartor_buffer: self.webmercartor_buffer.clone(),
             index_buffer: self.index_buffer.clone(),
             uniform_buffer: self.uniform_buffer.clone(),
-            imagery_layer_id: self.imagery_layer_id.clone(),
+            // imagery_layer_id: self.imagery_layer_id.clone(),
             ok: self.ok,
+            imagery_key: self.imagery_key.clone(),
         }
     }
 }
@@ -349,7 +351,7 @@ impl render_graph::Node for ReprojectTextureNode {
             let _ = task_queue
                 .status_channel
                 .0
-                .send_blocking((task.1.imagery_layer_id, task.1.key));
+                .send_blocking((task.1.imagery_key));
         }
         Ok(())
     }

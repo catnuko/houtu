@@ -7,8 +7,8 @@ use bevy::{
 use crate::camera::GlobeCamera;
 
 use super::{
-    imagery::{Imagery, ImageryKey, ImageryState},
     imagery_layer::ImageryLayer,
+    imagery_storage::{Imagery, ImageryKey, ImageryState, ImageryStorage},
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_tile::QuadtreeTile,
     reproject_texture::ReprojectTextureTaskQueue,
@@ -38,29 +38,35 @@ impl TileImagery {
     }
     pub fn get_loading_imagery_mut<'a>(
         &self,
-        imagery_layer: &'a mut ImageryLayer,
+        imagery_storage: &'a mut ImageryStorage,
     ) -> Option<&'a mut Imagery> {
         self.loading_imagery
             .as_ref()
-            .and_then(|x| imagery_layer.get_imagery_mut(x))
+            .and_then(|x| imagery_storage.get_mut(x))
     }
-    pub fn get_loading_imagery<'a>(&self, imagery_layer: &'a ImageryLayer) -> Option<&'a Imagery> {
+    pub fn get_loading_imagery<'a>(
+        &self,
+        imagery_storage: &'a ImageryStorage,
+    ) -> Option<&'a Imagery> {
         self.loading_imagery
             .as_ref()
-            .and_then(|x| imagery_layer.get_imagery(x))
+            .and_then(|x| imagery_storage.get(x))
     }
     pub fn get_ready_imagery_mut<'a>(
         &self,
-        imagery_layer: &'a mut ImageryLayer,
+        imagery_storage: &'a mut ImageryStorage,
     ) -> Option<&'a mut Imagery> {
         self.ready_imagery
             .as_ref()
-            .and_then(|x| imagery_layer.get_imagery_mut(x))
+            .and_then(|x| imagery_storage.get_mut(x))
     }
-    pub fn get_ready_imagery<'a>(&self, imagery_layer: &'a ImageryLayer) -> Option<&'a Imagery> {
+    pub fn get_ready_imagery<'a>(
+        &self,
+        imagery_storage: &'a ImageryStorage,
+    ) -> Option<&'a Imagery> {
         self.ready_imagery
             .as_ref()
-            .and_then(|x| imagery_layer.get_imagery(x))
+            .and_then(|x| imagery_storage.get(x))
     }
 
     pub fn process_state_machine(
@@ -74,6 +80,7 @@ impl TileImagery {
         indices_and_edges_cache: &IndicesAndEdgesCacheArc,
         render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
+        imagery_storage: &mut ImageryStorage,
     ) -> bool {
         let tile_imagery = tile.data.imagery.get_mut(tile_imagery_index).unwrap();
 
@@ -87,18 +94,22 @@ impl TileImagery {
             indices_and_edges_cache,
             render_device,
             globe_camera,
+            imagery_storage,
         );
-        let loading_imagery = imagery_layer
-            .get_imagery_mut(tile_imagery.loading_imagery.as_ref().unwrap())
+        let loading_imagery = imagery_storage
+            .get_mut(tile_imagery.loading_imagery.as_ref().unwrap())
             .unwrap();
         if loading_imagery.state == ImageryState::READY {
-            bevy::log::info!("imagery of tile {:?} is ready", tile.key);
+            // bevy::log::info!("imagery of tile {:?} is ready", tile.key);
 
             if tile_imagery.ready_imagery.is_some() {
-                // tile_imagery.ready_imagery.release_reference();
+                imagery_storage.release_reference(tile_imagery.ready_imagery.as_ref().unwrap());
             }
             tile_imagery.ready_imagery = tile_imagery.loading_imagery.clone();
             tile_imagery.loading_imagery = None;
+            let loading_imagery = imagery_storage
+                .get_mut(tile_imagery.ready_imagery.as_ref().unwrap())
+                .unwrap();
             let r = loading_imagery.rectangle.clone();
             tile_imagery.texture_translation_and_scale =
                 Some(imagery_layer.calculate_texture_translation_and_scale(
@@ -116,14 +127,14 @@ impl TileImagery {
 
         let mut closest_ancestor_that_needs_loading: Option<ImageryKey> = None;
         while ancestor.is_some() && {
-            if let Some(ancestor_imagery) = imagery_layer.get_imagery(ancestor.as_ref().unwrap()) {
+            if let Some(ancestor_imagery) = imagery_storage.get(ancestor.as_ref().unwrap()) {
                 ancestor_imagery.state != ImageryState::READY
                     || !tile_imagery.use_web_mercator_t && ancestor_imagery.texture.is_none()
             } else {
                 false
             }
         } {
-            let ancestor_imagery = tile_imagery.get_loading_imagery(imagery_layer).unwrap();
+            let ancestor_imagery = imagery_storage.get(ancestor.as_ref().unwrap()).unwrap();
             if ancestor_imagery.state != ImageryState::FAILED
                 && ancestor_imagery.state != ImageryState::INVALID
             {
@@ -131,11 +142,13 @@ impl TileImagery {
                     closest_ancestor_that_needs_loading = ancestor.clone();
                 }
             }
+
             ancestor = ancestor_imagery
                 .parent
                 .as_ref()
                 .and_then(|x| Some(x.clone()));
         }
+
         if (tile_imagery.ready_imagery.is_some()
             && ancestor.is_some()
             && tile_imagery.ready_imagery != ancestor)
@@ -143,11 +156,12 @@ impl TileImagery {
         {
             if tile_imagery.ready_imagery.is_some() {
                 //readsy_imagery减少引用
+                imagery_storage.release_reference(tile_imagery.ready_imagery.as_ref().unwrap());
             }
             tile_imagery.ready_imagery = ancestor.as_ref().and_then(|x| Some(x.clone()));
             if ancestor.is_some() {
                 //ancestor增加引用
-
+                imagery_storage.add_reference(ancestor.as_ref().unwrap());
                 tile_imagery.texture_translation_and_scale =
                     Some(imagery_layer.calculate_texture_translation_and_scale(
                         tile.rectangle.clone(),
@@ -156,8 +170,9 @@ impl TileImagery {
                     ));
             }
         }
-        let loading_imagery = imagery_layer
-            .get_imagery_mut(tile_imagery.loading_imagery.as_ref().unwrap())
+
+        let loading_imagery = imagery_storage
+            .get_mut(tile_imagery.loading_imagery.as_ref().unwrap())
             .unwrap();
         if loading_imagery.state == ImageryState::FAILED
             || loading_imagery.state == ImageryState::INVALID
@@ -173,7 +188,9 @@ impl TileImagery {
                     indices_and_edges_cache,
                     render_device,
                     globe_camera,
+                    imagery_storage,
                 );
+
                 return false;
             }
             return true;

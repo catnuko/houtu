@@ -48,7 +48,7 @@ cargo run
 // 暂无法构建
 
 // 运行网站（暂无内容）
-cd website
+cd www
 pnpm install
 pnpm dev
 ```

@@ -12,6 +12,7 @@ mod globe;
 mod bing_maps_imagery_provider;
 mod helpers;
 mod quadtree;
+mod render;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
 // use plugins::quadtree;
@@ -50,8 +51,8 @@ impl Plugin for RendererPlugin {
             .add_plugin(houtu_jobs::Plugin)
             .add_plugin(globe::GlobePlugin)
             .add_plugin(camera::CameraPlugin)
-            .add_plugin(quadtree::Plugin);
-
+            .add_plugin(quadtree::Plugin)
+            .add_plugin(render::Plugin);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
 }

@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use crate::{bit_or_zero, Cartographic, Ellipsoid, Rectangle};
 use bevy::{
     math::DVec2,
-    prelude::{IVec2, UVec2, Vec2},
+    prelude::{IVec2, UVec2, Vec2}, core_pipeline::core_3d::graph::node,
 };
 
 use crate::{
@@ -127,19 +127,19 @@ impl TilingScheme for WebMercatorTilingScheme {
         return Rectangle::new(west, south, east, north);
     }
     fn tile_x_y_to_rectange(&self, x: u32, y: u32, level: u32) -> Rectangle {
-        let mut nativeRectangle = self.tile_x_y_to_native_rectange(x, y, level);
+        let mut native_rectangle = self.tile_x_y_to_native_rectange(x, y, level);
         let southwest = self
             .projection
-            .un_project(&DVec2::new(nativeRectangle.west, nativeRectangle.south));
+            .un_project(&DVec2::new(native_rectangle.west, native_rectangle.south));
         let northeast = self
             .projection
-            .un_project(&DVec2::new(nativeRectangle.east, nativeRectangle.north));
+            .un_project(&DVec2::new(native_rectangle.east, native_rectangle.north));
 
-        nativeRectangle.west = southwest.longitude;
-        nativeRectangle.south = southwest.latitude;
-        nativeRectangle.east = northeast.longitude;
-        nativeRectangle.north = northeast.latitude;
-        return nativeRectangle;
+        native_rectangle.west = southwest.longitude;
+        native_rectangle.south = southwest.latitude;
+        native_rectangle.east = northeast.longitude;
+        native_rectangle.north = northeast.latitude;
+        return native_rectangle;
     }
     fn position_to_tile_x_y(&self, coord: &Cartographic, level: u32) -> Option<UVec2> {
         let rectangle = self.rectangle;
@@ -174,22 +174,20 @@ impl TilingScheme for WebMercatorTilingScheme {
         return Some(UVec2::new(x_tile_coordinate, y_tile_coordinate));
     }
     fn rectangle_to_native_rectangle(&self, rectangle: &Rectangle) -> Rectangle {
-        let west = rectangle.west.to_degrees();
-        let south = rectangle.south.to_degrees();
-        let east = rectangle.east.to_degrees();
-        let north = rectangle.north.to_degrees();
+        let southwest = self.projection.project(&rectangle.south_west());
+        let northeast = self.projection.project(&rectangle.north_east());
         let mut result = Rectangle::default();
-        result.west = west;
-        result.south = south;
-        result.east = east;
-        result.north = north;
+        result.west = southwest.x;
+        result.south = southwest.y;
+        result.east = northeast.x;
+        result.north = northeast.y;
         return result;
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{equals_epsilon, EPSILON10};
+    use crate::{equals_epsilon, EPSILON10, GeographicTilingScheme};
 
     use super::*;
 
@@ -269,4 +267,11 @@ mod tests {
                 == UVec2::new(1, 0)
         );
     }
+    #[test]
+    fn test_445(){
+        let tiling_scheme = WebMercatorTilingScheme::default();
+        let rectangle = tiling_scheme.tile_x_y_to_native_rectange(4, 5, 4);
+        
+    }
+ 
 }

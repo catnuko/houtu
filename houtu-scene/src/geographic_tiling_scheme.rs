@@ -141,3 +141,167 @@ impl TilingScheme for GeographicTilingScheme {
         return result;
     }
 }
+#[cfg(test)]
+mod tests {
+    use bevy::utils::petgraph::graph::NodeWeightsMut;
+
+    use crate::{equals_epsilon, EPSILON10, EPSILON15};
+
+    use super::*;
+
+    #[test]
+    fn return_full_rectangle_for_single_root_tile() {
+        let tiling_scheme = GeographicTilingScheme {
+            number_of_level_zero_tiles_x: 1,
+            number_of_level_zero_tiles_y: 1,
+            ellipsoid: Ellipsoid::WGS84,
+            rectangle: Rectangle::MAX_VALUE,
+            projection: GeographicProjection::default(),
+        };
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(0, 0, 0);
+        assert!(equals_epsilon(
+            rectangle.west,
+            tiling_scheme.rectangle.west,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.south,
+            tiling_scheme.rectangle.south,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.east,
+            tiling_scheme.rectangle.east,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.north,
+            tiling_scheme.rectangle.north,
+            Some(EPSILON10),
+            None
+        ));
+    }
+    #[test]
+    fn tiles_area_numberd_from_the_northwesst_corner() {
+        let tiling_scheme = GeographicTilingScheme {
+            number_of_level_zero_tiles_x: 2,
+            number_of_level_zero_tiles_y: 2,
+            ellipsoid: Ellipsoid::WGS84,
+            rectangle: Rectangle::MAX_VALUE,
+            projection: GeographicProjection::default(),
+        };
+        let northwest = tiling_scheme.tile_x_y_to_rectange(0, 0, 1);
+        let northeast = tiling_scheme.tile_x_y_to_rectange(1, 0, 1);
+        let southeast = tiling_scheme.tile_x_y_to_rectange(1, 1, 1);
+        let southwest = tiling_scheme.tile_x_y_to_rectange(0, 1, 1);
+
+        assert!(northeast.north == northwest.north);
+        assert!(northeast.south == northwest.south);
+        assert!(southeast.north == southwest.north);
+        assert!(southeast.south == southwest.south);
+
+        assert!(northwest.west == southwest.west);
+        assert!(northwest.east == southwest.east);
+        assert!(northeast.west == southeast.west);
+        assert!(northeast.east == southeast.east);
+
+        assert!(northeast.north > southeast.north);
+        assert!(northeast.south > southeast.south);
+        assert!(northwest.north > southwest.north);
+        assert!(northwest.south > southwest.south);
+
+        assert!(northeast.east > northwest.east);
+        assert!(northeast.west > northwest.west);
+        assert!(southeast.east > southwest.east);
+        assert!(southeast.west > southwest.west);
+    }
+    #[test]
+    fn adjacent_tiles_hasve_overlapping_coordinates() {
+        let tiling_scheme = GeographicTilingScheme {
+            number_of_level_zero_tiles_x: 2,
+            number_of_level_zero_tiles_y: 2,
+            ellipsoid: Ellipsoid::WGS84,
+            rectangle: Rectangle::MAX_VALUE,
+            projection: GeographicProjection::default(),
+        };
+        let northwest = tiling_scheme.tile_x_y_to_rectange(0, 0, 1);
+        let northeast = tiling_scheme.tile_x_y_to_rectange(1, 0, 1);
+        let southeast = tiling_scheme.tile_x_y_to_rectange(1, 1, 1);
+        let southwest = tiling_scheme.tile_x_y_to_rectange(0, 1, 1);
+        assert!(equals_epsilon(
+            northeast.south,
+            southeast.north,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            northwest.south,
+            southwest.north,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            northeast.west,
+            northwest.east,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            southeast.west,
+            southwest.east,
+            Some(EPSILON15),
+            None
+        ));
+    }
+    #[test]
+    fn tile_000() {
+        let tiling_scheme = GeographicTilingScheme::default();
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(0, 0, 0);
+        assert!(equals_epsilon(rectangle.east, 0., Some(EPSILON15), None));
+        assert!(equals_epsilon(
+            rectangle.west,
+            -3.141592653589793,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.north,
+            1.5707963267948966,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.south,
+            -1.5707963267948966,
+            Some(EPSILON15),
+            None
+        ));
+    }
+    #[test]
+    fn tile_011() {
+        let tiling_scheme = GeographicTilingScheme::default();
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(0, 1, 1);
+        assert!(equals_epsilon(rectangle.east, -1.5707963267948966, Some(EPSILON15), None));
+        assert!(equals_epsilon(
+            rectangle.west,
+            -3.141592653589793,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.north,
+            0.,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.south,
+            -1.5707963267948966,
+            Some(EPSILON15),
+            None
+        ));
+    }
+}

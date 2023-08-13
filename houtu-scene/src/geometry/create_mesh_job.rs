@@ -95,7 +95,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
 
     let oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximum_radius;
 
-    let nativeRectangle = options.nativeRectangle.clone();
+    let native_rectangle = options.native_rectangle.clone();
     let rectangleOption = options.rectangle;
 
     let mut geographicWest: f64;
@@ -109,23 +109,23 @@ pub fn create_vertice(options: CreateVerticeOptions) {
         geographicNorth = rectangle.north;
     } else {
         if isGeographic {
-            geographicWest = nativeRectangle.west.to_radians();
-            geographicSouth = nativeRectangle.south.to_radians();
-            geographicEast = nativeRectangle.east.to_radians();
-            geographicNorth = nativeRectangle.north.to_radians();
+            geographicWest = native_rectangle.west.to_radians();
+            geographicSouth = native_rectangle.south.to_radians();
+            geographicEast = native_rectangle.east.to_radians();
+            geographicNorth = native_rectangle.north.to_radians();
         } else {
-            geographicWest = nativeRectangle.west * oneOverGlobeSemimajorAxis;
+            geographicWest = native_rectangle.west * oneOverGlobeSemimajorAxis;
             // geographicSouth =
-            //     piOverTwo - 2.0 * atan(exp(-nativeRectangle.south * oneOverGlobeSemimajorAxis));
+            //     piOverTwo - 2.0 * atan(exp(-native_rectangle.south * oneOverGlobeSemimajorAxis));
             geographicSouth = piOverTwo
                 - 2.0
-                    * (-nativeRectangle.south * oneOverGlobeSemimajorAxis)
+                    * (-native_rectangle.south * oneOverGlobeSemimajorAxis)
                         .exp()
                         .atan();
-            geographicEast = nativeRectangle.east * oneOverGlobeSemimajorAxis;
+            geographicEast = native_rectangle.east * oneOverGlobeSemimajorAxis;
             geographicNorth = piOverTwo
                 - 2.0
-                    * (-nativeRectangle.north * oneOverGlobeSemimajorAxis)
+                    * (-native_rectangle.north * oneOverGlobeSemimajorAxis)
                         .exp()
                         .atan();
         }
@@ -148,8 +148,8 @@ pub fn create_vertice(options: CreateVerticeOptions) {
     let element_multiplier = structore.element_multiplier;
     let is_big_endian = structore.is_big_endian;
 
-    let rectangleWidth = nativeRectangle.compute_width();
-    let rectangleHeight = nativeRectangle.compute_height();
+    let rectangleWidth = native_rectangle.compute_width();
+    let rectangleHeight = native_rectangle.compute_height();
 
     let granularityX = rectangleWidth / (width as f64 - 1.);
     let granularityY = rectangleHeight / (height as f64 - 1.);
@@ -249,7 +249,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
             row = height - 1;
         }
 
-        let mut latitude = nativeRectangle.north - granularityY * row as f64;
+        let mut latitude = native_rectangle.north - granularityY * row as f64;
 
         if !isGeographic {
             latitude = piOverTwo - 2.0 * ((-latitude * oneOverGlobeSemimajorAxis).exp()).atan();
@@ -317,7 +317,7 @@ pub fn create_vertice(options: CreateVerticeOptions) {
             maximum_height = maximum_height.max(heightSample);
             minimum_height = minimum_height.min(heightSample);
 
-            let longitude = nativeRectangle.west + granularityX * (col as f64);
+            let longitude = native_rectangle.west + granularityX * (col as f64);
 
             if !isGeographic {
                 longitude = longitude * oneOverGlobeSemimajorAxis;

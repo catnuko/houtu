@@ -9,17 +9,14 @@ use super::{
 pub struct QuadtreeTileStorage {
     map: HashMap<TileKey, QuadtreeTile>,
     pub root: Vec<TileKey>,
-}
-impl Default for QuadtreeTileStorage {
-    fn default() -> Self {
-        Self::new()
-    }
+    tiling_scheme: GeographicTilingScheme,
 }
 impl QuadtreeTileStorage {
-    pub fn new() -> Self {
+    pub fn new(tiling_scheme: GeographicTilingScheme) -> Self {
         return Self {
             map: HashMap::new(),
             root: vec![],
+            tiling_scheme,
         };
     }
     pub fn root_len(&self) -> usize {
@@ -63,32 +60,22 @@ impl QuadtreeTileStorage {
             _ => panic!("no children for tile {:?}", parent_key),
         };
     }
-    fn make_new_root_tile(
-        &self,
-        k: &TileKey,
-        tiling_scheme: &GeographicTilingScheme,
-    ) -> QuadtreeTile {
-        let r = tiling_scheme.tile_x_y_to_rectange(k.x, k.y, k.level);
+    fn make_new_root_tile(&self, k: &TileKey) -> QuadtreeTile {
+        let r = self.tiling_scheme.tile_x_y_to_rectange(k.x, k.y, k.level);
         return QuadtreeTile::new(k.clone(), Quadrant::Root(self.root.len()), None, r);
     }
-    pub fn new_root_tile(
-        &mut self,
-        k: &TileKey,
-        tiling_scheme: &GeographicTilingScheme,
-    ) -> &mut QuadtreeTile {
+    pub fn new_root_tile(&mut self, k: &TileKey) -> &mut QuadtreeTile {
         // bevy::log::info!("new root tile,key is {:?}", k);
-        let tile = self.make_new_root_tile(k, tiling_scheme);
+        let tile = self.make_new_root_tile(k);
         self.add(tile);
         return self.get_mut(k).unwrap();
     }
     pub fn new_children_tile(
         &mut self,
         parent_key: &TileKey,
-        tiling_scheme: &GeographicTilingScheme,
+
         location: Quadrant,
     ) -> &mut QuadtreeTile {
-        let rectangle: Rectangle =
-            tiling_scheme.tile_x_y_to_rectange(parent_key.x, parent_key.y, parent_key.level);
         let child_key: TileKey;
         match location {
             Quadrant::Southwest => {
@@ -108,14 +95,16 @@ impl QuadtreeTileStorage {
             }
         }
 
-        let parent = self.get_mut(parent_key).unwrap();
-
+        let rectangle: Rectangle =
+            self.tiling_scheme
+                .tile_x_y_to_rectange(child_key.x, child_key.y, child_key.level);
         let tile = QuadtreeTile::new(
             child_key.clone(),
             location.clone(),
             Some(parent_key.clone()),
             rectangle,
         );
+        let parent = self.get_mut(parent_key).unwrap();
         match location {
             Quadrant::Southwest => {
                 parent.southwest = Some(child_key.clone());
@@ -134,31 +123,28 @@ impl QuadtreeTileStorage {
         self.add(tile);
         return self.get_mut(&child_key).unwrap();
     }
-    pub fn subdivide(&mut self, parent_key: &TileKey, tiling_scheme: &GeographicTilingScheme) {
+    pub fn subdivide(&mut self, parent_key: &TileKey) {
         let parent = self.get(parent_key).unwrap();
         if parent.southwest.is_some() {
             return;
         }
-        self.new_children_tile(parent_key, tiling_scheme, Quadrant::Southeast);
-        self.new_children_tile(parent_key, tiling_scheme, Quadrant::Southwest);
-        self.new_children_tile(parent_key, tiling_scheme, Quadrant::Northwest);
-        self.new_children_tile(parent_key, tiling_scheme, Quadrant::Northeast);
+        self.new_children_tile(parent_key, Quadrant::Southeast);
+        self.new_children_tile(parent_key, Quadrant::Southwest);
+        self.new_children_tile(parent_key, Quadrant::Northwest);
+        self.new_children_tile(parent_key, Quadrant::Northeast);
     }
-    pub fn create_level_zero_tiles(&mut self, tiling_scheme: &GeographicTilingScheme) {
-        let number_of_level_zero_tiles_x = tiling_scheme.get_number_of_x_tiles_at_level(0);
-        let number_of_level_zero_tiles_y = tiling_scheme.get_number_of_y_tiles_at_level(0);
+    pub fn create_level_zero_tiles(&mut self) {
+        let number_of_level_zero_tiles_x = self.tiling_scheme.get_number_of_x_tiles_at_level(0);
+        let number_of_level_zero_tiles_y = self.tiling_scheme.get_number_of_y_tiles_at_level(0);
         let mut i = 0;
         for y in 0..number_of_level_zero_tiles_y {
             for x in 0..number_of_level_zero_tiles_x {
-                let _r = tiling_scheme.tile_x_y_to_rectange(x, y, 0);
-                self.new_root_tile(
-                    &TileKey {
-                        x: x,
-                        y: y,
-                        level: 0,
-                    },
-                    tiling_scheme,
-                );
+                let _r = self.tiling_scheme.tile_x_y_to_rectange(x, y, 0);
+                self.new_root_tile(&TileKey {
+                    x: x,
+                    y: y,
+                    level: 0,
+                });
                 i += 1;
             }
         }

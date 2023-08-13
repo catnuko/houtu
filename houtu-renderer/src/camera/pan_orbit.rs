@@ -348,24 +348,24 @@ pub fn pan_orbit_camera(
 
                     if (!same_start_position && zoom_on_vector) || zooming_on_vector {
                         let ray;
-                        let zoomMouseStart = SceneTransforms::wgs84_to_window_coordinates(
+                        let zoom_mouse_start = SceneTransforms::wgs84_to_window_coordinates(
                             &globe_camera_control._zoom_world_position,
                             &window_size,
                             &to_mat4_64(&global_transform.compute_matrix()),
                             &to_mat4_64(&projection.get_projection_matrix()),
                         );
                         if start_position.eq(&globe_camera_control._zoom_mouse_start)
-                            && zoomMouseStart.is_some()
+                            && zoom_mouse_start.is_some()
                         {
-                            let v = zoomMouseStart.unwrap();
+                            let v = zoom_mouse_start.unwrap();
                             ray = globe_camera.getPickRay(&v, &window_size)
                         } else {
                             ray = globe_camera.getPickRay(&start_position, &window_size);
                         }
 
-                        let rayDirection = ray.direction;
+                        let ray_direction = ray.direction;
 
-                        globe_camera.move_direction(&rayDirection, distance);
+                        globe_camera.move_direction(&ray_direction, distance);
 
                         globe_camera_control._zooming_on_vector = true;
                     } else {
@@ -389,7 +389,7 @@ pub fn pan_orbit_camera(
                     let start_position = aggregator
                         .get_start_mouse_position("LEFT_DRAG", &event_start_position_wrap);
                     let mut movement = data.movement.clone();
-                    spin3D(
+                    spin_3d(
                         &mut globe_camera_control,
                         &mut globe_camera,
                         &start_position,
@@ -404,7 +404,7 @@ pub fn pan_orbit_camera(
                     let start_position = aggregator
                         .get_start_mouse_position("MIDDLE_DRAG", &event_start_position_wrap);
                     let mut movement = data.movement.clone();
-                    tilt3D(
+                    tilt_3d(
                         &mut globe_camera_control,
                         &mut globe_camera,
                         &start_position,
@@ -418,7 +418,7 @@ pub fn pan_orbit_camera(
     }
 }
 
-fn tilt3DOnEllipsoid(
+fn tilt3_don_ellipsoid(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     start_position: &DVec2,
@@ -462,7 +462,7 @@ fn tilt3DOnEllipsoid(
     } else {
         controller._looking = true;
         let up = ellipsoid.geodetic_surface_normal(&camera.position);
-        look3D(
+        look_3d(
             controller,
             camera,
             start_position,
@@ -476,7 +476,7 @@ fn tilt3DOnEllipsoid(
 
     let transform = Transforms::eastNorthUpToFixedFrame(&center, None);
 
-    let oldEllipsoid = controller._ellipsoid;
+    let old_ellipsoid = controller._ellipsoid;
     controller._ellipsoid = Ellipsoid::UNIT_SPHERE;
     controller._rotate_factor = 1.0;
     controller._rotate_rate_range_adjustment = 1.0;
@@ -484,7 +484,7 @@ fn tilt3DOnEllipsoid(
     let old_transform = camera.get_transform().clone();
     camera._setTransform(&transform);
 
-    rotate3D(
+    rotate3_d(
         controller,
         camera,
         start_position,
@@ -496,13 +496,13 @@ fn tilt3DOnEllipsoid(
     );
 
     camera._setTransform(&old_transform);
-    controller._ellipsoid = oldEllipsoid;
+    controller._ellipsoid = old_ellipsoid;
 
-    let radius = oldEllipsoid.maximum_radius;
+    let radius = old_ellipsoid.maximum_radius;
     controller._rotate_factor = 1.0 / radius;
     controller._rotate_rate_range_adjustment = radius;
 }
-fn tilt3D(
+fn tilt_3d(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     start_position: &DVec2,
@@ -524,7 +524,7 @@ fn tilt3D(
 
     if controller._looking {
         let up = Ellipsoid::WGS84.geodetic_surface_normal(&camera.position);
-        look3D(
+        look_3d(
             controller,
             camera,
             start_position,
@@ -542,14 +542,14 @@ fn tilt3D(
         || cartographic.height > controller._minimum_collision_terrain_height
     {
         controller._tilt_on_ellipsoid = true;
-        tilt3DOnEllipsoid(controller, camera, start_position, movement, window_size);
+        tilt3_don_ellipsoid(controller, camera, start_position, movement, window_size);
     } else {
         // tilt3DOnTerrain(controller, start_position, movement);
-        panic!("暂时没有地形")
+        panic!("tilt 3d no terrain");
     }
 }
 
-fn spin3D(
+fn spin_3d(
     controller: &mut GlobeCameraControl,
 
     camera: &mut GlobeCamera,
@@ -561,7 +561,7 @@ fn spin3D(
     let mut ellipsoid = Ellipsoid::WGS84;
 
     if !camera.get_transform().eq(&DMat4::IDENTITY) {
-        rotate3D(
+        rotate3_d(
             controller,
             camera,
             start_position,
@@ -581,7 +581,7 @@ fn spin3D(
 
     if start_position.eq(&controller._rotate_mouse_position) {
         if controller._looking {
-            look3D(
+            look_3d(
                 controller,
                 camera,
                 start_position,
@@ -590,7 +590,7 @@ fn spin3D(
                 window_size,
             );
         } else if controller._rotating {
-            rotate3D(
+            rotate3_d(
                 controller,
                 camera,
                 start_position,
@@ -601,7 +601,7 @@ fn spin3D(
                 None,
             );
         } else if controller._strafing {
-            continueStrafing(controller, camera, movement, window_size);
+            continue_strafing(controller, camera, movement, window_size);
         } else {
             if camera.position.magnitude() < controller._rotate_start_position.length() {
                 // Pan action is no longer valid if camera moves below the pan ellipsoid
@@ -613,7 +613,7 @@ fn spin3D(
             radii.y = magnitude;
             radii.z = magnitude;
             ellipsoid = Ellipsoid::from_vec3(radii);
-            pan3D(controller, camera, start_position, movement, window_size);
+            pan_3d(controller, camera, start_position, movement, window_size);
         }
         return;
     }
@@ -627,11 +627,11 @@ fn spin3D(
     let _globe = false;
     let spin_3d_pick = camera.pick_ellipsoid(&movement.start_position, window_size);
     if spin_3d_pick.is_some() {
-        pan3D(controller, camera, start_position, movement, window_size);
+        pan_3d(controller, camera, start_position, movement, window_size);
         controller._rotate_start_position = spin_3d_pick.unwrap();
     } else if height > controller._minimum_track_ball_height {
         controller._rotating = true;
-        rotate3D(
+        rotate3_d(
             controller,
             camera,
             start_position,
@@ -643,7 +643,7 @@ fn spin3D(
         );
     } else {
         controller._looking = true;
-        look3D(
+        look_3d(
             controller,
             camera,
             start_position,
@@ -654,7 +654,7 @@ fn spin3D(
     }
     controller._rotate_mouse_position = start_position.clone();
 }
-fn rotate3D(
+fn rotate3_d(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     _start_position: &DVec2,
@@ -667,21 +667,21 @@ fn rotate3D(
     let rotate_only_vertical = rotate_only_vertical.unwrap_or(false);
     let rotate_only_horizontal = rotate_only_horizontal.unwrap_or(false);
 
-    let oldAxis = camera.constrained_axis;
+    let old_axis = camera.constrained_axis;
     if constrained_axis.is_some() {
         camera.constrained_axis = constrained_axis;
     }
 
     let rho = camera.position.magnitude();
-    let mut rotateRate =
+    let mut rotate_rate =
         controller._rotate_factor * (rho - controller._rotate_rate_range_adjustment);
 
-    if rotateRate > controller._maximum_rotate_rate {
-        rotateRate = controller._maximum_rotate_rate;
+    if rotate_rate > controller._maximum_rotate_rate {
+        rotate_rate = controller._maximum_rotate_rate;
     }
 
-    if rotateRate < controller._minimum_rotate_rate {
-        rotateRate = controller._minimum_rotate_rate;
+    if rotate_rate < controller._minimum_rotate_rate {
+        rotate_rate = controller._minimum_rotate_rate;
     }
 
     let mut phi_window_ratio =
@@ -691,8 +691,8 @@ fn rotate3D(
     phi_window_ratio = phi_window_ratio.min(controller.maximum_movement_ratio);
     theta_window_ratio = theta_window_ratio.min(controller.maximum_movement_ratio);
 
-    let delta_phi = rotateRate * phi_window_ratio * PI * 2.0;
-    let delta_theta = rotateRate * theta_window_ratio * PI;
+    let delta_phi = rotate_rate * phi_window_ratio * PI * 2.0;
+    let delta_theta = rotate_rate * theta_window_ratio * PI;
 
     if !rotate_only_vertical {
         camera.rotate_right(Some(delta_phi));
@@ -702,10 +702,10 @@ fn rotate3D(
         camera.rotate_up(Some(delta_theta));
     }
 
-    camera.constrained_axis = oldAxis;
+    camera.constrained_axis = old_axis;
 }
 
-fn pan3D(
+fn pan_3d(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     start_position: &DVec2,
@@ -720,7 +720,7 @@ fn pan3D(
 
     if p0.is_none() || p1.is_none() {
         controller._rotating = true;
-        rotate3D(
+        rotate3_d(
             controller,
             camera,
             start_position,
@@ -809,7 +809,7 @@ fn pan3D(
     }
 }
 
-fn look3D(
+fn look_3d(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     _start_position: &DVec2,
@@ -843,11 +843,11 @@ fn look3D(
         angle
     };
 
-    let horizontalRotationAxis = controller._horizontal_rotation_axis;
+    let horizontal_rotation_axis = controller._horizontal_rotation_axis;
     if rotation_axis.is_some() {
         camera.look(&rotation_axis.unwrap(), Some(-angle));
-    } else if horizontalRotationAxis.is_some() {
-        camera.look(&horizontalRotationAxis.unwrap(), Some(-angle));
+    } else if horizontal_rotation_axis.is_some() {
+        camera.look(&horizontal_rotation_axis.unwrap(), Some(-angle));
     } else {
         camera.look_left(Some(angle));
     }
@@ -875,12 +875,12 @@ fn look3D(
         angle
     };
 
-    let rotation_axis = rotation_axis.unwrap_or(horizontalRotationAxis.unwrap_or(DVec3::ZERO));
+    let rotation_axis = rotation_axis.unwrap_or(horizontal_rotation_axis.unwrap_or(DVec3::ZERO));
     if rotation_axis != DVec3::ZERO {
         let direction = camera.direction;
-        let negativeRotationAxis = rotation_axis.neg();
+        let negative_rotation_axis = rotation_axis.neg();
         let north_parallel = direction.equals_epsilon(rotation_axis, Some(EPSILON2), None);
-        let south_parallel = direction.equals_epsilon(negativeRotationAxis, Some(EPSILON2), None);
+        let south_parallel = direction.equals_epsilon(negative_rotation_axis, Some(EPSILON2), None);
         if !north_parallel && !south_parallel {
             dot = direction.dot(rotation_axis);
             let mut angle_to_axis = acos_clamped(dot);
@@ -888,7 +888,7 @@ fn look3D(
                 angle = angle_to_axis - EPSILON4;
             }
 
-            dot = direction.dot(negativeRotationAxis);
+            dot = direction.dot(negative_rotation_axis);
             angle_to_axis = acos_clamped(dot);
             if angle < 0. && -angle > angle_to_axis {
                 angle = -angle_to_axis + EPSILON4;
@@ -904,7 +904,7 @@ fn look3D(
     }
 }
 
-fn continueStrafing(
+fn continue_strafing(
     controller: &mut GlobeCameraControl,
     camera: &mut GlobeCamera,
     movement: &mut MovementState,

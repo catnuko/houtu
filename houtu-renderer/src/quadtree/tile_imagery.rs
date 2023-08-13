@@ -107,6 +107,12 @@ impl TileImagery {
             }
             tile_imagery.ready_imagery = tile_imagery.loading_imagery.clone();
             tile_imagery.loading_imagery = None;
+
+            // bevy::log::info!(
+            //     "{:?},{:?}",
+            //     tile_imagery.key,
+            //     tile_imagery.ready_imagery.as_ref().unwrap()
+            // );
             let loading_imagery = imagery_storage
                 .get_mut(tile_imagery.ready_imagery.as_ref().unwrap())
                 .unwrap();

@@ -42,7 +42,7 @@ impl ImageryStorage {
             );
             new_imagery.add_reference();
             self.map.insert(new_imagery.key, new_imagery);
-            bevy::log::info!("add new imagery {:?}", imagery_key);
+            // bevy::log::info!("add new imagery {:?}", imagery_key);
             return cloned;
         }
     }
@@ -69,7 +69,7 @@ impl ImageryStorage {
                 }
                 // TODO 还有很多没做，不确定会不会有问题
                 self.remove(key);
-                bevy::log::info!("imagery is removed {:?}", key);
+                // bevy::log::info!("imagery is removed {:?}", key);
                 return 0;
             }
             let v = self.get_mut(key).unwrap();

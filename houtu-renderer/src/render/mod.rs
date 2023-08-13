@@ -1,6 +1,6 @@
 use bevy::{core::FrameCount, prelude::*, render::renderer::RenderDevice, window::PrimaryWindow};
 use houtu_jobs::JobSpawner;
-use houtu_scene::GeographicTilingScheme;
+use houtu_scene::{GeographicTilingScheme, WebMercatorTilingScheme};
 use rand::Rng;
 
 use crate::xyz_imagery_provider::XYZImageryProvider;
@@ -32,7 +32,7 @@ impl bevy::prelude::Plugin for Plugin {
     }
 }
 fn setup(mut imagery_layer_storage: ResMut<ImageryLayerStorage>) {
-    let xyz = XYZImageryProvider::new(Box::new(GeographicTilingScheme::default()));
+    let xyz = XYZImageryProvider::new(Box::new(WebMercatorTilingScheme::default()));
     imagery_layer_storage.add(ImageryLayer::new(Box::new(xyz)))
 }
 
@@ -46,6 +46,7 @@ fn real_render_system(
     mut meshes: ResMut<Assets<Mesh>>,
     rendered_query: Query<(Entity, &TileRendered)>,
     _images: ResMut<Assets<Image>>,
+    imagery_storage: Res<ImageryStorage>,
 ) {
     //清除已经渲染但不需要渲染的瓦片
     for (entity, tile_rendered) in rendered_query.iter() {
@@ -64,36 +65,45 @@ fn real_render_system(
         let tile = primitive.storage.get_mut(key).unwrap();
         if tile.state == QuadtreeTileLoadState::DONE && tile.entity.is_none() {
             // info!("render tile key={:?}", key);
-            let mut rng = rand::thread_rng();
-            let r: f32 = rng.gen();
-            let g: f32 = rng.gen();
-            let b: f32 = rng.gen();
-            let rendered_entity = commands.spawn((
-                MaterialMeshBundle {
-                    mesh: meshes.add(
-                        tile.data
-                            .get_cloned_terrain_data()
-                            .lock()
-                            .unwrap()
-                            .get_mesh()
-                            .unwrap()
-                            .into(),
-                    ),
-                    material: terrain_materials.add(TerrainMeshMaterial {
-                        color: Color::rgba(r, g, b, 1.0),
-                        // image: Some(asset_server.load("icon.png")),
-                        image:Some( asset_server.load(format!(
-                                "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
-                                key.level, key.x, key.y,
-                            ))),
-                    }),
-                    // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
-                    ..Default::default()
-                },
-                TileRendered(tile.key),
-            ));
-            let entity = rendered_entity.id();
-            tile.entity = Some(entity);
+            info!("{:?} length is {}", tile.key, tile.data.imagery.len());
+            if tile.data.imagery.len() != 0 {
+                let imagery = tile.data.imagery.get(0).unwrap();
+                let ready_imagery = imagery_storage
+                    .get(imagery.ready_imagery.as_ref().unwrap())
+                    .unwrap();
+                info!("ready imagery {:?}", ready_imagery.key);
+                let mut rng = rand::thread_rng();
+                let r: f32 = rng.gen();
+                let g: f32 = rng.gen();
+                let b: f32 = rng.gen();
+                let rendered_entity = commands.spawn((
+                    MaterialMeshBundle {
+                        mesh: meshes.add(
+                            tile.data
+                                .get_cloned_terrain_data()
+                                .lock()
+                                .unwrap()
+                                .get_mesh()
+                                .unwrap()
+                                .into(),
+                        ),
+                        material: terrain_materials.add(TerrainMeshMaterial {
+                            color: Color::rgba(r, g, b, 1.0),
+                            image: ready_imagery.texture.clone(),
+                            // image: Some(asset_server.load("icon.png")),
+                            // image:Some( asset_server.load(format!(
+                            //         "https://maps.omniscale.net/v2/houtu-earth-f1ad0341/style.default/{}/{}/{}.png",
+                            //         key.level, key.x, key.y,
+                            //     ))),
+                        }),
+                        // material: standard_materials.add(Color::rgba(r, g, b, 1.0).into()),
+                        ..Default::default()
+                    },
+                    TileRendered(tile.key),
+                ));
+                let entity = rendered_entity.id();
+                tile.entity = Some(entity);
+            }
         }
     }
 }

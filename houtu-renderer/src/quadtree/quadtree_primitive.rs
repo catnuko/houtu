@@ -61,7 +61,8 @@ pub enum QueueType {
 }
 impl QuadtreePrimitive {
     pub fn new() -> Self {
-        let storage = QuadtreeTileStorage::new();
+        let tile_provider = GlobeSurfaceTileProvider::new();
+        let storage = QuadtreeTileStorage::new(tile_provider.get_tiling_scheme().clone());
         Self {
             tile_cache_size: 100,
             loading_descendant_limit: 20,
@@ -84,7 +85,7 @@ impl QuadtreePrimitive {
             tile_to_update_heights: vec![],
             storage: storage,
             tile_replacement_queue: TileReplacementQueue::new(),
-            tile_provider: GlobeSurfaceTileProvider::new(),
+            tile_provider: tile_provider,
         }
     }
     pub fn get_tiling_scheme(&self) -> &GeographicTilingScheme {
@@ -100,10 +101,7 @@ impl QuadtreePrimitive {
         self.tile_replacement_queue.clear();
         self.clear_tile_load_queue();
     }
-    fn create_level_zero_tiles(&mut self) {
-        let tiling_scheme = self.get_tiling_scheme().clone();
-        self.storage.create_level_zero_tiles(&tiling_scheme);
-    }
+
     pub fn begin_frame(&mut self) {
         if self.tiles_invalidated {
             self.invalidate_all_tiles();
@@ -146,7 +144,7 @@ impl QuadtreePrimitive {
         }
         self.tiles_to_render.clear();
         if self.storage.root_len() == 0 {
-            self.create_level_zero_tiles();
+            self.storage.create_level_zero_tiles();
             let len = self.storage.root_len();
             if root_traversal_details.0.len() < len {
                 root_traversal_details.0 = vec![TraversalDetails::default(); len];
@@ -466,8 +464,7 @@ fn visit_tile(
     imagery_storage: &mut ImageryStorage,
 ) {
     // bevy::log::info!("visite tile,{:?}", tile_key);
-    let tiling_scheme = primitive.get_tiling_scheme().clone();
-    primitive.storage.subdivide(&tile_key, &tiling_scheme);
+    primitive.storage.subdivide(&tile_key);
     primitive.debug.tiles_visited += 1;
     primitive
         .tile_replacement_queue

@@ -22,7 +22,7 @@ use super::{
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
     tile_key::TileKey,
-    upsample_job::UpsampleJob,
+    upsample_job::UpsampleJob, imagery_provider::ImageryProvider,
 };
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TerrainState {
@@ -73,6 +73,7 @@ impl GlobeSurfaceTile {
         texture_coordinate_rectangle: Option<DVec4>,
         use_web_mercator_t: bool,
     ) {
+        // bevy::log::info!("add tile imagery {:?}", imagery);
         let tile_imagery =
             TileImagery::new(imagery, texture_coordinate_rectangle, use_web_mercator_t);
         self.imagery.push(tile_imagery);
@@ -206,6 +207,8 @@ impl GlobeSurfaceTile {
         render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
         imagery_storage: &mut ImageryStorage,
+        
+
     ) {
         initialize(
             storage,
@@ -283,6 +286,7 @@ fn processTerrainStateMachine(
     render_device: &RenderDevice,
     globe_camera: &GlobeCamera,
     imagery_storage: &mut ImageryStorage,
+
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.data.terrain_state == TerrainState::FAILED && tile.parent.is_some() {
@@ -389,6 +393,7 @@ fn initialize(
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
     imagery_storage: &mut ImageryStorage,
+
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.state == QuadtreeTileLoadState::START {
@@ -409,6 +414,7 @@ fn prepare_new_tile(
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
     imagery_storage: &mut ImageryStorage,
+
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     let mut available = terrain_provider.get_tile_data_available(&tile_key);
@@ -434,7 +440,7 @@ fn prepare_new_tile(
     }
     for (_, imagery_layer) in imagery_layer_storage.map.iter_mut() {
         if imagery_layer.show {
-            imagery_layer._create_tile_imagery_skeletons(tile, terrain_provider, imagery_storage);
+            imagery_layer._create_tile_imagery_skeletons(tile, terrain_provider, imagery_storage,);
         }
     }
 }

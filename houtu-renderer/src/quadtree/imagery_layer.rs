@@ -14,7 +14,8 @@ use bevy::{
 };
 
 use bevy_egui::egui::epaint::image;
-use houtu_scene::{lerp_f32, Matrix4, Rectangle, TilingScheme};
+use houtu_scene::{lerp_f32, Matrix4, Rectangle, TilingScheme, WebMercatorProjection};
+use wgpu::BufferDescriptor;
 
 use crate::{
     camera::GlobeCamera,
@@ -30,7 +31,9 @@ use super::{
     imagery_storage::{Imagery, ImageryKey, ImageryState, ImageryStorage},
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_tile::QuadtreeTile,
-    reproject_texture::ReprojectTextureTaskQueue,
+    reproject_texture::{
+        FinishReprojectTexture, ReprojectTextureTaskQueue, ReprojectTextureTaskState,
+    },
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
     tile_key::TileKey,
@@ -142,17 +145,19 @@ impl ImageryLayer {
             tile.data.add_imagery(imagery_key, None, false);
             return true;
         }
-
-        let use_web_mercator_t = false;
+        let use_web_mercator_t = self.imagery_provider.get_tiling_scheme().get_name()
+            == "WebMercatorTilingScheme"
+            && tile.rectangle.north < WebMercatorProjection::MAXIMUM_LATITUDE
+            && tile.rectangle.south > -WebMercatorProjection::MAXIMUM_LATITUDE;
 
         let mut imagery_bounds = self
             .imagery_provider
             .get_rectangle()
             .intersection(&self._rectangle)
             .expect("多边形相交没结果");
-        let mut intersection_rectangle = tile.rectangle.intersection(&imagery_bounds);
+        let mut rectangle = tile.rectangle.intersection(&imagery_bounds);
 
-        if intersection_rectangle.is_none() {
+        if rectangle.is_none() {
             // There is no overlap between this terrain tile and this imagery
             // provider.  Unless this is the base layer, no skeletons need to be created.
             // We stretch texels at the edge of the base layer over the entire globe.
@@ -193,14 +198,14 @@ impl ImageryLayer {
                 new_rectangle.west = base_terrain_rectangle.west.max(base_imagery_rectangle.west);
                 new_rectangle.east = base_terrain_rectangle.east.min(base_imagery_rectangle.east);
             }
-            intersection_rectangle = Some(new_rectangle)
+            rectangle = Some(new_rectangle)
         }
-
+        let rectangle = rectangle.unwrap();
         let mut latitude_closest_to_equator = 0.0;
-        if tile.rectangle.south > 0.0 {
-            latitude_closest_to_equator = tile.rectangle.south;
-        } else if tile.rectangle.north < 0.0 {
-            latitude_closest_to_equator = tile.rectangle.north;
+        if rectangle.south > 0.0 {
+            latitude_closest_to_equator = rectangle.south;
+        } else if rectangle.north < 0.0 {
+            latitude_closest_to_equator = rectangle.north;
         }
 
         // Compute the required level in the imagery tiling scheme.
@@ -229,10 +234,10 @@ impl ImageryLayer {
 
         let imagery_tiling_scheme = self.imagery_provider.get_tiling_scheme();
         let mut north_west_tile_coordinates = imagery_tiling_scheme
-            .position_to_tile_x_y(&tile.rectangle.north_west(), imagery_level)
+            .position_to_tile_x_y(&rectangle.north_west(), imagery_level)
             .expect("north_west_tile_coordinates");
         let mut south_east_tile_coordinates = imagery_tiling_scheme
-            .position_to_tile_x_y(&tile.rectangle.south_east(), imagery_level)
+            .position_to_tile_x_y(&rectangle.south_east(), imagery_level)
             .expect("south_east_tile_coordinates");
 
         // If the southeast corner of the rectangle lies very close to the north or west side
@@ -255,7 +260,7 @@ impl ImageryLayer {
             north_west_tile_coordinates.y,
             imagery_level,
         );
-        if north_west_tile_rectangle.south - tile.rectangle.north.abs() < very_close_y
+        if (north_west_tile_rectangle.south - tile.rectangle.north).abs() < very_close_y
             && north_west_tile_coordinates.y < south_east_tile_coordinates.y
         {
             //西北瓦片的Y加一相当于略去该瓦片，因为下面的循环是从西北瓦片的Y开始的
@@ -514,7 +519,7 @@ impl ImageryLayer {
         let imagery = imagery_storage.get_mut(&imagery_key).unwrap();
         let rectangle = imagery.rectangle.clone();
         if need_geographic_projection
-            && projection_name == "GeographicTilingScheme"
+            && projection_name != "GeographicTilingScheme"
             && rectangle.compute_width() / width as f64 > 1e-5
         {
             imagery_storage.add_reference(&imagery_key);
@@ -557,7 +562,7 @@ impl ImageryLayer {
             let index_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
                 label: Some("indices_buffer"),
                 contents: cast_slice(&indices),
-                usage: BufferUsages::VERTEX | BufferUsages::INDEX,
+                usage: BufferUsages::VERTEX | BufferUsages::INDEX | BufferUsages::COPY_DST,
             });
             let v = &globe_camera.viewport;
             let _viewport_orthographic_matrix = DMat4::compute_orthographic_off_center(
@@ -596,23 +601,31 @@ impl ImageryLayer {
                     format: TextureFormat::Rgba8UnormSrgb,
                     usage: TextureUsages::COPY_DST
                         | TextureUsages::RENDER_ATTACHMENT
-                        | TextureUsages::TEXTURE_BINDING,
+                        | TextureUsages::TEXTURE_BINDING
+                        | TextureUsages::COPY_SRC,
                     view_formats: &[],
                 },
                 ..Default::default()
             };
             image.resize(size);
             let image_handle = images.add(image);
+            let u32_size = std::mem::size_of::<u32>() as u32;
+            let output_buffer_size = (u32_size * width * height) as wgpu::BufferAddress;
+            let output_buffer = render_device.create_buffer(&BufferDescriptor {
+                size: output_buffer_size,
+                usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+                label: None,
+                mapped_at_creation: false,
+            });
             let task = ReprojectTextureTask {
-                // key: imagery.get_tile_key().clone(),
+                output_buffer: output_buffer,
                 output_texture: image_handle,
                 image: imagery.texture.as_ref().expect("imagery.texture").clone(),
                 webmercartor_buffer,
                 index_buffer,
                 uniform_buffer: buffer,
-                // imagery_layer_id: imagery.get_layer_id().clone(),
                 imagery_key: imagery.key,
-                ok: false,
+                state: ReprojectTextureTaskState::Start,
             };
             render_world_queue.push(task);
         } else {
@@ -690,27 +703,24 @@ impl ImageryLayer {
         }
     }
     pub fn finalize_reproject_texture(&self, pixel_format: TextureFormat) {
-        let mut minification_filter = &self.minification_filter;
-        let mut magnification_filter = &self.magnification_filter;
-        let uses_linear_texture_filter = *minification_filter == TextureMinificationFilter::Linear
-            && *magnification_filter == TextureMinificationFilter::Linear;
+        // let mut minification_filter = &self.minification_filter;
+        // let mut magnification_filter = &self.magnification_filter;
+        // let uses_linear_texture_filter = *minification_filter == TextureMinificationFilter::Linear
+        //     && *magnification_filter == TextureMinificationFilter::Linear;
         // if uses_linear_texture_filter&&
     }
 }
 pub fn finish_reproject_texture_system(
     mut render_world_queue: ResMut<ReprojectTextureTaskQueue>,
-    mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
     mut imagery_storage: ResMut<ImageryStorage>,
+    mut evt_reader: EventReader<FinishReprojectTexture>,
 ) {
-    let (_, receiver) = render_world_queue.status_channel.clone();
-    for _i in 0..render_world_queue.count() {
-        let Ok((imagery_key))  =receiver.try_recv()else{continue;};
-        if let Some(task) = render_world_queue.remove(&imagery_key) {
-            // bevy::log::info!("queue length {}", render_world_queue.count());
-            let imagery = imagery_storage.get_mut(&imagery_key).unwrap();
+    for evt in evt_reader.iter() {
+        if let Some(task) = render_world_queue.remove(&evt.imagery_key) {
+            let imagery = imagery_storage.get_mut(&evt.imagery_key).unwrap();
             imagery.texture = Some(task.output_texture.clone());
             imagery.state = ImageryState::READY;
-            imagery_storage.release_reference(&imagery_key);
+            imagery_storage.release_reference(&evt.imagery_key);
         } else {
         }
     }

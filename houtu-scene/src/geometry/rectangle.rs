@@ -1,4 +1,4 @@
-use std::f64::consts::{FRAC_PI_2, PI};
+use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use bevy::{math::DVec3, prelude::Component};
 
@@ -19,7 +19,12 @@ impl Rectangle {
         north: FRAC_PI_2,
     };
     pub fn compute_width(&self) -> f64 {
-        self.east - self.west
+        let mut east = self.east;
+        let west = self.west;
+        if east<west{
+            east+=TAU;
+        }
+        return east - west;
     }
     pub fn compute_height(&self) -> f64 {
         self.north - self.south

@@ -53,7 +53,7 @@ pub fn geodetic_latitude_to_mercator_angle(latitude: f64) -> f64 {
     return 0.5 * ((1.0 + sin_latitude) / (1.0 - sin_latitude)).ln();
 }
 impl WebMercatorProjection {
-    const MAXIMUM_LATITUDE: f64 = 1.4844222297453322;
+    pub const MAXIMUM_LATITUDE: f64 = 1.4844222297453322;
     pub fn geodetic_latitude_to_mercator_angle(&self, latitude: f64) -> f64 {
         let mut latitude = latitude;
         // Clamp the latitude coordinate to the valid Mercator bounds.

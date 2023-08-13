@@ -152,7 +152,7 @@ impl HeightmapTerrainData {
         let exaggeration_relative_height = exaggeration_relative_height.unwrap_or(0.0);
 
         let ellipsoid = tiling_scheme.get_ellipsoid();
-        let nativeRectangle = tiling_scheme.tile_x_y_to_native_rectange(x, y, level);
+        let native_rectangle = tiling_scheme.tile_x_y_to_native_rectange(x, y, level);
         let rectangle = tiling_scheme.tile_x_y_to_rectange(x, y, level);
 
         // Compute the center of the tile for RTC rendering.
@@ -174,7 +174,7 @@ impl HeightmapTerrainData {
             includeWebMercatorT: Some(true),
             width: self._width,
             height: self._height,
-            nativeRectangle: nativeRectangle,
+            native_rectangle: native_rectangle,
             rectangle: Some(rectangle),
             relativeToCenter: Some(center),
             ellipsoid: Some(ellipsoid),

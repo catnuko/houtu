@@ -2,8 +2,9 @@ use std::f64::consts::PI;
 
 use crate::{bit_or_zero, Cartographic, Ellipsoid, Rectangle};
 use bevy::{
+    core_pipeline::core_3d::graph::node,
     math::DVec2,
-    prelude::{IVec2, UVec2, Vec2}, core_pipeline::core_3d::graph::node,
+    prelude::{IVec2, UVec2, Vec2},
 };
 
 use crate::{
@@ -187,7 +188,7 @@ impl TilingScheme for WebMercatorTilingScheme {
 
 #[cfg(test)]
 mod tests {
-    use crate::{equals_epsilon, EPSILON10, GeographicTilingScheme};
+    use crate::{equals_epsilon, GeographicTilingScheme, EPSILON10};
 
     use super::*;
 
@@ -268,10 +269,52 @@ mod tests {
         );
     }
     #[test]
-    fn test_445(){
+    fn test_101() {
         let tiling_scheme = WebMercatorTilingScheme::default();
-        let rectangle = tiling_scheme.tile_x_y_to_native_rectange(4, 5, 4);
-        
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(1, 0, 1);
+        assert!(equals_epsilon(
+            rectangle.east,
+            3.141592653589793,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(rectangle.west, 0.0, Some(EPSILON10), None));
+        assert!(equals_epsilon(
+            rectangle.north,
+            1.4844222297453322,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(rectangle.south, 0.0, Some(EPSILON10), None));
     }
- 
+    #[test]
+    fn test_111() {
+        let tiling_scheme = WebMercatorTilingScheme::default();
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(1, 1, 1);
+        assert!(equals_epsilon(
+            rectangle.east,
+            3.141592653589793,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(rectangle.west, 0.0, Some(EPSILON10), None));
+        assert!(equals_epsilon(
+            rectangle.north,
+            1.5707963267948966,
+            Some(EPSILON10),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.south,
+            -1.5707963267948966,
+            Some(EPSILON10),
+            None
+        ));
+    }
+    #[test]
+    fn test_spliece() {
+        let mut list = vec![1, 2, 3, 4];
+        list.splice(0..0, [0]);
+        assert!(list == vec![0,1,2,3,4]);
+    }
 }

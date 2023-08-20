@@ -62,17 +62,17 @@ onMounted(() => {
 	};
 	viewer.imageryLayers.remove(viewer.imageryLayers._layers[0])
 	//天地图影像中文标记服务（经纬度）
-	var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
-		url: TDTURL_CONFIG.TDT_IMG_C,
-		layer: 'tdtImg_c',
-		style: 'default',
-		format: 'tiles',
-		tileMatrixSetID: 'c',
-		subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
-		tilingScheme: new Cesium.GeographicTilingScheme(),
-		tileMatrixLabels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'],
-		maximumLevel: 18,
-	});
+	// var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
+	// 	url: TDTURL_CONFIG.TDT_IMG_C,
+	// 	layer: 'tdtImg_c',
+	// 	style: 'default',
+	// 	format: 'tiles',
+	// 	tileMatrixSetID: 'c',
+	// 	subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+	// 	tilingScheme: new Cesium.GeographicTilingScheme(),
+	// 	tileMatrixLabels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'],
+	// 	maximumLevel: 18,
+	// });
 	// viewer.imageryLayers.addImageryProvider(tdtCva);
 	var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
 		url: TDTURL_CONFIG.TDT_IMG_W,
@@ -84,6 +84,16 @@ onMounted(() => {
 		maximumLevel: 18,
 	});
 	viewer.imageryLayers.addImageryProvider(tdtCva);
+	// var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
+	// 	url: TDTURL_CONFIG.TDT_CIA_W,
+	// 	layer: 'tdtImgLayer',
+	// 	style: 'default',
+	// 	format: "image/jpeg",
+	// 	tileMatrixSetID: 'c',
+	// 	subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+	// 	maximumLevel: 18,
+	// });
+	// viewer.imageryLayers.addImageryProvider(tdtCva);
 
 });
 onBeforeUnmount(() => {

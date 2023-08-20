@@ -64,7 +64,7 @@ pub fn receive_images(
             });
             render_device.poll(wgpu::Maintain::Wait);
             rx.receive().await.unwrap().unwrap();
-            if let Some(mut image) = images.get_mut(&task.1.output_texture) {
+            if let Some(mut image) = images.get_mut(&task.1.image) {
                 image.data = buffer_slice.get_mapped_range().to_vec();
             }
 

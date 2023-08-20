@@ -73,7 +73,6 @@ impl QuadtreeTileStorage {
     pub fn new_children_tile(
         &mut self,
         parent_key: &TileKey,
-
         location: Quadrant,
     ) -> &mut QuadtreeTile {
         let child_key: TileKey;

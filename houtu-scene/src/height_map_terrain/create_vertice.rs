@@ -99,14 +99,18 @@ pub struct CreateVerticeOptions<'a> {
     pub includeWebMercatorT: Option<bool>,
 }
 pub struct CreateVerticeReturn {
-    pub vertices: Vec<f32>,
+    pub positions: Vec<DVec3>,
     pub maximum_height: f64,
     pub minimum_height: f64,
-    pub encoding: TerrainEncoding,
+    // pub encoding: TerrainEncoding,
     pub bounding_sphere_3d: BoundingSphere,
     pub oriented_bounding_box: OrientedBoundingBox,
     pub occludee_point_in_scaled_space: Option<DVec3>,
     pub relativeToCenter: Option<DVec3>,
+    pub heights: Vec<f64>,
+    pub uvs: Vec<DVec2>,
+    pub web_mecator_t: Vec<f64>,
+    pub geodetic_surface_normals: Vec<DVec3>,
 }
 pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let piOverTwo = FRAC_PI_2;
@@ -140,8 +144,6 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             geographicNorth = native_rectangle.north.to_radians();
         } else {
             geographicWest = native_rectangle.west * oneOverGlobeSemimajorAxis;
-            // geographicSouth =
-            //     piOverTwo - 2.0 * atan(exp(-native_rectangle.south * oneOverGlobeSemimajorAxis));
             geographicSouth = piOverTwo
                 - 2.0
                     * (-native_rectangle.south * oneOverGlobeSemimajorAxis)
@@ -194,14 +196,13 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let from_enu = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
     let to_enu = from_enu.inverse_transformation();
-    let webMercatorProjection = WebMercatorProjection::default();
     let mut south_mercator_y = 0.;
     let mut one_over_mercator_height = 0.;
     if includeWebMercatorT {
         south_mercator_y =
-            webMercatorProjection.geodetic_latitude_to_mercator_angle(geographicSouth);
+            WebMercatorProjection::geodetic_latitude_to_mercator_angle(geographicSouth);
         one_over_mercator_height = 1.0
-            / (webMercatorProjection.geodetic_latitude_to_mercator_angle(geographicNorth)
+            / (WebMercatorProjection::geodetic_latitude_to_mercator_angle(geographicNorth)
                 - south_mercator_y);
     }
 
@@ -283,6 +284,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         }
 
         let mut v = (latitude - geographicSouth) / (geographicNorth - geographicSouth);
+        v = 1.0 - v; //bevy的材质坐标系原点在左上角
         v = v.clamp(0.0, 1.0);
 
         let isNorthEdge = rowIndex == startRow;
@@ -301,7 +303,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
         let mut web_mercator_t: f64 = 0.;
         if includeWebMercatorT {
-            web_mercator_t = (webMercatorProjection.geodetic_latitude_to_mercator_angle(latitude)
+            web_mercator_t = (WebMercatorProjection::geodetic_latitude_to_mercator_angle(latitude)
                 - south_mercator_y)
                 * one_over_mercator_height;
         }
@@ -445,61 +447,50 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             );
     }
 
-    let aaBox = AxisAlignedBoundingBox::new(minimum, maximum, relativeToCenter);
-    let encoding = TerrainEncoding::new(
-        relativeToCenter,
-        Some(aaBox),
-        Some(hMin),
-        Some(maximum_height),
-        Some(from_enu),
-        false,
-        Some(includeWebMercatorT),
-        Some(includeGeodeticSurfaceNormals),
-        Some(exaggeration),
-        Some(exaggeration_relative_height),
-    );
-    let lenth = (vertex_count * encoding.stride as u32) as usize;
-    let mut vertices = Vec::with_capacity(lenth); // 预分配内存空间
-    vertices.extend(std::iter::repeat(0.).take(lenth));
-
-    let mut buffer_index: i64 = 0;
-    for j in 0..vertex_count {
-        let jj = j as usize;
-        buffer_index = encoding.encode(
-            &mut vertices,
-            buffer_index,
-            &mut positions[jj],
-            &uvs[jj],
-            heights[jj],
-            None,
-            {
-                if webMercatorTsOption.is_none() {
-                    None
-                } else {
-                    let webMercatorTs = webMercatorTsOption.as_ref().unwrap();
-                    Some(webMercatorTs[jj])
-                }
-            },
-            {
-                if geodeticSurfaceNormalsOption.is_none() {
-                    None
-                } else {
-                    let geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_ref().unwrap();
-                    Some(&geodeticSurfaceNormals[jj])
-                }
-            },
-        );
-    }
+    // let aaBox = AxisAlignedBoundingBox::new(minimum, maximum, relativeToCenter);
+    // let encoding = TerrainEncoding::new(
+    //     relativeToCenter,
+    //     Some(aaBox),
+    //     Some(hMin),
+    //     Some(maximum_height),
+    //     Some(from_enu),
+    //     false,
+    //     Some(includeWebMercatorT),
+    //     Some(includeGeodeticSurfaceNormals),
+    //     Some(exaggeration),
+    //     Some(exaggeration_relative_height),
+    // );
+    // let lenth = (vertex_count * 3 as u32) as usize;
+    // let mut vertices = Vec::with_capacity(lenth); // 预分配内存空间
+    // vertices.extend(std::iter::repeat(0.).take(lenth));
+    let mut vertices = vec![0.0; (vertex_count * 3) as usize];
 
     return CreateVerticeReturn {
         relativeToCenter: options.relativeToCenter,
-        vertices: vertices,
+        // vertices: vertices,
+        positions: positions,
         maximum_height: maximum_height,
         minimum_height: minimum_height,
-        encoding: encoding,
+        // encoding: encoding,
         bounding_sphere_3d: bounding_sphere_3d,
         oriented_bounding_box: oriented_bounding_box,
         occludee_point_in_scaled_space: occludee_point_in_scaled_space,
+        heights,
+        uvs,
+        web_mecator_t: {
+            if webMercatorTsOption.is_none() {
+                vec![]
+            } else {
+                webMercatorTsOption.unwrap()
+            }
+        },
+        geodetic_surface_normals: {
+            if geodeticSurfaceNormalsOption.is_none() {
+                vec![]
+            } else {
+                geodeticSurfaceNormalsOption.unwrap()
+            }
+        },
     };
 }
 
@@ -551,7 +542,7 @@ mod tests {
             ellipsoid: None,
         };
         let results = create_vertice(options);
-        let vertices = results.vertices;
+        let vertices = results.positions;
 
         let ellipsoid = Ellipsoid::WGS84;
 
@@ -581,22 +572,18 @@ mod tests {
                 });
 
                 let index = ((j * width + i) * 6) as usize;
-                let vertexPosition = DVec3::new(
-                    vertices[index] as f64,
-                    vertices[index + 1] as f64,
-                    vertices[index + 2] as f64,
-                );
+                let vertexPosition = vertices[index];
 
                 assert!(vertexPosition.equals_epsilon(expectedVertexPosition, Some(1.0), None));
-                assert!(vertices[index + 3] == heightSample as f32);
+                assert!(results.heights[index] == heightSample);
                 assert!(equals_epsilon(
-                    vertices[(index + 4)] as f64,
+                    results.uvs[index].x,
                     compute_u32(i, width - 1),
                     Some(EPSILON7),
                     None
                 ));
                 assert!(equals_epsilon(
-                    vertices[(index + 5)] as f64,
+                    results.uvs[index].y,
                     1.0 - compute_u32(j, height - 1),
                     Some(EPSILON7),
                     None

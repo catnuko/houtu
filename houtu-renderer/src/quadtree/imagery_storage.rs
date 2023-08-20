@@ -7,7 +7,7 @@ use super::{
     reproject_texture::ReprojectTextureTaskQueue,
     tile_key::TileKey,
 };
-use houtu_scene::Rectangle;
+use houtu_scene::{Rectangle, TilingScheme};
 #[derive(Resource)]
 pub struct ImageryStorage {
     map: HashMap<ImageryKey, Imagery>,
@@ -26,12 +26,19 @@ impl ImageryStorage {
     pub fn get_mut(&mut self, key: &ImageryKey) -> Option<&mut Imagery> {
         return self.map.get_mut(key);
     }
-    pub fn add(&mut self, tile_key: &TileKey, imagery_layer_id: &ImageryLayerId) -> ImageryKey {
+    pub fn add(
+        &mut self,
+        tile_key: &TileKey,
+        imagery_layer_id: &ImageryLayerId,
+        tiling_scheme: &Box<dyn TilingScheme>,
+    ) -> ImageryKey {
         let imagery_key = ImageryKey::new(tile_key.clone(), imagery_layer_id.clone());
         if self.map.contains_key(&imagery_key) {
             return imagery_key;
         } else {
             let cloned = imagery_key.clone();
+            let rectangle =
+                tiling_scheme.tile_x_y_to_rectange(tile_key.x, tile_key.y, tile_key.level);
             let mut new_imagery = Imagery::new(
                 imagery_key,
                 tile_key.parent().and_then(|x| {
@@ -39,6 +46,7 @@ impl ImageryStorage {
                     self.add_reference(&parent_key);
                     Some(parent_key)
                 }),
+                rectangle,
             );
             new_imagery.add_reference();
             self.map.insert(new_imagery.key, new_imagery);
@@ -78,6 +86,24 @@ impl ImageryStorage {
             panic!("imagery is not existed,{:?}", key);
         };
     }
+    pub fn create_placeholder(
+        &mut self,
+        imagery_layer_id: &ImageryLayerId,
+        tiling_scheme: &Box<dyn TilingScheme>,
+    ) -> ImageryKey {
+        let key = self.add(
+            &TileKey {
+                x: 0,
+                y: 0,
+                level: 0,
+            },
+            imagery_layer_id,
+            tiling_scheme,
+        );
+        let imagery = self.get_mut(&key).unwrap();
+        imagery.state = ImageryState::PLACEHOLDER;
+        return key.clone();
+    }
 }
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum ImageryState {
@@ -116,13 +142,13 @@ pub struct Imagery {
     pub key: ImageryKey,
 }
 impl Imagery {
-    pub fn new(imagery_key: ImageryKey, parent: Option<ImageryKey>) -> Self {
+    pub fn new(imagery_key: ImageryKey, parent: Option<ImageryKey>, rectangle: Rectangle) -> Self {
         Self {
             key: imagery_key,
             state: ImageryState::UNLOADED,
             texture: None,
             image_url: None,
-            rectangle: Rectangle::MAX_VALUE.clone(),
+            rectangle: rectangle,
             reference_count: 0,
             parent,
         }

@@ -60,6 +60,7 @@ pub struct ImageryLayer {
     pub show: bool,
     pub minification_filter: TextureMinificationFilter,
     pub magnification_filter: TextureMinificationFilter,
+    // pub skeleton_placeholder: TileImagery,
 }
 impl ImageryLayer {
     pub const DEFAULT_MINIFICATION_FILTER: TextureMinificationFilter =
@@ -72,9 +73,14 @@ impl ImageryLayer {
     pub const DEFAULT_SATURATION: f64 = 1.0;
     pub const DEFAULT_GAMMA: f64 = 1.0;
     pub const DEFAULT_APPLY_COLOR_TO_ALPHA_THRESHOLD: f64 = 0.004;
-    pub fn new(imagery_provider: Box<dyn ImageryProvider>) -> Self {
+    pub fn new(
+        imagery_provider: Box<dyn ImageryProvider>,
+        imagery_storage: &mut ImageryStorage,
+    ) -> Self {
+        let id = ImageryLayerId::new();
+        let id_cloned = id.clone();
         Self {
-            id: ImageryLayerId::new(),
+            id: id,
             alpha: 1.0,
             night_alpha: 1.0,
             day_alpha: 1.0,
@@ -90,8 +96,12 @@ impl ImageryLayer {
             color_to_alpha_threshold: 0.004,
             ready: true,
             _rectangle: Rectangle::MAX_VALUE.clone(),
-            // skeleton_placeholder: Tileimagery_storage::create_placeholder(imagery_layer_id, None),
-            // imagery_cache: HashMap::new(),
+            // skeleton_placeholder: TileImagery::new(
+            //     imagery_storage
+            //         .create_placeholder(&id_cloned, imagery_provider.get_tiling_scheme()),
+            //     None,
+            //     false,
+            // ),
             imagery_provider: imagery_provider,
             show: true,
             minification_filter: Self::DEFAULT_MINIFICATION_FILTER,
@@ -131,25 +141,34 @@ impl ImageryLayer {
         tile: &mut QuadtreeTile,
         terrain_provider: &Box<dyn TerrainProvider>,
         imagery_storage: &mut ImageryStorage,
+        insertion_point: Option<usize>,
     ) -> bool {
-        let mut insertion_point = tile.data.imagery.len();
+        let mut insertion_point = insertion_point;
+        if insertion_point.is_none() {
+            insertion_point = Some(tile.data.imagery.len());
+        }
+        // let mut insertion_point = tile.data.imagery.len();
         if !self.ready || !self.imagery_provider.get_ready() {
-            let imagery_key = imagery_storage.add(
-                &TileKey {
-                    x: 0,
-                    y: 0,
-                    level: 0,
-                },
-                &self.id,
-            );
-            tile.data.add_imagery(imagery_key, None, false);
-            return true;
+            // let imagery_key = imagery_storage.add(
+            //     &TileKey {
+            //         x: 0,
+            //         y: 0,
+            //         level: 0,
+            //     },
+            //     &self.id,
+            //     self.imagery_provider.get_tiling_scheme(),
+            // );
+            // tile.data.add_imagery(imagery_key, None, false);
+            // imagery_storage.add_reference(self.skeleton_placeholder.loading_imagery.as_ref().unwrap());
+            // tile.data.imagery.splice(range, replace_with)
+            // return true;
+            panic!("暂时不可到达这里");
         }
         let use_web_mercator_t = self.imagery_provider.get_tiling_scheme().get_name()
             == "WebMercatorTilingScheme"
             && tile.rectangle.north < WebMercatorProjection::MAXIMUM_LATITUDE
             && tile.rectangle.south > -WebMercatorProjection::MAXIMUM_LATITUDE;
-
+        // bevy::log::info!("use_web_mercator_t is {}", use_web_mercator_t);
         let mut imagery_bounds = self
             .imagery_provider
             .get_rectangle()
@@ -335,7 +354,7 @@ impl ImageryLayer {
         if !self.is_base_layer()
             && (clipped_imagery_rectangle.west - terrain_rectangle.west).abs() >= very_close_x
         {
-            max_u = (1.0 as f64).min(
+            max_u = (1.0_f64).min(
                 (clipped_imagery_rectangle.west - terrain_rectangle.west)
                     / terrain_rectangle.compute_width(),
             );
@@ -344,7 +363,7 @@ impl ImageryLayer {
         if !self.is_base_layer()
             && (clipped_imagery_rectangle.north - terrain_rectangle.north).abs() >= very_close_y
         {
-            min_v = (0.0 as f64).max(
+            min_v = (0.0_f64).max(
                 (clipped_imagery_rectangle.north - terrain_rectangle.south)
                     / terrain_rectangle.compute_height(),
             );
@@ -352,7 +371,7 @@ impl ImageryLayer {
 
         let initial_min_v = min_v;
         for i in north_west_tile_coordinates.x..=south_east_tile_coordinates.x {
-            min_u = max_u;
+            min_u = max_u;//上一轮的max_u将是这一轮的min_u。min_u在此赋值完成，从左向右，依次有图片p1,p2,p3，分别于地形瓦片相交于pg1,pg2,pg3,那么，pg1的右侧即是pg2的左侧，pg2的右侧是pg3的左侧。
 
             imagery_rectangle = if use_native {
                 self.imagery_provider
@@ -377,13 +396,14 @@ impl ImageryLayer {
                     / terrain_rectangle.compute_width(),
             );
 
+
             // If this is the eastern-most imagery tile mapped to this terrain tile,
             // and there are more imagery tiles to the east of this one, the max_u
             // should be 1.0 to make sure rounding errors don't make the last
             // image fall shy of the edge of the terrain tile.
-            // 如果这是个映射到地形瓦片上的更东的图片瓦片，这个瓦片的东边还有更多的图片瓦片，
+            // 如果这是个映射到地形瓦片上的最东边的图片瓦片，这个瓦片的东边还有更多的图片瓦片，
             // max_u应该是1.0以确保四舍五入的误差不会使最后一个瓦片落在地形瓦片的边缘。
-
+            
             if i == south_east_tile_coordinates.x
                 && (self.is_base_layer()
                     || (clipped_imagery_rectangle.east - terrain_rectangle.east).abs()
@@ -392,9 +412,9 @@ impl ImageryLayer {
                 max_u = 1.0;
             }
 
-            min_v = initial_min_v;
+            min_v = initial_min_v;//min_v = initial_min_v = 1;，为什么给min_v初始值呢？因为下面会改min_v
             for j in north_west_tile_coordinates.y..=south_east_tile_coordinates.y {
-                max_v = min_v;
+                max_v = min_v;//上一轮的min_v将是本轮的max_v，max_v在此赋值完成，从上向下，依次有图片p1,p2,p3，分别于地形瓦片相交于pg1,pg2,pg3,那么，pg1的下侧即是pg2的上侧，pg2的下侧是pg3的上侧。
 
                 imagery_rectangle = if use_native {
                     self.imagery_provider
@@ -413,7 +433,7 @@ impl ImageryLayer {
                 }
                 clipped_imagery_rectangle =
                     clipped_imagery_rectangle_res.expect("rectangle is some");
-                min_v = (0.0 as f64).max(
+                min_v = (0.0_f64).max(//min_v重新计算的
                     (clipped_imagery_rectangle.south - terrain_rectangle.south)
                         / terrain_rectangle.compute_height(),
                 );
@@ -423,7 +443,7 @@ impl ImageryLayer {
                 // should be 0.0 to make sure rounding errors don't make the last
                 // image fall shy of the edge of the terrain tile.
 
-                // 如果这是个映射到地形瓦片上的更南的图片瓦片，这个瓦片的南边还有更多的图片瓦片，
+                // 如果这是个映射到地形瓦片上的最南边的图片瓦片，这个瓦片的南边还有更多的图片瓦片，
                 // max_v应该是0.0以确保四舍五入的误差不会使最后一个瓦片落在地形瓦片的边缘。
                 if j == south_east_tile_coordinates.y
                     && (self.is_base_layer()
@@ -435,13 +455,20 @@ impl ImageryLayer {
 
                 let tex_coords_rectangle = DVec4::new(min_u, min_v, max_u, max_v);
                 let key = TileKey::new(i, j, imagery_level);
-                let imagery_key = imagery_storage.add(&key, &self.id);
+                let imagery_key =
+                    imagery_storage.add(&key, &self.id, &self.imagery_provider.get_tiling_scheme());
+                if i == 1 && j == 2 && imagery_level == 3 {
+                    info!("{}", use_web_mercator_t);
+                }
                 tile.data.add_imagery(
                     imagery_key.clone(),
                     Some(tex_coords_rectangle),
                     use_web_mercator_t,
+                    insertion_point,
                 );
-                insertion_point += 1;
+                // bevy::log::info!("add imagery use_web_mercator_t is {}", use_web_mercator_t,);
+                let insertion_point = insertion_point.as_mut().unwrap();
+                *insertion_point += 1;
             }
         }
 
@@ -476,29 +503,30 @@ impl ImageryLayer {
     // }
 
     pub fn calculate_texture_translation_and_scale(
-        &mut self,
-        tile_rectangle: Rectangle,
+        &self,
+        quad_tile_rectangle: Rectangle,
         tile_imagery: &TileImagery,
-        imagery_rectangle: Rectangle,
+        ready_imagery_rectangle: Rectangle,
     ) -> DVec4 {
-        let mut imagery_rectangle = imagery_rectangle;
-        let mut quand_tile_rectangle = tile_rectangle;
+        let mut imagery_rectangle = ready_imagery_rectangle;
+        let mut quad_tile_rectangle = quad_tile_rectangle;
 
         if tile_imagery.use_web_mercator_t {
             let tiling_scheme = self.imagery_provider.get_tiling_scheme();
             imagery_rectangle = tiling_scheme.rectangle_to_native_rectangle(&imagery_rectangle);
-            quand_tile_rectangle =
-                tiling_scheme.rectangle_to_native_rectangle(&quand_tile_rectangle);
+            quad_tile_rectangle = tiling_scheme.rectangle_to_native_rectangle(&quad_tile_rectangle);
         }
 
-        let terrain_width = quand_tile_rectangle.compute_width();
-        let terrain_height = quand_tile_rectangle.compute_height();
+        let terrain_width = quad_tile_rectangle.compute_width();
+        let terrain_height = quad_tile_rectangle.compute_height();
+        let imagery_width = imagery_rectangle.compute_width();
+        let imagery_height = imagery_rectangle.compute_height();
 
-        let scale_x = terrain_width / imagery_rectangle.compute_width();
-        let scale_y = terrain_height / imagery_rectangle.compute_height();
+        let scale_x = terrain_width / imagery_width;
+        let scale_y = terrain_height / imagery_height;
         return DVec4::new(
-            (scale_x * (quand_tile_rectangle.west - imagery_rectangle.west)) / terrain_width,
-            (scale_y * (quand_tile_rectangle.south - imagery_rectangle.south)) / terrain_height,
+            (quad_tile_rectangle.west - imagery_rectangle.west) / imagery_width,
+            (imagery_rectangle.north - quad_tile_rectangle.north) / imagery_height,
             scale_x,
             scale_y,
         );
@@ -521,6 +549,7 @@ impl ImageryLayer {
         if need_geographic_projection
             && projection_name != "GeographicTilingScheme"
             && rectangle.compute_width() / width as f64 > 1e-5
+            && false
         {
             imagery_storage.add_reference(&imagery_key);
             let mut sin_latitude = rectangle.south.sin() as f32;

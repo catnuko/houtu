@@ -304,4 +304,28 @@ mod tests {
             None
         ));
     }
+    #[test]
+    fn tile_834() {
+        let tiling_scheme = GeographicTilingScheme::default();
+        let rectangle = tiling_scheme.tile_x_y_to_rectange(8, 3, 4);
+        assert!(equals_epsilon(rectangle.east, -1.3744467859455345, Some(EPSILON15), None));
+        assert!(equals_epsilon(
+            rectangle.west,
+            -1.5707963267948966,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.north,
+            0.9817477042468103,
+            Some(EPSILON15),
+            None
+        ));
+        assert!(equals_epsilon(
+            rectangle.south,
+            0.7853981633974483,
+            Some(EPSILON15),
+            None
+        ));
+    }
 }

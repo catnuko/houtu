@@ -36,6 +36,14 @@ impl TileImagery {
             loading_imagery: Some(imagery_key),
         }
     }
+    pub fn free_resources(&mut self, imagery_storage: &mut ImageryStorage) {
+        if self.loading_imagery.is_some() {
+            imagery_storage.release_reference(self.loading_imagery.as_ref().unwrap());
+        }
+        if self.ready_imagery.is_some() {
+            imagery_storage.release_reference(self.ready_imagery.as_ref().unwrap());
+        }
+    }
     pub fn get_loading_imagery_mut<'a>(
         &self,
         imagery_storage: &'a mut ImageryStorage,

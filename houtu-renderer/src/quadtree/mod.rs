@@ -14,7 +14,6 @@ use self::{
     quadtree_primitive::QuadtreePrimitive,
     quadtree_tile::QuadtreeTileLoadState,
     reproject_texture::ReprojectTextureTaskQueue,
-    terrian_material::TerrainMeshMaterial,
     tile_key::TileKey,
     traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
 };
@@ -42,7 +41,6 @@ pub mod quadtree_tile_storage;
 pub mod reproject_texture;
 // pub mod terrain_datasource;
 pub mod terrain_provider;
-pub mod terrian_material;
 pub mod texture_minification_filter;
 pub mod tile_availability;
 pub mod tile_imagery;
@@ -55,7 +53,6 @@ pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(reproject_texture::Plugin);
-        app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
         app.insert_resource(QuadtreePrimitive::new());
         app.insert_resource(ImageryLayerStorage::new());
         app.insert_resource(RootTraversalDetails::new());

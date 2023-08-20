@@ -3,6 +3,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use bevy::math::DVec3;
+
 use crate::{
     get_estimated_level_zero_geometric_error_for_a_heightmap,
     lerp,
@@ -28,7 +30,7 @@ pub struct HeightmapTerrainData {
     pub _width: u32,
     pub _height: u32,
     pub _child_tile_mask: i32,
-    pub _encoding: HeightmapEncoding,
+    // pub _encoding: HeightmapEncoding,
     pub _structure: HeightmapTerrainStructure,
     pub _created_by_upsampling: bool,
     pub _water_mask: Option<Vec<u8>>,
@@ -54,7 +56,7 @@ impl HeightmapTerrainData {
             _width: width,
             _height: height,
             _child_tile_mask: child_tile_mask.unwrap_or(15),
-            _encoding: encoding.unwrap_or(HeightmapEncoding::NONE),
+            // _encoding: encoding.unwrap_or(HeightmapEncoding::NONE),
             _structure: structure.unwrap_or(HeightmapTerrainStructure::default()),
             _created_by_upsampling: created_by_upsampling.unwrap_or(false),
             _water_mask: water_mask,
@@ -117,7 +119,7 @@ impl HeightmapTerrainData {
         let vertex_count_without_skirts = 0;
         self._mesh = Some(TerrainMesh::new(
             result.relativeToCenter.unwrap(),
-            result.vertices,
+            result.positions,
             indices_and_edges.indices,
             indices_and_edges.index_count_without_skirts,
             vertex_count_without_skirts,
@@ -125,13 +127,15 @@ impl HeightmapTerrainData {
             Some(result.maximum_height),
             result.bounding_sphere_3d,
             result.occludee_point_in_scaled_space,
-            result.encoding.stride,
             result.oriented_bounding_box,
-            result.encoding,
             indices_and_edges.west_indices_south_to_north,
             indices_and_edges.south_indices_east_to_west,
             indices_and_edges.east_indices_north_to_south,
             indices_and_edges.north_indices_west_to_east,
+            result.heights,
+            result.uvs,
+            result.web_mecator_t,
+            result.geodetic_surface_normals,
         ));
     }
 
@@ -179,9 +183,7 @@ impl HeightmapTerrainData {
             relativeToCenter: Some(center),
             ellipsoid: Some(ellipsoid),
             skirt_height: skirt_height,
-            isGeographic: Some(
-                type_name::<T>() == "houtu_scene::geographic_tiling_scheme::GeographicTilingScheme",
-            ),
+            isGeographic: Some(tiling_scheme.get_name() == "GeographicTilingScheme"),
             exaggeration: Some(exaggeration),
             exaggeration_relative_height: Some(exaggeration_relative_height),
         });
@@ -210,8 +212,8 @@ impl HeightmapTerrainData {
 
         let mut heights: Vec<f32> = vec![0.; (width * height * stride) as usize];
 
-        let buffer = &mesh_data.vertices;
-        let encoding = mesh_data.encoding;
+        // let buffer = &mesh_data.vertices;
+        // let encoding = mesh_data.encoding;
 
         // PERFORMANCE_IDEA: don't recompute these rectangles - the caller already knows them.
         let source_rectangle = tiling_scheme.tile_x_y_to_rectange(thisX, thisY, thisLevel);
@@ -240,8 +242,9 @@ impl HeightmapTerrainData {
                     (i / (width - 1)) as f64,
                 );
                 let mut heightSample = interpolateMeshHeight(
-                    &buffer,
-                    &encoding,
+                    &mesh_data.positions,
+                    // &encoding,
+                    &mesh_data.heights,
                     height_offset,
                     height_scale,
                     &source_rectangle,
@@ -292,8 +295,10 @@ impl HeightmapTerrainData {
 }
 
 fn interpolateMeshHeight(
-    buffer: &Vec<f32>,
-    encoding: &TerrainEncoding,
+    // buffer: &Vec<f32>,
+    positions: &Vec<DVec3>,
+    // encoding: &TerrainEncoding,
+    mesh_heights: &Vec<f64>,
     height_offset: f64,
     height_scale: f64,
     source_rectangle: &Rectangle,
@@ -328,20 +333,16 @@ fn interpolateMeshHeight(
     southInteger = height - 1 - southInteger;
     northInteger = height - 1 - northInteger;
 
-    let south_west_height = (encoding
-        .decode_height(buffer, (southInteger * width + westInteger) as usize)
+    let south_west_height = (mesh_heights[(southInteger * width + westInteger) as usize]
         - height_offset)
         / height_scale;
-    let south_east_height = (encoding
-        .decode_height(buffer, (southInteger * width + eastInteger) as usize)
+    let south_east_height = (mesh_heights[(southInteger * width + eastInteger) as usize]
         - height_offset)
         / height_scale;
-    let north_west_height = (encoding
-        .decode_height(buffer, (northInteger * width + westInteger) as usize)
+    let north_west_height = (mesh_heights[(northInteger * width + westInteger) as usize]
         - height_offset)
         / height_scale;
-    let north_east_height = (encoding
-        .decode_height(buffer, (northInteger * width + eastInteger) as usize)
+    let north_east_height = (mesh_heights[(northInteger * width + eastInteger) as usize]
         - height_offset)
         / height_scale;
 
@@ -407,28 +408,3 @@ fn set_height(
     }
     heights[(index + j) as usize] = height;
 }
-//   fn get_height(
-//     heights,
-//     elements_per_height,
-//     element_multiplier,
-//     stride,
-//     is_big_endian,
-//     index
-//   ) {
-//     index *= stride;
-
-//     let height = 0;
-//     let i;
-
-//     if is_big_endian {
-//       for (i = 0; i < elements_per_height; ++i) {
-//         height = height * element_multiplier + heights[index + i];
-//       }
-//     } else {
-//       for (i = elements_per_height - 1; i >= 0; --i) {
-//         height = height * element_multiplier + heights[index + i];
-//       }
-//     }
-
-//     return height;
-//   }

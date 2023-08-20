@@ -13,6 +13,7 @@ use crate::camera::GlobeCamera;
 use super::{
     create_terrain_mesh_job::CreateTileJob,
     imagery_layer_storage::ImageryLayerStorage,
+    imagery_provider::ImageryProvider,
     imagery_storage::{Imagery, ImageryKey, ImageryState, ImageryStorage},
     indices_and_edges_cache::IndicesAndEdgesCacheArc,
     quadtree_primitive::QuadtreePrimitive,
@@ -22,7 +23,7 @@ use super::{
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
     tile_key::TileKey,
-    upsample_job::UpsampleJob, imagery_provider::ImageryProvider,
+    upsample_job::UpsampleJob,
 };
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TerrainState {
@@ -72,11 +73,21 @@ impl GlobeSurfaceTile {
         imagery: ImageryKey,
         texture_coordinate_rectangle: Option<DVec4>,
         use_web_mercator_t: bool,
+        insertion_point: Option<usize>,
     ) {
         // bevy::log::info!("add tile imagery {:?}", imagery);
         let tile_imagery =
             TileImagery::new(imagery, texture_coordinate_rectangle, use_web_mercator_t);
-        self.imagery.push(tile_imagery);
+        if insertion_point.is_none() {
+            self.imagery.push(tile_imagery);
+        } else {
+            let insertion_point = insertion_point.unwrap();
+            self.imagery
+                .splice(insertion_point..insertion_point, [tile_imagery]);
+        }
+    }
+    pub fn remove_imagery(&mut self, index: usize) -> TileImagery {
+        self.imagery.remove(index)
     }
     pub fn eligible_for_unloading(&self, imagery_storage: &ImageryStorage) -> bool {
         let loading_is_transitioning = self.terrain_state == TerrainState::RECEIVING
@@ -137,10 +148,13 @@ impl GlobeSurfaceTile {
         let mut is_upsampled_only = tile.upsampled_from_parent;
         let mut is_any_tile_loaded = false;
         let mut is_done_loading = true;
-        for i in 0..tile.data.imagery.len() {
+        let mut i = 0;
+        let mut len = tile.data.imagery.len();
+        while i < len {
             let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
             if tile_imagery.loading_imagery.is_none() {
                 is_upsampled_only = false;
+                i += 1;
                 continue;
             }
             let loading_imagery = imagery_storage
@@ -158,6 +172,11 @@ impl GlobeSurfaceTile {
                 let imagery_layer_id = loading_imagery.key.layer_id;
                 let imagery_layer = imagery_layer_storage.get(&imagery_layer_id).unwrap();
                 if imagery_layer.ready && imagery_layer.imagery_provider.get_ready() {
+                    let mut tile_imagery = tile.data.remove_imagery(i);
+                    tile_imagery.free_resources(imagery_storage);
+                    len = tile.data.imagery.len();
+                    i -= 1;
+                    continue;
                 } else {
                     is_upsampled_only = false;
                 }
@@ -188,6 +207,8 @@ impl GlobeSurfaceTile {
                 && tile_imagery.loading_imagery.is_some()
                 && (loading_imagery.state == ImageryState::FAILED
                     || loading_imagery.state == ImageryState::INVALID);
+
+            i += 1;
         }
         tile.upsampled_from_parent = is_upsampled_only;
         tile.renderable = tile.renderable && (is_any_tile_loaded || is_done_loading);
@@ -207,8 +228,6 @@ impl GlobeSurfaceTile {
         render_device: &RenderDevice,
         globe_camera: &GlobeCamera,
         imagery_storage: &mut ImageryStorage,
-        
-
     ) {
         initialize(
             storage,
@@ -286,7 +305,6 @@ fn processTerrainStateMachine(
     render_device: &RenderDevice,
     globe_camera: &GlobeCamera,
     imagery_storage: &mut ImageryStorage,
-
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.data.terrain_state == TerrainState::FAILED && tile.parent.is_some() {
@@ -393,7 +411,6 @@ fn initialize(
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
     imagery_storage: &mut ImageryStorage,
-
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     if tile.state == QuadtreeTileLoadState::START {
@@ -414,7 +431,6 @@ fn prepare_new_tile(
     terrain_provider: &Box<dyn TerrainProvider>,
     imagery_layer_storage: &mut ImageryLayerStorage,
     imagery_storage: &mut ImageryStorage,
-
 ) {
     let tile = storage.get_mut(&tile_key).unwrap();
     let mut available = terrain_provider.get_tile_data_available(&tile_key);
@@ -440,7 +456,12 @@ fn prepare_new_tile(
     }
     for (_, imagery_layer) in imagery_layer_storage.map.iter_mut() {
         if imagery_layer.show {
-            imagery_layer._create_tile_imagery_skeletons(tile, terrain_provider, imagery_storage,);
+            imagery_layer._create_tile_imagery_skeletons(
+                tile,
+                terrain_provider,
+                imagery_storage,
+                None,
+            );
         }
     }
 }

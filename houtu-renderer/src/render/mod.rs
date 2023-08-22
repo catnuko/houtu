@@ -223,9 +223,17 @@ fn debug_terrain_material(
         // };
         // let texture_coordinates = tile_texture_coordinates * scale + translation;
         // info!("uv is {:?}", texture_coordinates);
+
+        let imagery_key = imagery_key_list[texture_index];
+        // if imagery_key.x == 1 && imagery_key.y == 2 && imagery_key.level == 3 {
+        //     info!(
+        //         "{},{:?},{:?}",
+        //         use_web_mercator_t, translation_and_scale, texture_coordinate_rectangle
+        //     );
+        // }
         info!(
             "{},{:?},{:?},{:?}",
-            use_web_mercator_t, imagery_key_list[texture_index], translation_and_scale,texture_coordinate_rectangle
+            use_web_mercator_t, imagery_key, translation_and_scale, texture_coordinate_rectangle
         );
     }
 }

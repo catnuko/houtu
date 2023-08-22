@@ -110,7 +110,8 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         texture_one_over_gamma = u.one_over_gamma;
         #endif
 
-
+        // 不在texture_coordinate_rectangle内部的像素的alpha值都是0，这样能避免采样到图片的其它地方。
+        // 因为texture_coordinate_rectangle的值是相对于地形瓦片而言，所以在对tile_texture_coordinates变换之前判断
         var alpha_multiplier = step(texture_coordinate_rectangle.xy, tile_texture_coordinates);
         texture_alpha = texture_alpha * alpha_multiplier.x * alpha_multiplier.y;
 
@@ -126,21 +127,21 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         var alpha = value.a;
 
 
-        // #ifdef APPLY_BRIGHTNESS
-        // color = mix(vec3<f32>(0.0), color, texture_brightness);
-        // #endif
+        #ifdef APPLY_BRIGHTNESS
+        color = mix(vec3<f32>(0.0), color, texture_brightness);
+        #endif
 
-        // #ifdef APPLY_CONTRAST
-        // color = mix(vec3<f32>(0.5), color, texture_contrast);
-        // #endif
+        #ifdef APPLY_CONTRAST
+        color = mix(vec3<f32>(0.5), color, texture_contrast);
+        #endif
 
-        // #ifdef APPLY_HUE
-        // color = czm_hue(color, texture_hue);
-        // #endif
+        #ifdef APPLY_HUE
+        color = czm_hue(color, texture_hue);
+        #endif
 
-        // #ifdef APPLY_SATURATION
-        // color = czm_saturation(color, texture_saturation);
-        // #endif
+        #ifdef APPLY_SATURATION
+        color = czm_saturation(color, texture_saturation);
+        #endif
 
         let source_alpha = alpha * texture_alpha;
         var out_alpha = mix(final_color.a, 1.0, source_alpha);

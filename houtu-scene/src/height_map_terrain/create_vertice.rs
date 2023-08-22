@@ -284,7 +284,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
         }
 
         let mut v = (latitude - geographicSouth) / (geographicNorth - geographicSouth);
-        v = 1.0 - v; //bevy的材质坐标系原点在左上角
+        // v = 1.0 - v; //bevy的材质坐标系原点在左上角
         v = v.clamp(0.0, 1.0);
 
         let isNorthEdge = rowIndex == startRow;

@@ -198,11 +198,12 @@ impl AsBindGroup for TerrainMeshMaterial {
                 usage: wgpu::BufferUsages::STORAGE,
             });
         let state_uniform_buffer_data = vec![images.len() as i32];
-        let state_uniform_buffer = render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor{
-            label:Some("state_uniform_buffer"),
-            contents:bytemuck::cast_slice(&state_uniform_buffer_data),
-            usage:wgpu::BufferUsages::UNIFORM,
-        });
+        let state_uniform_buffer =
+            render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
+                label: Some("state_uniform_buffer"),
+                contents: bytemuck::cast_slice(&state_uniform_buffer_data),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
         let bind_group = render_device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("terrain_material"),
             layout: layout,

@@ -197,13 +197,14 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let from_enu = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
     let to_enu = from_enu.inverse_transformation();
     let mut south_mercator_y = 0.;
+    let mut north_mercator_y = 0.;
     let mut one_over_mercator_height = 0.;
     if includeWebMercatorT {
         south_mercator_y =
             WebMercatorProjection::geodetic_latitude_to_mercator_angle(geographicSouth);
-        one_over_mercator_height = 1.0
-            / (WebMercatorProjection::geodetic_latitude_to_mercator_angle(geographicNorth)
-                - south_mercator_y);
+        north_mercator_y =
+            WebMercatorProjection::geodetic_latitude_to_mercator_angle(geographicNorth);
+        one_over_mercator_height = 1.0 / (north_mercator_y - south_mercator_y);
     }
 
     let mut minimum = DVec3::ZERO;
@@ -283,8 +284,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             latitude = (latitude).to_radians();
         }
 
-        let mut v = (latitude - geographicSouth) / (geographicNorth - geographicSouth);
-        // v = 1.0 - v; //bevy的材质坐标系原点在左上角
+        let mut v = (geographicNorth - latitude) / (geographicNorth - geographicSouth);
+        // let mut v = (latitude - geographicSouth) / (geographicNorth - geographicSouth);
         v = v.clamp(0.0, 1.0);
 
         let isNorthEdge = rowIndex == startRow;
@@ -303,8 +304,8 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
         let mut web_mercator_t: f64 = 0.;
         if includeWebMercatorT {
-            web_mercator_t = (WebMercatorProjection::geodetic_latitude_to_mercator_angle(latitude)
-                - south_mercator_y)
+            web_mercator_t = (north_mercator_y
+                - WebMercatorProjection::geodetic_latitude_to_mercator_angle(latitude))
                 * one_over_mercator_height;
         }
         for colIndex in startCol..endCol {

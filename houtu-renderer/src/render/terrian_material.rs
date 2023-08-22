@@ -171,7 +171,10 @@ impl AsBindGroup for TerrainMeshMaterial {
             buffer_data.push(self.night_alpha[index]);
             apply_day_night_alpha = apply_day_night_alpha || self.night_alpha[index] != 1.0;
 
-            buffer_data.push(self.day_alpha[index]);
+            // 耗费了四天时间，查这个渲染的bug，原来是这里多传个f32
+            // 导致传入的数据比着色器中的TerrainMaterialUniform多了4个字节，以至于第二次及其之后的循环的数据都不对
+            // TODO alpha暂时在着色器中用不到，先不管
+            // buffer_data.push(self.day_alpha[index]);
             apply_day_night_alpha = apply_day_night_alpha || self.day_alpha[index] != 1.0;
 
             buffer_data.push(self.brightness[index]);

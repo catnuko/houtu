@@ -343,8 +343,8 @@ impl ImageryLayer {
         let mut min_u;
         let mut max_u = 0.0;
 
-        let mut min_v = 1.0;
-        let mut max_v;
+        let mut min_v;
+        let mut max_v = 0.0;
 
         // If this is the northern-most or western-most tile in the imagery tiling scheme,
         // it may not start at the northern or western edge of the terrain tile.
@@ -361,17 +361,17 @@ impl ImageryLayer {
         }
 
         if !self.is_base_layer()
-            && (clipped_imagery_rectangle.north - terrain_rectangle.north).abs() >= very_close_y
+            && (clipped_imagery_rectangle.south - terrain_rectangle.south).abs() >= very_close_y
         {
-            min_v = (0.0_f64).max(
-                (clipped_imagery_rectangle.north - terrain_rectangle.south)
+            max_v = (1.0_f64).min(
+                (clipped_imagery_rectangle.south - terrain_rectangle.south)
                     / terrain_rectangle.compute_height(),
             );
         }
 
-        let initial_min_v = min_v;
+        let initial_max_v = max_v;
         for i in north_west_tile_coordinates.x..=south_east_tile_coordinates.x {
-            min_u = max_u;//上一轮的max_u将是这一轮的min_u。min_u在此赋值完成，从左向右，依次有图片p1,p2,p3，分别于地形瓦片相交于pg1,pg2,pg3,那么，pg1的右侧即是pg2的左侧，pg2的右侧是pg3的左侧。
+            min_u = max_u; //上一轮的max_u将是这一轮的min_u。min_u在此赋值完成，从左向右，依次有图片p1,p2,p3，分别于地形瓦片相交于pg1,pg2,pg3,那么，pg1的右侧即是pg2的左侧，pg2的右侧是pg3的左侧。
 
             imagery_rectangle = if use_native {
                 self.imagery_provider
@@ -396,14 +396,13 @@ impl ImageryLayer {
                     / terrain_rectangle.compute_width(),
             );
 
-
             // If this is the eastern-most imagery tile mapped to this terrain tile,
             // and there are more imagery tiles to the east of this one, the max_u
             // should be 1.0 to make sure rounding errors don't make the last
             // image fall shy of the edge of the terrain tile.
             // 如果这是个映射到地形瓦片上的最东边的图片瓦片，这个瓦片的东边还有更多的图片瓦片，
             // max_u应该是1.0以确保四舍五入的误差不会使最后一个瓦片落在地形瓦片的边缘。
-            
+
             if i == south_east_tile_coordinates.x
                 && (self.is_base_layer()
                     || (clipped_imagery_rectangle.east - terrain_rectangle.east).abs()
@@ -412,9 +411,9 @@ impl ImageryLayer {
                 max_u = 1.0;
             }
 
-            min_v = initial_min_v;//min_v = initial_min_v = 1;，为什么给min_v初始值呢？因为下面会改min_v
+            max_v = initial_max_v; //min_v = initial_min_v = 1;，为什么给min_v初始值呢？因为下面会改min_v
             for j in north_west_tile_coordinates.y..=south_east_tile_coordinates.y {
-                max_v = min_v;//上一轮的min_v将是本轮的max_v，max_v在此赋值完成，从上向下，依次有图片p1,p2,p3，分别于地形瓦片相交于pg1,pg2,pg3,那么，pg1的下侧即是pg2的上侧，pg2的下侧是pg3的上侧。
+                min_v = max_v; //上一轮的min_v将是本轮的max_v，max_v在此赋值完成，从上向下，依次有图片p1,p2,p3，分别于地形瓦片相交于pg1,pg2,pg3,那么，pg1的下侧即是pg2的上侧，pg2的下侧是pg3的上侧。
 
                 imagery_rectangle = if use_native {
                     self.imagery_provider
@@ -433,8 +432,9 @@ impl ImageryLayer {
                 }
                 clipped_imagery_rectangle =
                     clipped_imagery_rectangle_res.expect("rectangle is some");
-                min_v = (0.0_f64).max(//min_v重新计算的
-                    (clipped_imagery_rectangle.south - terrain_rectangle.south)
+                max_v = (1.0_f64).min(
+                    //min_v重新计算的
+                    (terrain_rectangle.north - clipped_imagery_rectangle.south)
                         / terrain_rectangle.compute_height(),
                 );
 
@@ -450,7 +450,7 @@ impl ImageryLayer {
                         || (clipped_imagery_rectangle.south - terrain_rectangle.south).abs()
                             < very_close_y)
                 {
-                    min_v = 0.0;
+                    max_v = 1.0;
                 }
 
                 let tex_coords_rectangle = DVec4::new(min_u, min_v, max_u, max_v);

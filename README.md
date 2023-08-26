@@ -29,7 +29,7 @@ web墨卡托图层，瓦片资源来自[omniscale](https://maps.omniscale.net)�
 1. bevy作为渲染引擎，高度可拆卸，定制自己需要的功能。
 2. 使用wasm+webgpu渲染web端，主打高性能高颜值。
 3. 参考cesium，具备实用性，GIS图形的精确性。
-## 路线
+## 🌎路线
 详情查看仓库的[Projects](https://github.com/users/catnuko/projects/1)
 1. - [x] 3d globe
 2. - [x] 相机控制
@@ -38,6 +38,9 @@ web墨卡托图层，瓦片资源来自[omniscale](https://maps.omniscale.net)�
 5. - [ ] 矢量瓦片图层
 6. - [ ] 倾斜摄影模型
 7. - [ ] 地形
+## 📖文档
+1. 本仓库的GIS理论基础，[理论3D地球](https://www.taihe.one/tag/%E7%90%86%E8%AE%BA%E5%9C%B0%E7%90%83)
+
 ## 💻开发
 ```bash
 // 运行程序

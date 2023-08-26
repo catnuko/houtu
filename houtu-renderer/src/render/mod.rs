@@ -52,7 +52,11 @@ fn setup(
     mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
     mut imagery_storage: ResMut<ImageryStorage>,
 ) {
-    let xyz = XYZImageryProvider::new(Box::new(WebMercatorTilingScheme::default()));
+    let xyz = XYZImageryProvider {
+        url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
+        // url:"icon.png",
+        ..Default::default()
+    };
     let mut imagery_layer = ImageryLayer::new(Box::new(xyz), &mut imagery_storage);
     imagery_layer.is_base_layer = true;
     imagery_layer_storage.add(imagery_layer)

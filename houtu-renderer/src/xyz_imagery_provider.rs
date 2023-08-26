@@ -1,21 +1,44 @@
-use houtu_scene::{Rectangle, TilingScheme};
+use std::collections::HashMap;
+
+use bevy::prelude::warn;
+use houtu_scene::{GeographicTilingScheme, Rectangle, TilingScheme, WebMercatorTilingScheme};
+use new_string_template::template::Template;
 
 use crate::quadtree::imagery_provider::ImageryProvider;
 
 pub struct XYZImageryProvider {
     pub tiling_scheme: Box<dyn TilingScheme>,
     pub rectangle: Rectangle,
-    // pub url: &'static str,
+    pub url: &'static str,
+    pub subdomains: Option<Vec<&'static str>>,
+    pub minimum_level: u32,
+    pub maximum_level: u32,
+    pub ready: bool,
+    pub tile_width: u32,
+    pub tile_height: u32,
 }
-
-impl XYZImageryProvider {
-    pub fn new(tiling_scheme: Box<dyn TilingScheme>) -> Self {
+impl Default for XYZImageryProvider {
+    fn default() -> Self {
+        let tiling_scheme = Box::new(WebMercatorTilingScheme::default());
         let rectangle = tiling_scheme.get_rectangle();
         Self {
-            tiling_scheme,
+            tiling_scheme: tiling_scheme,
             rectangle: rectangle,
-            // url: url,
+            url: "",
+            subdomains: None,
+            minimum_level: 0,
+            maximum_level: 17,
+            ready: true,
+            tile_width: 256,
+            tile_height: 256,
         }
+    }
+}
+impl XYZImageryProvider {
+    pub fn get_subdomain(&self, key: &crate::quadtree::tile_key::TileKey) -> Option<&'static str> {
+        self.subdomains
+            .as_ref()
+            .and_then(|subs| Some(subs[(key.y + key.x + key.level) as usize % subs.len()]))
     }
 }
 impl ImageryProvider for XYZImageryProvider {
@@ -23,10 +46,10 @@ impl ImageryProvider for XYZImageryProvider {
         return 17;
     }
     fn get_minimum_level(&self) -> u32 {
-        0
+        self.minimum_level
     }
     fn get_ready(&self) -> bool {
-        true
+        self.ready
     }
     fn get_rectangle(&self) -> &houtu_scene::Rectangle {
         &self.rectangle
@@ -38,10 +61,10 @@ impl ImageryProvider for XYZImageryProvider {
         None
     }
     fn get_tile_height(&self) -> u32 {
-        256
+        self.tile_height
     }
     fn get_tile_width(&self) -> u32 {
-        256
+        self.tile_width
     }
     fn get_tiling_scheme(&self) -> &Box<dyn TilingScheme> {
         &self.tiling_scheme
@@ -60,11 +83,39 @@ impl ImageryProvider for XYZImageryProvider {
         asset_server: &bevy::prelude::AssetServer,
     ) -> Option<bevy::prelude::Handle<bevy::prelude::Image>> {
         // bevy::log::info!("xyz imagery provider is requeting image for tile {:?}", key);
-        let image = asset_server.load(format!(
-            "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{}/{}/{}.png",
-            key.level, key.x, key.y,
-        ));
-        // let image = asset_server.load("icon.png");
-        return Some(image);
+        let template = Template::new(self.url);
+        let subdomain = self.get_subdomain(key);
+        let mut args = HashMap::new();
+        subdomain.and_then(|sub| args.insert("s", sub));
+        let level = key.level.to_string();
+        let x = key.x.to_string();
+        let y = key.y.to_string();
+        args.insert("z", level.as_str());
+        args.insert("x", x.as_str());
+        args.insert("y", y.as_str());
+        if let Ok(url) = template.render(&args) {
+            let image = asset_server.load(url);
+            // let image = asset_server.load("icon.png");
+            return Some(image);
+        } else {
+            warn!("extected a tile url");
+            return None;
+        }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use new_string_template::template::Template;
+    use std::collections::HashMap;
+    #[test]
+    fn test_template_url() {
+        let template = Template::new("https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png");
+        let mut args = HashMap::new();
+        args.insert("s", "t1");
+        args.insert("z", "10");
+        args.insert("x", "20");
+        args.insert("y", "30");
+        let s = template.render(&args).expect("Expected Result to be Ok");
+        assert!(s == "https://t1.tile.thunderforest.com/cycle/10/20/30.png");
     }
 }

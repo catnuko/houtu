@@ -1,18 +1,23 @@
 use bevy::{
     core::FrameCount,
-    math::{DVec2, DVec3, Vec4Swizzles},
+    math::{DMat4, DVec2, DVec3, Vec4Swizzles},
     prelude::*,
     reflect::List,
     render::renderer::RenderDevice,
     window::PrimaryWindow,
 };
 use houtu_jobs::JobSpawner;
-use houtu_scene::{GeographicTilingScheme, TerrainMesh, WebMercatorTilingScheme};
+use houtu_scene::{
+    GeographicTilingScheme, Matrix4, TerrainMesh, TerrainQuantization, WebMercatorTilingScheme,
+};
 use rand::Rng;
 
 use crate::xyz_imagery_provider::XYZImageryProvider;
 
-use self::{terrain_render_pipeline::TerrainMaterialPlugin, terrian_material::TerrainMeshMaterial};
+use self::{
+    terrain_render_pipeline::TerrainMaterialPlugin, terrian_material::TerrainMeshMaterial,
+    wrap_terrain_mesh::WrapTerrainMesh,
+};
 
 use super::quadtree::{
     globe_surface_tile::process_terrain_state_machine_system,
@@ -29,17 +34,16 @@ use super::quadtree::{
 mod terrain_bundle;
 mod terrain_render_pipeline;
 mod terrian_material;
+mod wrap_terrain_mesh;
 use super::{
     camera::GlobeCamera,
     wmts_imagery_provider::{WMTSImageryProvider, WMTSImageryProviderOptions},
 };
-pub use terrian_material::ATTRIBUTE_WEB_MERCATOR_T;
 /// 负责渲染quadtree调度后生成的瓦片
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
-        // app.add_plugin(TerrainMaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
         app.add_startup_system(setup);
         app.add_system(real_render_system.after(process_terrain_state_machine_system));
     }
@@ -66,14 +70,21 @@ fn real_render_system(
     _images: ResMut<Assets<Image>>,
     imagery_storage: Res<ImageryStorage>,
     imagery_layer_storage: Res<ImageryLayerStorage>,
+    mut globe_camera_query: Query<&mut GlobeCamera>,
 ) {
+    let mut globe_camera = globe_camera_query
+        .get_single_mut()
+        .expect("GlobeCamera不存在");
     //清除已经渲染但不需要渲染的瓦片
     for (entity, tile_rendered) in rendered_query.iter() {
-        if !primitive.tiles_to_render.contains(&tile_rendered.0) {
-            commands.entity(entity).despawn();
-            let tile = primitive.storage.get_mut(&tile_rendered.0).unwrap();
-            tile.entity = None;
-        }
+        // if !primitive.tiles_to_render.contains(&tile_rendered.0) {
+        //     commands.entity(entity).despawn();
+        //     let tile = primitive.storage.get_mut(&tile_rendered.0).unwrap();
+        //     tile.entity = None;
+        // }
+        commands.entity(entity).despawn();
+        let tile = primitive.storage.get_mut(&tile_rendered.0).unwrap();
+        tile.entity = None;
     }
     let mut tile_key_list = vec![];
     primitive
@@ -152,11 +163,19 @@ fn real_render_system(
                 saturation_list.push(imagery_layer.saturation as f32);
                 one_over_gamma_list.push(imagery_layer.gamma as f32);
             }
+
+            let data = tile.data.get_cloned_terrain_data();
+            let surface_tile = data.lock().unwrap();
+            let terrain_mesh = surface_tile.get_mesh().unwrap();
+            let mvp = get_mvp(&mut globe_camera, &terrain_mesh.center);
             let material = TerrainMeshMaterial {
+                quantization_bits12: terrain_mesh.encoding.quantization
+                    == TerrainQuantization::BITS12,
+                has_web_mercator_t: terrain_mesh.encoding.has_web_mercator_t,
                 textures: texture_list,
                 translation_and_scale: translation_and_scale_list,
                 coordinate_rectangle: coordinate_rectangle_list,
-                use_web_mercator_t: use_web_mercator_t_list,
+                web_mercator_t: use_web_mercator_t_list,
                 alpha: alpha_list,
                 night_alpha: night_alpha_list,
                 day_alpha: day_alpha_list,
@@ -167,14 +186,18 @@ fn real_render_system(
                 one_over_gamma: one_over_gamma_list,
                 texture_width: 256,
                 texture_height: 256,
+                min_max_height: Vec2::new(
+                    terrain_mesh.encoding.minimum_height as f32,
+                    terrain_mesh.encoding.maximum_height as f32,
+                ),
+                scale_and_bias: terrain_mesh.encoding.matrix.as_mat4(),
+                center_3d: terrain_mesh.center.as_vec3(),
+                mvp: mvp.as_mat4(),
             };
-            let data = tile.data.get_cloned_terrain_data();
-            let surface_tile = data.lock().unwrap();
-            let terrain_mesh = surface_tile.get_mesh().unwrap();
-            debug_terrain_material(&terrain_mesh, &material, key, imagery_key_list);
+            let wrap_terrain_mesh = WrapTerrainMesh(terrain_mesh);
             let rendered_entity = commands.spawn((
                 MaterialMeshBundle {
-                    mesh: meshes.add(terrain_mesh.into()),
+                    mesh: meshes.add(wrap_terrain_mesh.into()),
                     material: terrain_materials.add(material),
                     ..Default::default()
                 },
@@ -185,55 +208,12 @@ fn real_render_system(
         }
     }
 }
-fn debug_terrain_material(
-    mesh: &TerrainMesh,
-    material: &TerrainMeshMaterial,
-    quad_tile_key: &TileKey,
-    imagery_key_list: Vec<&TileKey>,
-) {
-    // for (i, _) in mesh.positions.iter().enumerate() {
-    //     let uv = mesh.uvs[i].as_vec2();
-    //     let web_mercator_t = mesh.web_mecator_t[i] as f32;
-    //     let texture_coordinates =
-    //         Vec3::new(uv.x, uv.y, web_mercator_t).clamp(Vec3::ZERO, Vec3::ONE);
-    //     for (texture_index, _) in material.textures.iter().enumerate() {
-    //         let translation_and_scale = material.translation_and_scale[texture_index];
-    //         let translation = translation_and_scale.xy();
-    //         let scale = translation_and_scale.zw();
-    //         let use_web_mercator_t = material.use_web_mercator_t[texture_index];
-    //         let tile_texture_coordinates = if use_web_mercator_t == 1.0 {
-    //             Vec2::new(texture_coordinates.x, texture_coordinates.z)
-    //         } else {
-    //             Vec2::new(texture_coordinates.x, texture_coordinates.y)
-    //         };
-    //         let texture_coordinates = tile_texture_coordinates * scale + translation;
-    //         info!("uv is {:?}", texture_coordinates);
-    //     }
-    // }
-    for (texture_index, _) in material.textures.iter().enumerate() {
-        let translation_and_scale = material.translation_and_scale[texture_index];
-        let translation = translation_and_scale.xy();
-        let scale = translation_and_scale.zw();
-        let use_web_mercator_t = material.use_web_mercator_t[texture_index];
-        let texture_coordinate_rectangle = material.coordinate_rectangle[texture_index];
-        // let tile_texture_coordinates = if use_web_mercator_t == 1.0 {
-        //     Vec2::new(texture_coordinates.x, texture_coordinates.z)
-        // } else {
-        //     Vec2::new(texture_coordinates.x, texture_coordinates.y)
-        // };
-        // let texture_coordinates = tile_texture_coordinates * scale + translation;
-        // info!("uv is {:?}", texture_coordinates);
-
-        let imagery_key = imagery_key_list[texture_index];
-        // if imagery_key.x == 1 && imagery_key.y == 2 && imagery_key.level == 3 {
-        //     info!(
-        //         "{},{:?},{:?}",
-        //         use_web_mercator_t, translation_and_scale, texture_coordinate_rectangle
-        //     );
-        // }
-        info!(
-            "{},{:?},{:?},{:?}",
-            use_web_mercator_t, imagery_key, translation_and_scale, texture_coordinate_rectangle
-        );
-    }
+fn get_mvp(globe_camera: &mut GlobeCamera, rtc: &DVec3) -> DMat4 {
+    let view_matrix = globe_camera.get_view_matrix();
+    let projection_matrix = globe_camera.frustum.get_projection_matrix().clone();
+    // let center_eye = view_matrix.multiply_by_point(rtc);
+    let mut mvp = view_matrix.clone();
+    // mvp.set_translation(&center_eye);
+    mvp = projection_matrix * mvp;
+    return mvp;
 }

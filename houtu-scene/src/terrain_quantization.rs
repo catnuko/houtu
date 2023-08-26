@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, )]
 pub enum TerrainQuantization {
     NONE = 0,
     BITS12 = 1,

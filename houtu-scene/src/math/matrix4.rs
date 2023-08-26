@@ -301,9 +301,9 @@ impl Matrix4 for DMat4 {
         return DMat4::from_cols_array(&matrix);
     }
     fn set_translation(&mut self, cartesian: &DVec3) {
-        self.x_axis.w = cartesian.x;
-        self.y_axis.w = cartesian.y;
-        self.z_axis.w = cartesian.z;
+        self.w_axis.x = cartesian.x;
+        self.w_axis.y = cartesian.y;
+        self.w_axis.z = cartesian.z;
     }
     fn get_translation(&self) -> DVec3 {
         DVec3 {

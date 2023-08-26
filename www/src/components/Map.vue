@@ -60,7 +60,7 @@ onMounted(() => {
 			'&LAYER=cva&tileMatrixSet=c&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' +
 			'&style=default&format=tiles&tk=5ac36718ffda736958317e215b8664a7', //在线天地图矢量中文标记服务(经纬度)
 	};
-	viewer.imageryLayers.remove(viewer.imageryLayers._layers[0])
+	viewer.imageryLayers.remove(viewer.imageryLayers._layers[0]);
 	//天地图影像中文标记服务（经纬度）
 	// var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
 	// 	url: TDTURL_CONFIG.TDT_IMG_C,
@@ -78,7 +78,7 @@ onMounted(() => {
 		url: TDTURL_CONFIG.TDT_IMG_W,
 		layer: 'tdtImgLayer',
 		style: 'default',
-		format: "image/jpeg",
+		format: 'image/jpeg',
 		tileMatrixSetID: 'GoogleMapsCompatible',
 		subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
 		maximumLevel: 18,
@@ -94,7 +94,9 @@ onMounted(() => {
 	// 	maximumLevel: 18,
 	// });
 	// viewer.imageryLayers.addImageryProvider(tdtCva);
-
+	let t = AttributeCompression.compressTextureCoordinates(new Cartesian2(0.5, 1.0));
+	let tt = AttributeCompression.decompressTextureCoordinates(t, new Cartesian2());
+	console.log(t,tt)
 });
 onBeforeUnmount(() => {
 	viewer.destroy();

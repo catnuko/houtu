@@ -1,4 +1,4 @@
-use bevy::{pbr::wireframe::WireframePlugin, prelude::*};
+use bevy::{pbr::{wireframe::WireframePlugin, PbrPlugin}, prelude::*};
 
 //https://github.com/valkum/terrain_tests
 //https://github.com/Dimev/lodtree

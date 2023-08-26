@@ -1,34 +1,72 @@
 #import bevy_pbr::mesh_view_bindings
 #import bevy_pbr::mesh_bindings
-
-// NOTE: Bindings must come before functions that use them!
 #import bevy_pbr::mesh_functions
-//TODO: 如果计算分割瓦片网格时减去瓦片的中心center_3d，再在shader中加上center_3d，则部分瓦片不显示，暂时不清楚原因，所以网片网格不减去center_3d了。
 
+#ifdef QUANTIZATION_BITS12
 struct Vertex {
-    @location(0) position: vec3<f32>,
-    // @location(1) normal:vec3<f32>,
-    @location(1) uv: vec2<f32>,
-    @location(2) use_web_mercator_t: f32,
+    @location(0) compressed0: vec4<f32>,
+    // @location(1) compressed1: f32,
 };
 
+#else
+struct Vertex {
+    @location(0) position: vec4<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) web_mercator_t: f32,
+};
+#endif
+struct VertexUniform {
+    min_max_height: vec2<f32>,
+    center_3d: vec3<f32>,
+    scale_and_bias_x: vec4<f32>,
+    scale_and_bias_y: vec4<f32>,
+    scale_and_bias_z: vec4<f32>,
+    scale_and_bias_w: vec4<f32>,
+    mvp_x: vec4<f32>,
+    mvp_y: vec4<f32>,
+    mvp_z: vec4<f32>,
+    mvp_w: vec4<f32>,
+}
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) texture_coordinates: vec3<f32>,
+    @location(0) height: f32,
+    @location(1) texture_coordinates: vec3<f32>,
 };
 
 @vertex
 fn vertex(in: Vertex) -> VertexOutput {
     var out: VertexOutput;
-    out.position = mesh_position_world_to_clip(vec4<f32>(in.position, 1.0));
-    let uv = in.uv;
-    out.texture_coordinates = vec3<f32>(uv.xy, in.use_web_mercator_t);
+    #ifdef QUANTIZATION_BITS12
+    let xy = czm_decompressTextureCoordinates(in.compressed0.x);
+    let zh = czm_decompressTextureCoordinates(in.compressed0.y);
+    var position = vec3<f32>(xy, zh.x);
+    var height = zh.y;
+    let scale_and_bias = mat4x4<f32>(vertex_uniform.scale_and_bias_x, vertex_uniform.scale_and_bias_y, vertex_uniform.scale_and_bias_z, vertex_uniform.scale_and_bias_w);
+    let uv = czm_decompressTextureCoordinates(in.compressed0.z);
+    height = height * (vertex_uniform.min_max_height.y - vertex_uniform.min_max_height.x) + vertex_uniform.min_max_height.x;
+    position = (scale_and_bias * vec4(position, 1.)).xyz;
+    position = position + vertex_uniform.center_3d;
+    let web_mercator_t = czm_decompressTextureCoordinates(in.compressed0.w).x;
+    let texture_coordinates = vec3<f32>(uv, web_mercator_t);
+    #else
+    var position = in.position.xyz;
+    let height = in.position.w;
+    let texture_coordinates = vec3<f32>(in.uv, in.web_mercator_t);
+    position = position + vertex_uniform.center_3d;
+    #endif
+    // out.position = mesh_position_world_to_clip(vec4<f32>(position, 1.0));
+    let mvp = mat4x4<f32>(vertex_uniform.mvp_x, vertex_uniform.mvp_y, vertex_uniform.mvp_z, vertex_uniform.mvp_w);
+    let clip_position = mvp * vec4<f32>(position, 1.0);
+    out.position = clip_position;
+    out.texture_coordinates = texture_coordinates;
+    out.height = height;
     return out;
 }
 
 
 struct FragmentInput {
-    @location(0) texture_coordinates: vec3<f32>,
+    @location(0) height: f32,
+    @location(1) texture_coordinates: vec3<f32>,
 }
 
 struct TerrainMaterialUniform {
@@ -45,12 +83,14 @@ struct TerrainMaterialUniform {
 };
 struct StateUniform {
     texture_num: i32
+ 
 }
 
 @group(1) @binding(0) var texture_array: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var my_sampler: sampler;
 @group(1) @binding(2) var<storage,read> terrain_material_uniforms: array<TerrainMaterialUniform>;
 @group(1) @binding(3) var<uniform> state_uniform: StateUniform;
+@group(1) @binding(4) var<uniform> vertex_uniform: VertexUniform;
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
@@ -170,4 +210,11 @@ fn czm_saturation(rgb: vec3<f32>, adjustment: f32) -> vec3<f32> {
     let W = vec3<f32>(0.2125, 0.7154, 0.0721);
     let intensity = vec3<f32>(dot(rgb, W));
     return mix(intensity, rgb, adjustment);
+}
+fn czm_decompressTextureCoordinates(encoded: f32) -> vec2<f32> {
+    let temp = encoded / 4096.0;
+    let x_zero_to4095 = floor(temp);
+    let stx = x_zero_to4095 / 4095.0;
+    let sty = (encoded - x_zero_to4095 * 4096.0) / 4095.0;
+    return vec2<f32>(stx, sty);
 }

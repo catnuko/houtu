@@ -64,8 +64,8 @@ impl TerrainEncoding {
             let max_dim = dimensions.maximum_component().max(h_dim);
 
             if max_dim < SHIFT_LEFT_12 - 1.0 {
-                // quantization = TerrainQuantization::BITS12;
-                quantization = TerrainQuantization::NONE;
+                quantization = TerrainQuantization::BITS12;
+                // quantization = TerrainQuantization::NONE;
             } else {
                 quantization = TerrainQuantization::NONE;
             }
@@ -73,7 +73,7 @@ impl TerrainEncoding {
             to_enu = from_enu.inverse_transformation();
 
             let translation = minimum.negate();
-            let mut to_enu = DMat4::from_translation(translation) * to_enu;
+            to_enu = DMat4::from_translation(translation) * to_enu;
 
             let mut scale = DVec3::ZERO;
             scale.x = 1.0 / dimensions.x;
@@ -186,8 +186,8 @@ impl TerrainEncoding {
                 new_buffer_index += 1;
             }
         } else {
-            // let cartesian3_scratch = position.subtract(self.center);
-            let cartesian3_scratch = position.clone();
+            let cartesian3_scratch = position.subtract(self.center);
+            // let cartesian3_scratch = position.clone();
 
             vertex_buffer[new_buffer_index] = cartesian3_scratch.x as f32;
             new_buffer_index += 1;
@@ -228,5 +228,41 @@ impl TerrainEncoding {
     pub fn decode_height(&self, buffer: &Vec<f32>, index: usize) -> f64 {
         let index = index * self.stride as usize;
         return buffer[index + 3] as f64;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{decompress_texture_coordinates, Cartesian2};
+
+    use super::*;
+
+    #[test]
+    fn test_1() {
+        let coords = DVec2::new(1.0, 1.0);
+        let compressed = compress_texture_coordinates(&coords);
+        let decompressed = decompress_texture_coordinates(compressed);
+        assert!(decompressed == coords);
+    }
+    #[test]
+    fn test_2() {
+        let coords = DVec2::new(0.5, 1.0);
+        let compressed = compress_texture_coordinates(&coords);
+        let decompressed = decompress_texture_coordinates(compressed);
+        assert!(decompressed.equals_epsilon(coords, Some(1.0 / 4095.0), None));
+    }
+    #[test]
+    fn test_3() {
+        let coords = DVec2::new(1.0, 0.5);
+        let compressed = compress_texture_coordinates(&coords);
+        let decompressed = decompress_texture_coordinates(compressed);
+        assert!(decompressed.equals_epsilon(coords, Some(1.0 / 4095.0), None));
+    }
+    #[test]
+    fn test_4() {
+        let coords = DVec2::new(0.99999999999999, 0.99999999999999);
+        let compressed = compress_texture_coordinates(&coords);
+        let decompressed = decompress_texture_coordinates(compressed);
+        assert!(decompressed.equals_epsilon(coords, Some(1.0 / 4095.0), None));
     }
 }

@@ -31,7 +31,7 @@ pub struct TerrainMeshMaterial {
     pub texture_height: u32,
     pub translation_and_scale: Vec<Vec4>,
     pub coordinate_rectangle: Vec<Vec4>,
-    pub use_web_mercator_t: Vec<f32>,
+    pub web_mercator_t: Vec<f32>,
     pub alpha: Vec<f32>,
     pub night_alpha: Vec<f32>,
     pub day_alpha: Vec<f32>,
@@ -40,6 +40,29 @@ pub struct TerrainMeshMaterial {
     pub hue: Vec<f32>,
     pub saturation: Vec<f32>,
     pub one_over_gamma: Vec<f32>,
+    pub has_web_mercator_t: bool,
+    pub quantization_bits12: bool,
+    pub scale_and_bias: Mat4,
+    pub min_max_height: Vec2,
+    pub center_3d: Vec3,
+    pub mvp: Mat4,
+}
+impl TerrainMeshMaterial {
+    pub const ATTRIBUTE_WEB_MERCATOR_T: MeshVertexAttribute =
+        MeshVertexAttribute::new("ATTRIBUTE_WEB_MERCATOR_T", 1000, VertexFormat::Float32);
+    pub const POSITION_3D_AND_HEIGHT: MeshVertexAttribute =
+        MeshVertexAttribute::new("POSITION_3D_AND_HEIGHT", 1001, VertexFormat::Float32x4);
+    pub const TEXTURE_COORD_AND_ENCODED_NORMALS: MeshVertexAttribute = MeshVertexAttribute::new(
+        "TEXTURE_COORD_AND_ENCODED_NORMALS",
+        1002,
+        VertexFormat::Float32x4,
+    );
+    pub const COMPRESSED_0: MeshVertexAttribute =
+        MeshVertexAttribute::new("COMPRESSED_0", 1003, VertexFormat::Float32x4);
+    pub const COMPRESSED_1: MeshVertexAttribute =
+        MeshVertexAttribute::new("COMPRESSED_1", 1004, VertexFormat::Float32);
+    pub const ATTRIBUTE_POSITION_HEIGHT: MeshVertexAttribute =
+        MeshVertexAttribute::new("ATTRIBUTE_POSITION_HEIGHT", 1005, VertexFormat::Float32x4);
 }
 impl Material for TerrainMeshMaterial {
     fn fragment_shader() -> ShaderRef {
@@ -54,39 +77,60 @@ impl Material for TerrainMeshMaterial {
         _layout: &MeshVertexBufferLayout,
         _key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        // This is the important part to tell bevy to render this material as a line between vertices
-        // descriptor.primitive.polygon_mode = PolygonMode::Line;
         let data = _key.bind_group_data;
-        let mut shader_defines = vec![];
+        if _descriptor.fragment.is_none() {
+            info!("no fragment,{:?}", _descriptor.label);
+            let mut attributes = vec![
+                TerrainMeshMaterial::ATTRIBUTE_POSITION_HEIGHT.at_shader_location(0),
+                Mesh::ATTRIBUTE_UV_0.at_shader_location(1),
+                TerrainMeshMaterial::ATTRIBUTE_WEB_MERCATOR_T.at_shader_location(2),
+            ];
+            let attribute_real = _layout.get_layout(&attributes).unwrap();
+            _descriptor.vertex.buffers = vec![attribute_real];
+            return Ok(());
+        }
+        let fragment_shader_defs = &mut _descriptor.fragment.as_mut().unwrap().shader_defs;
+
         if data.apply_brightness {
-            shader_defines.push("APPLY_BRIGHTNESS");
+            fragment_shader_defs.push("APPLY_BRIGHTNESS".into());
         }
         if data.apply_contrast {
-            shader_defines.push("APPLY_CONTRAST");
+            fragment_shader_defs.push("APPLY_CONTRAST".into());
         }
         if data.apply_hue {
-            shader_defines.push("APPLY_HUE");
+            fragment_shader_defs.push("APPLY_HUE".into());
         }
         if data.apply_saturation {
-            shader_defines.push("APPLY_SATURATION");
+            fragment_shader_defs.push("APPLY_SATURATION".into());
         }
         if data.apply_gamma {
-            shader_defines.push("APPLY_GAMMA");
+            fragment_shader_defs.push("APPLY_GAMMA".into());
         }
         if data.apply_alpha {
-            shader_defines.push("APPLY_ALPHA");
+            fragment_shader_defs.push("APPLY_ALPHA".into());
         }
         if data.apply_day_night_alpha {
-            shader_defines.push("APPLY_DAY_NIGHT_ALPHA");
+            fragment_shader_defs.push("APPLY_DAY_NIGHT_ALPHA".into());
         }
-        let attribute_real = _layout
-            .get_layout(&[
-                Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
+        let vertex_shader_defs = &mut _descriptor.vertex.shader_defs;
+        if data.apply_quantization_bits12 {
+            vertex_shader_defs.push("QUANTIZATION_BITS12".into());
+            let attributes = vec![
+                TerrainMeshMaterial::COMPRESSED_0.at_shader_location(0),
+                // TerrainMeshMaterial::COMPRESSED_1.at_shader_location(1),
+            ];
+            let attribute_real = _layout.get_layout(&attributes).unwrap();
+            _descriptor.vertex.buffers = vec![attribute_real];
+        } else {
+            let mut attributes = vec![
+                TerrainMeshMaterial::ATTRIBUTE_POSITION_HEIGHT.at_shader_location(0),
                 Mesh::ATTRIBUTE_UV_0.at_shader_location(1),
-                ATTRIBUTE_WEB_MERCATOR_T.at_shader_location(2),
-            ])
-            .unwrap();
-        _descriptor.vertex.buffers = vec![attribute_real];
+                TerrainMeshMaterial::ATTRIBUTE_WEB_MERCATOR_T.at_shader_location(2),
+            ];
+            let attribute_real = _layout.get_layout(&attributes).unwrap();
+            _descriptor.vertex.buffers = vec![attribute_real];
+        }
+
         Ok(())
     }
 }
@@ -95,7 +139,7 @@ const MAX_TEXTURE_COUNT: usize = 16;
 struct TerrainMeshMaterialUniform {
     translation_and_scale: Vec4,
     coordinate_rectangle: Vec4,
-    use_web_mercator_t: f32,
+    web_mercator_t: f32,
     alpha: f32,
     night_alpha: f32,
     day_alpha: f32,
@@ -123,6 +167,8 @@ pub struct ShaderDefines {
     apply_split: bool,
     apply_cutout: bool,
     apply_color_to_alpha: bool,
+    apply_quantization_bits12: bool,
+    apply_webmercator_t: bool,
 }
 impl AsBindGroup for TerrainMeshMaterial {
     type Data = ShaderDefines;
@@ -152,6 +198,9 @@ impl AsBindGroup for TerrainMeshMaterial {
         let mut apply_split = false;
         let mut apply_cutout = false;
         let mut apply_color_to_alpha = false;
+        let mut apply_quantization_bits12 = self.quantization_bits12;
+        let mut apply_webmercator_t = self.has_web_mercator_t;
+
         for (index, _) in self.textures.iter().enumerate() {
             let translation_and_scale = self.translation_and_scale[index];
             buffer_data.push(translation_and_scale.x);
@@ -163,7 +212,7 @@ impl AsBindGroup for TerrainMeshMaterial {
             buffer_data.push(coordinate_rectangle.y);
             buffer_data.push(coordinate_rectangle.z);
             buffer_data.push(coordinate_rectangle.w);
-            buffer_data.push(self.use_web_mercator_t[index]);
+            buffer_data.push(self.web_mercator_t[index]);
 
             buffer_data.push(self.alpha[index]);
             apply_alpha = apply_alpha || self.alpha[index] != 1.0;
@@ -193,7 +242,7 @@ impl AsBindGroup for TerrainMeshMaterial {
             apply_gamma = apply_gamma || self.one_over_gamma[index] != 1.0;
         }
         // info!("texture length is {}",self.textures.iter().len());
-        // info!("webmercatort is {:?}",self.use_web_mercator_t);
+        // info!("webmercatort is {:?}",self.web_mercator_t);
         let uniform_buffer =
             render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
                 label: Some("uniform_buffer"),
@@ -201,10 +250,52 @@ impl AsBindGroup for TerrainMeshMaterial {
                 usage: wgpu::BufferUsages::STORAGE,
             });
         let state_uniform_buffer_data = vec![images.len() as i32];
+
         let state_uniform_buffer =
             render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
                 label: Some("state_uniform_buffer"),
                 contents: bytemuck::cast_slice(&state_uniform_buffer_data),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        let mut vertex_uniform_buffer_data = vec![0.0; 40];
+        let mut mvp_slice = vec![0.0; 16];
+        self.mvp.write_cols_to_slice(&mut mvp_slice);
+        if self.quantization_bits12 {
+            let mut slice = [0.0; 16];
+            self.scale_and_bias.write_cols_to_slice(&mut slice);
+            let mut res = vec![
+                self.min_max_height.x,
+                self.min_max_height.y,
+                0.0_f32,
+                0.0_f32,
+                self.center_3d.x,
+                self.center_3d.y,
+                self.center_3d.z,
+                0.0_f32,
+            ];
+            res.extend_from_slice(&slice);
+            res.extend_from_slice(&mvp_slice);
+            vertex_uniform_buffer_data = res;
+        } else {
+            let mut res = vec![
+                0f32,
+                0f32,
+                0f32,
+                0f32,
+                self.center_3d.x,
+                self.center_3d.y,
+                self.center_3d.z,
+                0.0_f32,
+            ];
+            let scale_bias = [0.0; 16];
+            res.extend_from_slice(&scale_bias);
+            res.extend_from_slice(&mvp_slice);
+            vertex_uniform_buffer_data = res;
+        };
+        let vertex_uniform_buffer =
+            render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
+                label: Some("vertex_uniform_buffer"),
+                contents: bytemuck::cast_slice(&vertex_uniform_buffer_data),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
         let bind_group = render_device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -227,6 +318,10 @@ impl AsBindGroup for TerrainMeshMaterial {
                     binding: 3,
                     resource: state_uniform_buffer.as_entire_binding(),
                 },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: vertex_uniform_buffer.as_entire_binding(),
+                },
             ],
         });
         Ok(PreparedBindGroup {
@@ -243,6 +338,8 @@ impl AsBindGroup for TerrainMeshMaterial {
                 apply_split,
                 apply_cutout,
                 apply_color_to_alpha,
+                apply_quantization_bits12,
+                apply_webmercator_t,
             },
         })
     }
@@ -289,9 +386,17 @@ impl AsBindGroup for TerrainMeshMaterial {
                     },
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
     }
 }
-pub const ATTRIBUTE_WEB_MERCATOR_T: MeshVertexAttribute =
-    MeshVertexAttribute::new("Vertex_WebMercatorT", 15, VertexFormat::Float32);

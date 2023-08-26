@@ -1,4 +1,4 @@
-use crate::{bit_or_zero, Cartographic, Ellipsoid, Rectangle};
+use crate::{Cartographic, Ellipsoid, Rectangle};
 use bevy::{
     math::DVec2,
     prelude::{info, Component, IVec2, Resource, UVec2, Vec2},

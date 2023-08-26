@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use crate::{bit_or_zero, Cartographic, Ellipsoid, Rectangle};
+use crate::{ Cartographic, Ellipsoid, Rectangle};
 use bevy::{
     core_pipeline::core_3d::graph::node,
     math::DVec2,

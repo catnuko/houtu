@@ -43,12 +43,23 @@ web墨卡托图层，瓦片资源来自[omniscale](https://maps.omniscale.net)�
 
 ## 💻开发
 ```bash
-// 运行程序
-cd ./houtu
+# 运行程序
+cd houtu-app
 cargo run
 
-// 构建程序
-// 暂无法构建
+# 暂时无法在浏览器中运行
+
+# 用trunk在浏览器中运行
+cd houtu-app
+cargo install trunk wasm-bindgen-cli # 已有可不安装
+trunk serve # 启动服务，控制台将给出服务地址，http://127.0.0.1:8080
+# 用wasm-server-runner在浏览器中运行
+cd houtu-app
+cargo run --target wasm32-unknown-unknown
+wasm-server-runner ../target/wasm32-unknown-unknown/debug/houtu-app.wasm
+# 构建
+cd houtu-app
+cargo build
 
 // 运行网站（暂无内容）
 cd www

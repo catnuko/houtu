@@ -22,7 +22,7 @@ use super::WebAssetIo;
 /// // The web asset plugin should be added instead of the `AssetPlugin`
 /// // Internally, WebAssetPlugin will create an AssetPlugin and hook into
 /// // it in the right places
-/// app.add_plugin(WebAssetPlugin::default());
+/// app.add_plugins(WebAssetPlugin::default());
 /// app.add_plugins(DefaultPlugins.build().disable::<AssetPlugin>());
 /// ```
 ///});
@@ -38,15 +38,15 @@ impl Plugin for WebAssetPlugin {
         // We use out own watcher, so `watch_for_changes` is always false
         let asset_plugin = AssetPlugin {
             asset_folder: self.asset_plugin.asset_folder.clone(),
-            watch_for_changes: false,
+            watch_for_changes: None,
         };
 
         // Create the `FileAssetIo` wrapper
         let asset_io = {
             // This makes calling `WebAssetIo::watch_for_changes` redundant
             let filesystem_watcher = match self.asset_plugin.watch_for_changes {
-                true => Arc::new(RwLock::new(Some(FilesystemWatcher::default()))),
-                false => Arc::new(RwLock::new(None)),
+                Some(_) => Arc::new(RwLock::new(Some(FilesystemWatcher::default()))),
+                None => Arc::new(RwLock::new(None)),
             };
 
             // Create the `FileAssetIo`
@@ -68,14 +68,14 @@ impl Plugin for WebAssetPlugin {
         app.insert_resource(AssetServer::new(asset_io));
 
         // Add the asset plugin
-        app.add_plugin(asset_plugin);
+        app.add_plugins(asset_plugin);
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Optionally add the filesystem watcher system
-            if self.asset_plugin.watch_for_changes {
-                app.add_system(
-                    super::filesystem_watcher::filesystem_watcher_system
-                        .in_base_set(CoreSet::PostUpdate),
+            if self.asset_plugin.watch_for_changes.is_some() {
+                app.add_systems(
+                    PostUpdate,
+                    super::filesystem_watcher::filesystem_watcher_system,
                 );
             }
         }

@@ -1,8 +1,4 @@
-
-
-use bevy::{
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_prototype_debug_lines::*;
 use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid};
@@ -15,15 +11,19 @@ mod ui_state;
 pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(EguiPlugin)
+        app.add_plugins(EguiPlugin)
             // .add_plugin(bevy_screen_diags::ScreenDiagsTextPlugin)
-            .add_plugin(DebugLinesPlugin::with_depth_test(true))
+            .add_plugins(DebugLinesPlugin::with_depth_test(true))
             .insert_resource(UiState::default())
-            .add_startup_system(font::config_ctx)
-            .add_system(camera::debug_system)
-            .add_system(ui_example_system)
-            .add_system(genera::debug_system)
-            .add_startup_system(setup);
+            .add_systems(Startup, (font::config_ctx, setup))
+            .add_systems(
+                Update,
+                (
+                    camera::debug_system,
+                    ui_example_system,
+                    genera::debug_system,
+                ),
+            );
     }
 }
 

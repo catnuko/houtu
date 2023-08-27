@@ -24,14 +24,12 @@ impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         let queue = ReprojectTextureTaskQueue::default();
         app.insert_resource(queue);
-        app.add_system(receive_images);
+        app.add_systems(Update, receive_images);
         app.add_event::<FinishReprojectTexture>();
-
-        let render_queue = ReprojectTextureTaskQueue {
-            map: HashMap::new(),
-        };
+    }
+    fn finish(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
-        render_app.add_system(extract_reproject_texture_task_queue.in_schedule(ExtractSchedule));
+        render_app.add_systems(ExtractSchedule, extract_reproject_texture_task_queue);
         render_app.init_resource::<ReprojectTexturePipeline>();
         let mut render_graph = render_app.world.resource_mut::<RenderGraph>();
         render_graph.add_node("reproject_texture", ReprojectTextureNode::default());
@@ -39,9 +37,13 @@ impl bevy::prelude::Plugin for Plugin {
             "reproject_texture",
             bevy::render::main_graph::node::CAMERA_DRIVER,
         );
+        let render_queue = ReprojectTextureTaskQueue {
+            map: HashMap::new(),
+        };
         render_app.insert_resource(render_queue);
     }
 }
+#[derive(Event)]
 pub struct FinishReprojectTexture {
     pub imagery_key: ImageryKey,
 }
@@ -385,7 +387,7 @@ impl render_graph::Node for ReprojectTextureNode {
                                     load: wgpu::LoadOp::Clear(wgpu::Color {
                                         r: 0.1,
                                         g: 0.2,
-                                        
+
                                         b: 0.3,
                                         a: 1.0,
                                     }),
@@ -414,8 +416,8 @@ impl render_graph::Node for ReprojectTextureNode {
                     buffer: &task.1.output_buffer,
                     layout: ImageDataLayout {
                         offset: 0,
-                        bytes_per_row: NonZeroU32::new(u32_size * output_texture_size.width),
-                        rows_per_image: NonZeroU32::new(output_texture_size.height),
+                        bytes_per_row: Some(u32_size * output_texture_size.width),
+                        rows_per_image: Some(output_texture_size.height),
                     },
                 },
                 output_texture_size,

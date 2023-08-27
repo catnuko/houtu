@@ -31,7 +31,7 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(WebAssetPlugin::default())
+        app.add_plugins(WebAssetPlugin::default())
             .add_plugins(
                 DefaultPlugins
                     .build()
@@ -45,14 +45,14 @@ impl Plugin for RendererPlugin {
                         ..default()
                     }),
             )
-            .add_plugin(helpers::Plugin)
-            .add_plugin(WireframePlugin)
-            .add_plugin(WorldInspectorPlugin::new())
-            .add_plugin(houtu_jobs::Plugin)
-            .add_plugin(globe::GlobePlugin)
-            .add_plugin(camera::CameraPlugin)
-            .add_plugin(quadtree::Plugin)
-            .add_plugin(render::Plugin);
+            .add_plugins(helpers::Plugin)
+            .add_plugins(WireframePlugin)
+            .add_plugins(WorldInspectorPlugin::new())
+            .add_plugins(houtu_jobs::Plugin)
+            .add_plugins(globe::GlobePlugin)
+            .add_plugins(camera::CameraPlugin)
+            .add_plugins(quadtree::Plugin)
+            .add_plugins(render::Plugin);
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
 }

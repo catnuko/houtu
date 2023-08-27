@@ -23,9 +23,9 @@ pub struct CameraPlugin;
 impl bevy::app::Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Msaa::default())
-            .add_plugin(CameraControlPlugin)
-            .add_startup_system(setup)
-            .add_system(pan_orbit_camera);
+            .add_plugins(CameraControlPlugin)
+            .add_systems(Startup,setup)
+            .add_systems(Update, pan_orbit_camera);
     }
 }
 impl Default for CameraPlugin {

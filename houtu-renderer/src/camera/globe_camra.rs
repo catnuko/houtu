@@ -18,14 +18,13 @@ pub struct CameraControlPlugin;
 
 impl Plugin for CameraControlPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(camera_event_aggregator::Plugin);
-        app.add_system(globe_camera_setup_system);
+        app.add_plugins(camera_event_aggregator::Plugin);
+        app.add_systems(Update, globe_camera_setup_system);
     }
 }
 
 /// Base system set to allow ordering of `GlobeCamera`
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[system_set(base)]
 pub struct PanOrbitCameraSystemSet;
 
 #[derive(Component)]

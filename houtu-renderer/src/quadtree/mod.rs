@@ -52,16 +52,16 @@ pub mod upsample_job;
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(reproject_texture::Plugin);
+        app.add_plugins(reproject_texture::Plugin);
         app.insert_resource(QuadtreePrimitive::new());
         app.insert_resource(ImageryLayerStorage::new());
         app.insert_resource(RootTraversalDetails::new());
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(IndicesAndEdgesCacheArc::new());
         app.insert_resource(ImageryStorage::new());
-        app.add_system(render_system);
-        app.add_system(process_terrain_state_machine_system.after(render_system));
-        app.add_system(imagery_layer::finish_reproject_texture_system);
+        app.add_systems(Update,render_system);
+        app.add_systems(Update,process_terrain_state_machine_system.after(render_system));
+        app.add_systems(Update,imagery_layer::finish_reproject_texture_system);
     }
 }
 

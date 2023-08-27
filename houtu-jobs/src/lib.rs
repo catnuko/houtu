@@ -5,8 +5,8 @@
     clippy::indexing_slicing,
     clippy::expect_used
 )]
-mod worker;
 mod executor;
+mod worker;
 use bevy::prelude::*;
 use std::{any, future, pin};
 
@@ -14,7 +14,7 @@ pub struct Plugin;
 
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_system(check_system)
+        app.add_systems(Update, check_system)
             .insert_resource(JobOutcomePayloads(vec![]));
     }
 }

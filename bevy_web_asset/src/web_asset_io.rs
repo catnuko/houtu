@@ -1,4 +1,7 @@
-use bevy::{asset::{AssetIo, AssetIoError, BoxedFuture}, prelude::warn};
+use bevy::{
+    asset::{AssetIo, AssetIoError, BoxedFuture, ChangeWatcher},
+    prelude::warn,
+};
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
@@ -101,7 +104,7 @@ impl AssetIo for WebAssetIo {
         }
     }
 
-    fn watch_for_changes(&self) -> Result<(), AssetIoError> {
+    fn watch_for_changes(&self, configuration: &ChangeWatcher) -> Result<(), AssetIoError> {
         // self.filesystem_watcher is created in `web_asset_plugin.rs`
         Ok(()) // This could create self.network_watcher
     }

@@ -31,7 +31,6 @@ use super::quadtree::{
     tile_key::TileKey,
     traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
 };
-mod terrain_bundle;
 mod terrain_render_pipeline;
 mod terrian_material;
 mod wrap_terrain_mesh;
@@ -43,9 +42,12 @@ use super::{
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
-        app.add_startup_system(setup);
-        app.add_system(real_render_system.after(process_terrain_state_machine_system));
+        app.add_plugins(MaterialPlugin::<terrian_material::TerrainMeshMaterial>::default());
+        app.add_systems(Startup, setup);
+        app.add_systems(
+            Update,
+            real_render_system.after(process_terrain_state_machine_system),
+        );
     }
 }
 fn setup(
@@ -53,8 +55,8 @@ fn setup(
     mut imagery_storage: ResMut<ImageryStorage>,
 ) {
     let xyz = XYZImageryProvider {
-        url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
-        // url:"icon.png",
+        // url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
+        url:"icon.png",
         ..Default::default()
     };
     let mut imagery_layer = ImageryLayer::new(Box::new(xyz), &mut imagery_storage);

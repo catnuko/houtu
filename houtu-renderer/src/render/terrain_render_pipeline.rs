@@ -155,7 +155,7 @@ where
 {
     fn build(&self, app: &mut App) {
         // Todo: don't use MaterialPlugin, but do the configuration here
-        app.add_plugin(MaterialPlugin::<M>::default());
+        app.add_plugins(MaterialPlugin::<M>::default());
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
@@ -169,7 +169,7 @@ where
                 .add_render_command::<Opaque3d, DrawTerrain<M>>()
                 .init_resource::<TerrainRenderPipeline<M>>()
                 .init_resource::<SpecializedRenderPipelines<TerrainRenderPipeline<M>>>()
-                .add_system(queue_terrain::<M>.in_set(RenderSet::Queue));
+                .add_systems(Update,queue_terrain::<M>.in_set(RenderSet::Queue));
         }
     }
 }

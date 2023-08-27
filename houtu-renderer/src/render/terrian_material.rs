@@ -23,7 +23,7 @@ use wgpu::{
 /// A marker component used to identify a terrain entity.
 #[derive(Clone, Copy, Component, ExtractComponent)]
 pub struct Terrain;
-#[derive(Default, TypeUuid, Debug, Clone, Resource)]
+#[derive(Default, TypeUuid, Debug, Clone, Resource,Reflect)]
 #[uuid = "886f4558-1621-492a-856e-ea1dbc9902d9"]
 pub struct TerrainMeshMaterial {
     pub textures: Vec<Handle<Image>>,
@@ -308,7 +308,7 @@ impl AsBindGroup for TerrainMeshMaterial {
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&fallback_image.sampler),
+                    resource: wgpu::BindingResource::Sampler(&fallback_image.d2.sampler),
                 },
                 BindGroupEntry {
                     binding: 2,

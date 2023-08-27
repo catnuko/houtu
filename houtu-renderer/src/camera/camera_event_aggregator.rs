@@ -17,10 +17,9 @@ use super::egui::{self, EguiWantsFocus};
 pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(ScreenSpaceEventHandlerPlugin);
+        app.add_plugins(ScreenSpaceEventHandlerPlugin);
         app.add_event::<ControlEvent>();
-        app.add_system(default_input_map);
-        app.add_system(maintain_inertia_system);
+        app.add_systems(Update, (default_input_map, maintain_inertia_system));
         app.insert_resource(Aggregator::default());
 
         app.insert_resource(UpdateWrap::default());
@@ -101,6 +100,7 @@ pub struct ControlEventData {
     pub start_position: DVec2, // pub press_time: f64,
                                // pub release_time: f64,
 }
+#[derive(Event)]
 pub enum ControlEvent {
     Tilt(ControlEventData),
     Spin(ControlEventData),
@@ -500,7 +500,6 @@ fn maintain_inertia(
 }
 /// Base system set to allow ordering of `PanOrbitCamera`
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[system_set(base)]
 pub struct PanOrbitCameraSystemSet;
 pub struct ScreenSpaceEventHandlerPlugin;
 impl bevy::prelude::Plugin for ScreenSpaceEventHandlerPlugin {
@@ -510,15 +509,20 @@ impl bevy::prelude::Plugin for ScreenSpaceEventHandlerPlugin {
         app.insert_resource(PreviousPositionsWrap::default());
         app.insert_resource(IsButtonDownWrap::default());
         app.add_event::<MouseEvent>();
-        app.add_system(screen_space_event_hanlder_system.in_base_set(PanOrbitCameraSystemSet));
+        app.add_systems(
+            Update,
+            screen_space_event_hanlder_system.in_set(PanOrbitCameraSystemSet),
+        );
         {
             app.init_resource::<EguiWantsFocus>()
-                .add_system(
+                .add_systems(
+                    Update,
                     egui::check_egui_wants_focus
                         .after(EguiSet::InitContexts)
                         .before(PanOrbitCameraSystemSet),
                 )
                 .configure_set(
+                    PostUpdate,
                     PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
                         prev: false,
                         curr: false,
@@ -592,6 +596,7 @@ fn decay(time: f64, coefficient: f64) -> f64 {
     let tau = (1.0 - coefficient) * 25.0;
     return (-tau * time).exp();
 }
+#[derive(Event)]
 pub enum MouseEvent {
     MouseMove(Movement),
     PinchStart(Movement),

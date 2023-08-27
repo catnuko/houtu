@@ -19,11 +19,13 @@ bevy = { version = "0.10.1", default-features = false, features = [
     "wayland",
     "png",
 ] }
-houtu-scene = { path = "../houtu-scene" }
-houtu-renderer = { path = "../houtu-renderer" }
+# houtu-scene = { path = "../houtu-scene" }
+# houtu-renderer = { path = "../houtu-renderer" }
+wasm-bindgen = "0.2"
 
 # [profile.dev.package."*"]
 # opt-level = 3
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"
+

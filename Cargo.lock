@@ -2227,6 +2227,14 @@ name = "houtu"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "houtu-app"
+version = "0.1.0"
+dependencies = [
+ "bevy",
  "houtu-renderer",
  "houtu-scene",
 ]
@@ -2237,7 +2245,11 @@ version = "0.1.0"
 dependencies = [
  "async-channel",
  "bevy",
+ "console_error_panic_hook",
  "instant",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -2265,7 +2277,7 @@ dependencies = [
  "new_string_template",
  "pollster",
  "rand 0.8.5",
- "reqwest 0.11.18 (git+https://github.com/seanmonstar/reqwest.git?branch=master)",
+ "reqwest",
  "thiserror",
  "tokio",
  "wgpu",
@@ -2276,11 +2288,8 @@ name = "houtu-scene"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "reqwest 0.11.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "round",
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -3560,43 +3569,6 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 [[package]]
 name = "reqwest"
 version = "0.11.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cde824a14b7c14f85caff81225f411faacc04a2013f41670f41443742b1c1c55"
-dependencies = [
- "base64 0.21.2",
- "bytes",
- "encoding_rs",
- "futures-core",
- "futures-util",
- "h2",
- "http",
- "http-body",
- "hyper",
- "hyper-tls",
- "ipnet",
- "js-sys",
- "log",
- "mime",
- "native-tls",
- "once_cell",
- "percent-encoding",
- "pin-project-lite",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "tokio",
- "tokio-native-tls",
- "tower-service",
- "url",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "winreg 0.10.1",
-]
-
-[[package]]
-name = "reqwest"
-version = "0.11.18"
 source = "git+https://github.com/seanmonstar/reqwest.git?branch=master#b0c07a21b162649f5eb9280f237ba13f60e46157"
 dependencies = [
  "base64 0.21.2",
@@ -3629,7 +3601,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
- "winreg 0.50.0",
+ "winreg",
 ]
 
 [[package]]
@@ -3646,12 +3618,6 @@ dependencies = [
  "web-sys",
  "winapi",
 ]
-
-[[package]]
-name = "round"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b02705db4fa872ae37e464fc803b7ffa574e6c4a5e112c52a82550f9dd63b657"
 
 [[package]]
 name = "rustc-demangle"
@@ -5123,15 +5089,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acaaa1190073b2b101e15083c38ee8ec891b5e05cbee516521e94ec008f61e64"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "winreg"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
-dependencies = [
- "winapi",
 ]
 
 [[package]]

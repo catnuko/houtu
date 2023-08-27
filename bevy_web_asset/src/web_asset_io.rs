@@ -1,4 +1,4 @@
-use bevy::asset::{AssetIo, AssetIoError, BoxedFuture};
+use bevy::{asset::{AssetIo, AssetIoError, BoxedFuture}, prelude::warn};
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, RwLock},

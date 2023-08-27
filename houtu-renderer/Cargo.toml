@@ -46,3 +46,4 @@ bevy_prototype_debug_lines = {version="0.10",features=["3d"]}
 futures-intrusive = "0.4.0"
 wgpu = "0.15.1"
 pollster = "0.2.5"
+

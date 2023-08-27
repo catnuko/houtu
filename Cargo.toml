@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "houtu",
+    "houtu-app",
     "houtu-renderer",
     "houtu-scene",
     "houtu-jobs",
@@ -10,3 +11,10 @@ resolver = "2"
 
 [profile.release]
 debug = true
+
+[profile.dev]
+opt-level = 1               # 使用稍高一些的优化级别，最低是0，最高是3
+overflow-checks = false     # 关闭整数溢出检查
+
+[cargo-warnings]
+ignored-profile = "ignore"

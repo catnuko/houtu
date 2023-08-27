@@ -2,7 +2,7 @@ use std::f64::{
     consts::{FRAC_2_PI, PI},
     MAX,
 };
-use std::ops::Index;
+
 
 use crate::{ellipsoid::Ellipsoid, math::*, BoundingVolume, Intersect};
 use bevy::{
@@ -10,7 +10,7 @@ use bevy::{
     prelude::*,
 };
 
-use super::{Box3d, EllipsoidTangentPlane, Plane, Rectangle};
+use super::{EllipsoidTangentPlane, Plane, Rectangle};
 #[derive(Clone, Debug, Component, Copy)]
 pub struct OrientedBoundingBox {
     pub center: DVec3,
@@ -110,13 +110,13 @@ impl OrientedBoundingBox {
         let maximum_height = maximum_height.unwrap_or(0.0);
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
 
-        let mut min_x: f64;
-        let mut max_x: f64;
-        let mut min_y: f64;
-        let mut max_y: f64;
-        let mut min_z: f64;
-        let mut max_z: f64;
-        let mut plane;
+        let min_x: f64;
+        let max_x: f64;
+        let min_y: f64;
+        let max_y: f64;
+        let min_z: f64;
+        let max_z: f64;
+        let plane;
 
         if rectangle.compute_width() <= PI {
             // The bounding box will be aligned with the tangent plane at the center of the rectangle.
@@ -136,26 +136,26 @@ impl OrientedBoundingBox {
                 }
             };
             // Compute XY extents using the rectangle at maximum height
-            let mut perimeter_cartographic_nc =
+            let perimeter_cartographic_nc =
                 Cartographic::from_radians(lon_center, rectangle.north, maximum_height);
             let mut perimeter_cartographic_nw =
                 Cartographic::from_radians(rectangle.west, rectangle.north, maximum_height);
-            let mut perimeter_cartographic_cw =
+            let perimeter_cartographic_cw =
                 Cartographic::from_radians(rectangle.west, lat_center, maximum_height);
             let mut perimeter_cartographic_sw =
                 Cartographic::from_radians(rectangle.west, rectangle.south, maximum_height);
-            let mut perimeter_cartographic_sc =
+            let perimeter_cartographic_sc =
                 Cartographic::from_radians(lon_center, rectangle.south, maximum_height);
 
-            let mut perimeter_cartesian_nc =
+            let perimeter_cartesian_nc =
                 ellipsoid.cartographic_to_cartesian(&perimeter_cartographic_nc);
             let mut perimeter_cartesian_nw =
                 ellipsoid.cartographic_to_cartesian(&perimeter_cartographic_nw);
-            let mut perimeter_cartesian_cw =
+            let perimeter_cartesian_cw =
                 ellipsoid.cartographic_to_cartesian(&perimeter_cartographic_cw);
             let mut perimeter_cartesian_sw =
                 ellipsoid.cartographic_to_cartesian(&perimeter_cartographic_sw);
-            let mut perimeter_cartesian_sc =
+            let perimeter_cartesian_sc =
                 ellipsoid.cartographic_to_cartesian(&perimeter_cartographic_sc);
 
             let perimeter_projected_nc =
@@ -341,7 +341,7 @@ impl OrientedBoundingBox {
         let number_of_degenerate_axes = (!u_valid as i8) + (!v_valid as i8) + (!w_valid as i8);
         let mut valid_axis1;
         let mut valid_axis2;
-        let mut valid_axis3;
+        let valid_axis3;
 
         if number_of_degenerate_axes == 1 {
             let mut degenerate_axis = u;
@@ -499,7 +499,7 @@ pub fn from_plane_extents(
     scale.y = (maximum_y - minimum_y) / 2.0;
     scale.z = (maximum_z - minimum_z) / 2.0;
 
-    let center = result.center;
+    let _center = result.center;
     center_offset = half_axes.multiply_by_vector(&center_offset);
     result.center = plane_origin + center_offset;
     result.half_axes = half_axes.multiply_by_scale(scale);

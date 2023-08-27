@@ -1,12 +1,8 @@
-use std::{
-    f64::consts::PI,
-    fmt::{Debug, Formatter},
-    ops::{Add, Div, Mul, Sub},
-};
 
-use bevy::math::{DVec2, DVec4};
 
-use crate::{ellipsoid::Ellipsoid, math::*};
+use bevy::math::{DVec2};
+
+use crate::{math::*};
 pub trait Cartesian2 {
     const ZERO: DVec2 = DVec2 { x: 0.0, y: 0.0 };
     const ONE: DVec2 = DVec2 { x: 1.0, y: 1.0 };

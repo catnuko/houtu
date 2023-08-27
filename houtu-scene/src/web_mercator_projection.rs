@@ -1,7 +1,7 @@
 use bevy::math::{DVec2, DVec3};
-use std::f64::consts::{FRAC_PI_2, PI, TAU};
+use std::f64::consts::{FRAC_PI_2};
 
-use crate::{ellipsoid::Ellipsoid, math::Cartographic, projection::Projection};
+use crate::{ellipsoid::Ellipsoid, math::Cartographic};
 #[derive(Debug, Clone)]
 pub struct WebMercatorProjection {
     pub ellipsoid: Ellipsoid,

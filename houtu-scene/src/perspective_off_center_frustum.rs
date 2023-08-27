@@ -1,4 +1,4 @@
-use bevy::math::{DMat4, DVec3, DVec4};
+use bevy::math::{DMat4, DVec3};
 
 use crate::{Cartesian3, CullingVolume, Matrix4};
 
@@ -48,15 +48,15 @@ impl PerspectiveOffCenterFrustum {
         let n = self.near;
         let f = self.far;
 
-        if (t != self._top
+        if t != self._top
             || b != self._bottom
             || l != self._left
             || r != self._right
             || n != self._near
-            || f != self._far)
+            || f != self._far
         {
             //>>includeStart('debug', pragmas.debug);
-            if (self.near <= 0.0 || self.near > self.far) {
+            if self.near <= 0.0 || self.near > self.far {
                 panic!("near must be greater than zero and less than far.");
             }
             //>>includeEnd('debug');
@@ -120,7 +120,7 @@ impl PerspectiveOffCenterFrustum {
         plane.w = -normal.dot(position);
 
         //RIGHT plane computation
-        normal = up.cross((near_center + right * r - position)).normalize();
+        normal = up.cross(near_center + right * r - position).normalize();
 
         plane = &mut planes[1];
         plane.x = normal.x;

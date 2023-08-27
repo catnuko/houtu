@@ -174,8 +174,8 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
         let n = a3_squared - 4.0 * y;
         let n_error = a3_squared + 4.0 * y.abs();
 
-        let mut g2;
-        let mut h2;
+        let g2;
+        let h2;
 
         if y < 0.0 || m * n_error < n * m_error {
             let square_root_of_n = n.sqrt();
@@ -195,8 +195,8 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
             h2 = square_root_of_m / 2.0;
         }
 
-        let mut G;
-        let mut g;
+        let G;
+        let g;
         if g1 == 0.0 && g2 == 0.0 {
             G = 0.0;
             g = 0.0;
@@ -208,8 +208,8 @@ fn neumark(a3: f64, a2: f64, a1: f64, a0: f64) -> Vec<f64> {
             G = y / g;
         }
 
-        let mut H;
-        let mut h;
+        let H;
+        let h;
         if h1 == 0.0 && h2 == 0.0 {
             H = 0.0;
             h = 0.0;

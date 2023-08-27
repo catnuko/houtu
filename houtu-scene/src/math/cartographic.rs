@@ -1,4 +1,4 @@
-use std::{fmt::Formatter, ops::Add};
+
 
 use bevy::math::DVec3;
 
@@ -44,9 +44,9 @@ impl Cartographic {
     }
     pub fn from_cartesian(cartesian: DVec3, ellipsoid: Option<&Ellipsoid>) -> Option<Self> {
         let ellipsoid = ellipsoid.unwrap_or(&Ellipsoid::WGS84);
-        let one_over_radii = ellipsoid.one_over_radii;
+        let _one_over_radii = ellipsoid.one_over_radii;
         let one_over_radii_squared = ellipsoid.one_over_radii_squared;
-        let center_tolerance_squared = ellipsoid.center_tolerance_squared;
+        let _center_tolerance_squared = ellipsoid.center_tolerance_squared;
         if let Some(p) = ellipsoid.scale_to_geodetic_surface(&cartesian) {
             let n = p * one_over_radii_squared.normalize();
             let h = cartesian - p;

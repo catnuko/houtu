@@ -3,11 +3,11 @@ use bevy::{
     prelude::Mesh,
     render::{
         mesh::Indices,
-        render_resource::{PrimitiveTopology, VertexFormat},
+        render_resource::{PrimitiveTopology},
     },
 };
 
-use crate::{Cartesian3, Matrix3, Matrix4, PerspectiveFrustum, PerspectiveOffCenterFrustum};
+use crate::{Cartesian3, Matrix3, Matrix4, PerspectiveFrustum};
 pub struct FrustumGeometryInfo {
     scratch_x_direction: DVec3,
     scratch_y_direction: DVec3,
@@ -161,14 +161,14 @@ impl From<FrustumGeometry> for Mesh {
         let mut end_positions: Vec<[f32; 3]> = Vec::new();
         let mut end_normals: Vec<[f32; 3]> = Vec::new();
         let mut end_st: Vec<[f32; 2]> = Vec::new();
-        positions.iter().enumerate().step_by(3).for_each(|(i, x)| {
+        positions.iter().enumerate().step_by(3).for_each(|(i, _x)| {
             end_positions.push([
                 positions[i] as f32,
                 positions[i + 1] as f32,
                 positions[i + 2] as f32,
             ])
         });
-        let mut indices = (0..number_of_planes * 6).map(|i| 0).collect::<Vec<i32>>();
+        let mut indices = (0..number_of_planes * 6).map(|_i| 0).collect::<Vec<i32>>();
 
         for i in 0..number_of_planes {
             let index_offset = i * 6;
@@ -196,14 +196,14 @@ impl From<FrustumGeometry> for Mesh {
         get_attributes(offset, &mut normals, &mut st, &x); //+x
         offset += 3 * 4;
         get_attributes(offset, &mut normals, &mut st, &y); //+y
-        normals.iter().enumerate().step_by(3).for_each(|(i, x)| {
+        normals.iter().enumerate().step_by(3).for_each(|(i, _x)| {
             end_normals.push([
                 normals[i] as f32,
                 normals[i + 1] as f32,
                 normals[i + 2] as f32,
             ]);
         });
-        st.iter().enumerate().step_by(2).for_each(|(i, x)| {
+        st.iter().enumerate().step_by(2).for_each(|(i, _x)| {
             end_st.push([st[i] as f32, st[i + 1] as f32]);
         });
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -217,7 +217,7 @@ impl From<FrustumGeometry> for Mesh {
 fn get_attributes(offset: usize, normals: &mut [f64; 72], st: &mut [f64; 48], normal: &DVec3) {
     let st_offset = (offset / 3) * 2;
     let mut offset = offset;
-    for i in 0..4 {
+    for _i in 0..4 {
         normals[offset] = normal.x;
         normals[offset + 1] = normal.y;
         normals[offset + 2] = normal.z;

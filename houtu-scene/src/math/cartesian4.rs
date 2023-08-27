@@ -1,12 +1,8 @@
-use std::{
-    f64::consts::PI,
-    fmt::{Debug, Formatter},
-    ops::{Add, Div, Mul, Sub},
-};
 
-use bevy::math::{DMat4, DVec4};
 
-use crate::{ellipsoid::Ellipsoid, math::*};
+use bevy::math::{DVec4};
+
+use crate::{math::*};
 pub trait Cartesian4 {
     fn from_elements(x: f64, y: f64, z: f64, w: f64) -> Self;
     fn divide_by_scalar(&self, scalar: f64) -> DVec4;

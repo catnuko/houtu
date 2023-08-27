@@ -1,7 +1,5 @@
 use std::{
-    f64::consts::PI,
-    fmt::{Debug, Formatter},
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, Sub},
 };
 
 use bevy::math::{DVec3, DVec4};
@@ -84,7 +82,7 @@ impl Cartesian3 for DVec3 {
     fn most_orthogonal_axis(&self) -> DVec3 {
         let mut f = self.normalize();
         f = f.abs();
-        let mut result: DVec3;
+        let result: DVec3;
         if f.x <= f.y {
             if f.x <= f.z {
                 result = DVec3::UNIT_X.clone();
@@ -183,7 +181,7 @@ impl Cartesian3 for DVec3 {
         height: Option<f64>,
         radii_squared: Option<DVec3>,
     ) -> DVec3 {
-        let result = DVec3::ZERO;
+        let _result = DVec3::ZERO;
         let radii_squared = radii_squared.unwrap_or(Ellipsoid::WGS84.radii_squared);
         let height = height.unwrap_or(0.0);
         let mut scratchN = DVec3::ZERO;

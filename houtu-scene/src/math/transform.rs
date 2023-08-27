@@ -1,9 +1,9 @@
-use bevy::math::{DMat4, DQuat, DVec3, DVec4};
+use bevy::math::{DMat4, DQuat, DVec3};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+
 
 use super::*;
-use crate::ellipsoid::{self, Ellipsoid};
+use crate::ellipsoid::{Ellipsoid};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Test {
@@ -47,7 +47,7 @@ pub fn eastNorthUpToFixedFrame(origin: &DVec3, ellipsoid: Option<Ellipsoid>) -> 
         let ellipsoid = ellipsoid.unwrap_or(Ellipsoid::WGS84);
         scratchCalculateCartesian_up = ellipsoid.geodetic_surface_normal(&origin).unwrap();
 
-        let mut up = scratchCalculateCartesian_up;
+        let up = scratchCalculateCartesian_up;
         let mut east = scratchCalculateCartesian_east;
         east.x = -origin.y;
         east.y = origin.x;

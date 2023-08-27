@@ -61,7 +61,7 @@ impl SceneTransforms {
         return Some(result);
     }
     pub fn compute_actual_wgs84_position(position: &DVec3) -> Option<DVec3> {
-        let result = position.clone();
+        let _result = position.clone();
 
         let cartographic = Ellipsoid::WGS84.cartesian_to_cartographic(position);
         if let Some(cartographic) = cartographic {
@@ -82,7 +82,7 @@ impl SceneTransforms {
         let position_ndc = new_position.divide_by_scalar(position.w);
 
         // Viewport transform to transform from clip coordinates to window coordinates
-        let mut viewport_transform = viewport.computeViewportTransformation(0.0, 1.0);
+        let viewport_transform = viewport.computeViewportTransformation(0.0, 1.0);
         let position_wc = viewport_transform.multiply_by_point(&position_ndc);
 
         return DVec2::new(position_wc.x, position_wc.y);
@@ -98,7 +98,7 @@ pub fn world_to_clip(
     let mut position_ec = view_matrix.multiply_by_vector(&DVec4::from_elements(
         position.x, position.y, position.z, 1.,
     ));
-    let mut new_position_ec = DVec3::from_cartesian4(position_ec);
+    let new_position_ec = DVec3::from_cartesian4(position_ec);
     let z_eye_offset = eye_offset.multiply_components(&new_position_ec.normalize());
     position_ec.x += eye_offset.x + z_eye_offset.x;
     position_ec.y += eye_offset.y + z_eye_offset.y;

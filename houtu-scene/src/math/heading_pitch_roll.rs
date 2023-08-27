@@ -16,13 +16,13 @@ impl HeadingPitchRoll {
     }
     pub fn from_quaternion(quaternion: DQuat) -> Self {
         let mut result = HeadingPitchRoll::default();
-        let mut test = 2. * (quaternion.w * quaternion.y - quaternion.z * quaternion.x);
-        let mut denominatorRoll =
+        let test = 2. * (quaternion.w * quaternion.y - quaternion.z * quaternion.x);
+        let denominatorRoll =
             1. - 2. * (quaternion.x * quaternion.x + quaternion.y * quaternion.y);
-        let mut numeratorRoll = 2. * (quaternion.w * quaternion.x + quaternion.y * quaternion.z);
-        let mut denominatorHeading =
+        let numeratorRoll = 2. * (quaternion.w * quaternion.x + quaternion.y * quaternion.z);
+        let denominatorHeading =
             1.0 - 2. * (quaternion.y * quaternion.y + quaternion.z * quaternion.z);
-        let mut numeratorHeading = 2. * (quaternion.w * quaternion.z + quaternion.x * quaternion.y);
+        let numeratorHeading = 2. * (quaternion.w * quaternion.z + quaternion.x * quaternion.y);
         result.heading = -1.0 * numeratorHeading.atan2(denominatorHeading);
         result.roll = numeratorRoll.atan2(denominatorRoll);
         result.pitch = -1.0 * test.clamp(-1.0, 1.0).asin();

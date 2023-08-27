@@ -17,7 +17,6 @@ use crate::{
     Rectangle,
     TerrainEncoding,
     TerrainMesh,
-    TileKey,
     TilingScheme,
 };
 
@@ -366,15 +365,15 @@ fn triangle_interpolate_height(
     // The HeightmapTessellator bisects the quad from southwest to northeast.
     if dY < dX {
         // Lower right triangle
-        return (south_west_height
+        return south_west_height
             + dX * (south_east_height - south_west_height)
-            + dY * (north_east_height - south_east_height));
+            + dY * (north_east_height - south_east_height);
     }
 
     // Upper left triangle
-    return (south_west_height
+    return south_west_height
         + dX * (north_east_height - north_west_height)
-        + dY * (north_west_height - south_west_height));
+        + dY * (north_west_height - south_west_height);
 }
 fn set_height(
     heights: &mut Vec<f32>,

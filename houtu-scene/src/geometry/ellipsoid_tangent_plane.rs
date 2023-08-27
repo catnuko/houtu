@@ -42,7 +42,7 @@ impl EllipsoidTangentPlane {
         ray.origin = cartesian;
         ray.direction = self.normal.clone();
         let mut intersection_point: DVec3 = DVec3::ZERO;
-        let mut intersection_point_option = rayPlane(ray, self.plane);
+        let intersection_point_option = rayPlane(ray, self.plane);
         if intersection_point_option.is_none() {
             ray.direction = ray.direction.negate();
             intersection_point = rayPlane(ray, self.plane).unwrap();

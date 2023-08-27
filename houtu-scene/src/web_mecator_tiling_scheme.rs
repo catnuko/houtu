@@ -2,14 +2,12 @@ use std::f64::consts::PI;
 
 use crate::{ Cartographic, Ellipsoid, Rectangle};
 use bevy::{
-    core_pipeline::core_3d::graph::node,
     math::DVec2,
-    prelude::{IVec2, UVec2, Vec2},
+    prelude::{UVec2},
 };
 
 use crate::{
-    geographic_projection::GeographicProjection,
-    projection::{self, Projection},
+    projection::{Projection},
     tiling_scheme::TilingScheme,
     web_mercator_projection::WebMercatorProjection,
 };
@@ -52,8 +50,8 @@ impl Default for WebMercatorTilingScheme {
 }
 impl WebMercatorTilingScheme {
     fn new(options: WebMercatorTilingSchemeOptions) -> Self {
-        let mut rectangle_north_east_in_meters: DVec2;
-        let mut rectangle_south_west_in_meters: DVec2;
+        let rectangle_north_east_in_meters: DVec2;
+        let rectangle_south_west_in_meters: DVec2;
         if options.rectangle_north_east_in_meters.is_some()
             && options.rectangle_south_west_in_meters.is_some()
         {

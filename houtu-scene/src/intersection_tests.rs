@@ -1,9 +1,9 @@
-use std::f64::{MAX, NEG_INFINITY};
+use std::f64::{NEG_INFINITY};
 
 use bevy::math::{DMat3, DVec3};
 
 use crate::{
-    ellipsoid, Cartesian3, Ellipsoid, Matrix3, Plane, QuadraticRealPolynomial,
+    Cartesian3, Ellipsoid, Matrix3, Plane, QuadraticRealPolynomial,
     QuarticRealPolynomial, Ray, EPSILON12, EPSILON15,
 };
 #[derive(Default)]
@@ -46,11 +46,11 @@ impl IntersectionTests {
         let q2 = q.magnitude_squared();
         let qw = q.dot(w);
 
-        let mut difference;
-        let mut w2;
-        let mut product;
-        let mut discriminant;
-        let mut temp;
+        let difference;
+        let w2;
+        let product;
+        let discriminant;
+        let temp;
 
         if q2 > 1.0 {
             // Outside ellipsoid.

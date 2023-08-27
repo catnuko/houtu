@@ -1,4 +1,4 @@
-use bevy::{math::DVec3, prelude::Vec3};
+use bevy::{math::DVec3};
 
 use crate::{ellipsoid::Ellipsoid, math::Cartographic, projection::Projection};
 #[derive(Debug, Clone, Copy, PartialEq)]

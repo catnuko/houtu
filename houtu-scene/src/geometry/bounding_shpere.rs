@@ -2,7 +2,7 @@ use crate::{
     ellipsoid::Ellipsoid, geometry::Rectangle, math::*, BoundingVolume, Intersect,
     OrientedBoundingBox, Plane,
 };
-use bevy::math::{DMat4, DVec3};
+use bevy::math::{DVec3};
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub struct BoundingSphere {
@@ -161,9 +161,9 @@ impl BoundingSphere {
         }
 
         // Compute x-, y-, and z-spans (Squared distances b/n each component's min. and max.).
-        let mut x_span = (x_max - x_min).magnitude_squared();
-        let mut y_span = (y_max - y_min).magnitude_squared();
-        let mut z_span = (z_max - z_min).magnitude_squared();
+        let x_span = (x_max - x_min).magnitude_squared();
+        let y_span = (y_max - y_min).magnitude_squared();
+        let z_span = (z_max - z_min).magnitude_squared();
 
         // Set the diameter endpoints to the largest span.
         let mut diameter1 = x_min;
@@ -201,7 +201,7 @@ impl BoundingSphere {
         max_box_pt.y = y_max.y;
         max_box_pt.z = z_max.z;
 
-        let mut naive_center = (min_box_pt + max_box_pt) * 0.5;
+        let naive_center = (min_box_pt + max_box_pt) * 0.5;
 
         // Begin 2nd pass to find naive radius and modify the ritter sphere.
         let mut naive_radius: f64 = 0.;
@@ -332,27 +332,27 @@ impl BoundingSphere {
             current_pos.z = z;
 
             // Store points containing the the smallest and largest components
-            if (x < x_min.x) {
+            if x < x_min.x {
                 x_min = current_pos.clone();
             }
 
-            if (x > x_max.x) {
+            if x > x_max.x {
                 x_max = current_pos.clone();
             }
 
-            if (y < y_min.y) {
+            if y < y_min.y {
                 y_min = current_pos.clone();
             }
 
-            if (y > y_max.y) {
+            if y > y_max.y {
                 y_max = current_pos.clone();
             }
 
-            if (z < z_min.z) {
+            if z < z_min.z {
                 z_min = current_pos.clone();
             }
 
-            if (z > z_max.z) {
+            if z > z_max.z {
                 z_max = current_pos.clone();
             }
             i += stride;
@@ -367,12 +367,12 @@ impl BoundingSphere {
         let mut diameter1 = x_min;
         let mut diameter2 = x_max;
         let mut max_span = x_span;
-        if (y_span > max_span) {
+        if y_span > max_span {
             max_span = y_span;
             diameter1 = y_min;
             diameter2 = y_max;
         }
-        if (z_span > max_span) {
+        if z_span > max_span {
             max_span = z_span;
             diameter1 = z_min;
             diameter2 = z_max;
@@ -411,14 +411,14 @@ impl BoundingSphere {
 
             // Find the furthest point from the naive center to calculate the naive radius.
             let r = current_pos.subtract(naive_center).magnitude();
-            if (r > naive_radius) {
+            if r > naive_radius {
                 naive_radius = r;
             }
 
             // Make adjustments to the Ritter Sphere to include all points.
             let old_center_to_point_squared =
                 current_pos.subtract(ritter_center).magnitude_squared();
-            if (old_center_to_point_squared > radius_squared) {
+            if old_center_to_point_squared > radius_squared {
                 let old_center_to_point = old_center_to_point_squared.sqrt();
                 // Calculate new radius to include the point that lies outside
                 ritter_radius = (ritter_radius + old_center_to_point) * 0.5;
@@ -435,7 +435,7 @@ impl BoundingSphere {
             i += stride;
         }
 
-        if (ritter_radius < naive_radius) {
+        if ritter_radius < naive_radius {
             me.center = ritter_center.clone();
             me.radius = ritter_radius;
         } else {

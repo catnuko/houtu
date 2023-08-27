@@ -1,11 +1,8 @@
-use std::{
-    fmt::{Debug, Formatter},
-    ops::{Add, Div, Mul, Sub},
-};
+
 
 use bevy::math::{DMat3, DMat4, DQuat, DVec3, DVec4};
 
-use crate::{ellipsoid::Ellipsoid, math::*, BoundingRectangle};
+use crate::{math::*};
 pub trait Matrix3 {
     const COLUMN0ROW0: usize;
     const COLUMN0ROW1: usize;

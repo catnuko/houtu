@@ -141,7 +141,7 @@ fn compute_real_roots(a: f64, b: f64, c: f64, d: f64) -> Option<Vec<f64>> {
 
     let squareRootOfDiscriminant = discriminant.sqrt();
     let halfSquareRootOf3 = (3.0 as f64).sqrt() / 2.0;
-    let a: f64 = 3.0;
+    let _a: f64 = 3.0;
     let mut theta = ((A * squareRootOfDiscriminant).atan2(-DBarA) / 3.0).abs();
     temp = 2.0 * (-CBarA).sqrt();
     let mut cosine = theta.cos();

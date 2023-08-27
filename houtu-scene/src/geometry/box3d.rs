@@ -15,7 +15,7 @@ impl From<Box3d> for Mesh {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         let mut add_face = |a: DVec3, b: DVec3, c: DVec3, d: DVec3| {
-            let n = (b - a).cross(c - a).normalize();
+            let _n = (b - a).cross(c - a).normalize();
             vertices.push(a);
             vertices.push(b);
             vertices.push(c);

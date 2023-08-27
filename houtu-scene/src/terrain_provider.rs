@@ -1,9 +1,9 @@
-use core::num;
-use std::{collections::HashMap, f64::consts::PI, sync::Arc};
 
-use bevy::prelude::{In, Resource};
+use std::{collections::HashMap, f64::consts::PI};
 
-use crate::{Ellipsoid, FOUR_GIGABYTES, SIXTY_FOUR_KILOBYTES};
+use bevy::prelude::{Resource};
+
+use crate::{Ellipsoid, FOUR_GIGABYTES};
 #[derive(Debug, Clone)]
 pub struct IndicesAndEdges {
     pub indices: Vec<u32>,
@@ -80,7 +80,7 @@ impl IndicesAndEdgesCache {
             let mut grid_index_count = (width - 1) * (height - 1) * 6;
             let edge_vertex_count = width * 2 + height * 2;
             let edge_index_count = 0.max(edge_vertex_count - 4) * 6;
-            let vertex_count = grid_vertex_count + edge_vertex_count;
+            let _vertex_count = grid_vertex_count + edge_vertex_count;
             let index_count = grid_index_count + edge_index_count;
 
             let edge_indices = get_edge_indices(width, height);
@@ -173,8 +173,8 @@ pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
     tile_image_width: u32,
     number_of_tiles_at_level_zero: u32,
 ) -> f64 {
-    return ((ellipsoid.maximum_radius * 2. * PI * heightmap_terrain_quality)
-        / (tile_image_width * number_of_tiles_at_level_zero) as f64);
+    return (ellipsoid.maximum_radius * 2. * PI * heightmap_terrain_quality)
+        / (tile_image_width * number_of_tiles_at_level_zero) as f64;
 }
 
 pub fn get_edge_indices(width: u32, height: u32) -> InnerIndicesAndEdges {
@@ -256,8 +256,8 @@ fn inner_add_skirt_indices(
 pub fn add_regular_grid_indices(width: u32, height: u32, indices: &mut Vec<u32>, offset: u32) {
     let mut index = 0;
     let mut uoffset = offset as usize;
-    for j in 0..(height - 1) {
-        for i in 0..(width - 1) {
+    for _j in 0..(height - 1) {
+        for _i in 0..(width - 1) {
             let upper_left = index;
             let lower_left = upper_left + width;
             let lower_right = lower_left + 1;

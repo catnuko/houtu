@@ -1,12 +1,12 @@
-use std::f32::consts::{PI, TAU};
-use std::fmt;
-use std::ops::Sub;
+
+
+
 
 use crate::math::*;
 use bevy::math::DVec3;
 // use bevy::DVec3;
-use bevy::prelude::{Mesh, Resource};
-use bevy::render::mesh::Indices;
+use bevy::prelude::{Resource};
+
 #[derive(Debug, Clone, Copy, PartialEq, Resource)]
 pub struct Ellipsoid {
     pub radii: DVec3,
@@ -188,7 +188,7 @@ impl Ellipsoid {
         let x2 = position_x * position_x * one_over_radii_x * one_over_radii_x;
         let y2 = position_y * position_y * one_over_radii_y * one_over_radii_y;
         let z2 = position_z * position_z * one_over_radii_z * one_over_radii_z;
-        let mut squared_norm = x2 + y2 + z2;
+        let squared_norm = x2 + y2 + z2;
 
         // Compute the squared ellipsoid norm.
 

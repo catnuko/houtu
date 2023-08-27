@@ -1,4 +1,4 @@
-use bevy::math::{DMat4, DVec2, DVec3, DVec4};
+use bevy::math::{DMat4, DVec2, DVec3};
 
 use crate::{
     compress_texture_coordinates,
@@ -47,10 +47,10 @@ impl TerrainEncoding {
         let mut maximum_height = 0.;
         let mut from_enu = DMat4::default();
 
-        if (axis_aligned_bounding_box_option.is_some()
+        if axis_aligned_bounding_box_option.is_some()
             && minimum_height_option.is_some()
             && maximum_height_option.is_some()
-            && from_enu_option.is_some())
+            && from_enu_option.is_some()
         {
             axis_aligned_bounding_box = axis_aligned_bounding_box_option.unwrap();
             minimum_height = minimum_height_option.unwrap();

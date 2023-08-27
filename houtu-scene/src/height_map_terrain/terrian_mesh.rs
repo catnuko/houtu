@@ -1,12 +1,9 @@
 use bevy::{
-    math::{DMat4, DVec2, DVec3},
-    prelude::Vec3,
-    render::{mesh::{Indices, MeshVertexAttribute}, primitives::Aabb, render_resource::VertexFormat},
+    math::{DVec3},
 };
 
 use crate::{
-    decompress_texture_coordinates, BoundingSphere, Matrix4, OrientedBoundingBox, TerrainEncoding,
-    TerrainQuantization,
+    BoundingSphere, OrientedBoundingBox, TerrainEncoding,
 };
 use bevy::prelude::*;
 #[derive(Default, Clone, Debug, Component)]

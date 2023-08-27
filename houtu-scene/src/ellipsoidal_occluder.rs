@@ -1,7 +1,7 @@
 use bevy::{math::DVec3, prelude::Resource};
 
 use crate::{
-    ellipsoid::{self, Ellipsoid},
+    ellipsoid::{Ellipsoid},
     math::Cartesian3,
 };
 #[derive(Clone, Debug, Resource)]
@@ -210,9 +210,9 @@ pub fn magnitude_to_point(
 ) -> Option<DVec3> {
     // The horizon culling point is undefined if there were no positions from which to compute it,
     // the direction_to_point is pointing opposite all of the positions,  or if we computed NaN or infinity.
-    if (result_magnitude <= 0.0
+    if result_magnitude <= 0.0
         || result_magnitude == 1.0 / 0.0
-        || result_magnitude != result_magnitude)
+        || result_magnitude != result_magnitude
     {
         return None;
     }

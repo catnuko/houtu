@@ -16,11 +16,9 @@ use crate::{
 use super::*;
 use bevy::{
     math::{DVec2, DVec3},
-    render::primitives::Aabb,
 };
 use std::{
     f64::{consts::FRAC_PI_2, MAX, MIN_POSITIVE},
-    io,
 };
 pub struct CreateMeshJobOutput {
     pub vertices: Vec<f64>,
@@ -77,10 +75,10 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
     let native_rectangle = options.native_rectangle.clone();
     let rectangleOption = options.rectangle;
 
-    let mut geographicWest: f64;
-    let mut geographicSouth: f64;
-    let mut geographicEast: f64;
-    let mut geographicNorth: f64;
+    let geographicWest: f64;
+    let geographicSouth: f64;
+    let geographicEast: f64;
+    let geographicNorth: f64;
     if let Some(rectangle) = rectangleOption {
         geographicWest = rectangle.west;
         geographicSouth = rectangle.south;
@@ -109,7 +107,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
                         .atan();
         }
     }
-    let mut relativeToCenter = options.relativeToCenter.unwrap_or(DVec3::ZERO);
+    let relativeToCenter = options.relativeToCenter.unwrap_or(DVec3::ZERO);
     let hasRelativeToCenter = options.relativeToCenter.is_some();
     let includeWebMercatorT = options.includeWebMercatorT.unwrap_or(false);
     let exaggeration = options.exaggeration.unwrap_or(1.0);
@@ -148,7 +146,7 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
 
     let from_enu = eastNorthUpToFixedFrame(&relativeToCenter, Some(ellipsoid));
     let to_enu = from_enu.inverse_transformation();
-    let webMercatorProjection = WebMercatorProjection::default();
+    let _webMercatorProjection = WebMercatorProjection::default();
     let mut south_mercator_y = 0.;
     let mut north_mercator_y = 0.;
     let mut one_over_mercator_height = 0.;
@@ -367,12 +365,12 @@ pub fn create_vertice(options: CreateVerticeOptions) -> CreateVerticeReturn {
             heights[index as usize] = heightSample;
 
             if includeWebMercatorT {
-                let mut webMercatorTs = webMercatorTsOption.as_mut().unwrap();
+                let webMercatorTs = webMercatorTsOption.as_mut().unwrap();
                 webMercatorTs[index as usize] = web_mercator_t;
             }
 
             if includeGeodeticSurfaceNormals {
-                let mut geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_mut().unwrap();
+                let geodeticSurfaceNormals = geodeticSurfaceNormalsOption.as_mut().unwrap();
                 geodeticSurfaceNormals[index as usize] =
                     ellipsoid.geodetic_surface_normal(&position).unwrap();
             }

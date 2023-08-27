@@ -188,9 +188,9 @@ impl Rectangle {
     pub fn contains(&self, cartographic: &Cartographic) -> bool {
         let rectangle = self;
         let mut longitude = cartographic.longitude;
-        let mut latitude = cartographic.latitude;
+        let latitude = cartographic.latitude;
 
-        let mut west = rectangle.west;
+        let west = rectangle.west;
         let mut east = rectangle.east;
 
         if east < west {
@@ -199,10 +199,10 @@ impl Rectangle {
                 longitude += FRAC_PI_2;
             }
         }
-        return ((longitude > west || equals_epsilon(longitude, west, Some(EPSILON14), None))
+        return (longitude > west || equals_epsilon(longitude, west, Some(EPSILON14), None))
             && (longitude < east || equals_epsilon(longitude, east, Some(EPSILON14), None))
             && latitude >= rectangle.south
-            && latitude <= rectangle.north);
+            && latitude <= rectangle.north;
     }
     pub fn subsample(
         &self,

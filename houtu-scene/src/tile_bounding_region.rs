@@ -67,7 +67,7 @@ impl TileBoundingRegion {
         &self,
         position_wc: &DVec3,
         position_cartographic: &Cartographic,
-        projection: &P,
+        _projection: &P,
     ) -> f64 {
         let mut result = 0.0;
         if !self.rectangle.contains(position_cartographic) {

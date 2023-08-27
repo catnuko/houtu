@@ -1,10 +1,9 @@
 use std::f64::consts::{PI, TAU};
 
-use bevy::math::DVec3;
+
 
 use crate::{
-    ellipsoid::{self, Ellipsoid},
-    math::Cartesian3,
+    ellipsoid::{Ellipsoid},
     Cartographic, EPSILON12,
 };
 #[derive(Default)]
@@ -340,15 +339,15 @@ fn computeDeltaLambda(
 ) -> f64 {
     let C = computeC(f, cosineSquaredAlpha);
 
-    return ((1.0 - C)
+    return (1.0 - C)
         * f
         * sineAlpha
         * (sigma
             + C * sineSigma
                 * (cosineTwiceSigmaMidpoint
                     + C * cosineSigma
-                        * (2.0 * cosineTwiceSigmaMidpoint * cosineTwiceSigmaMidpoint - 1.0))));
+                        * (2.0 * cosineTwiceSigmaMidpoint * cosineTwiceSigmaMidpoint - 1.0)));
 }
 fn computeC(f: f64, cosineSquaredAlpha: f64) -> f64 {
-    return ((f * cosineSquaredAlpha * (4.0 + f * (4.0 - 3.0 * cosineSquaredAlpha))) / 16.0);
+    return (f * cosineSquaredAlpha * (4.0 + f * (4.0 - 3.0 * cosineSquaredAlpha))) / 16.0;
 }

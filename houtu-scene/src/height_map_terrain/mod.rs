@@ -4,7 +4,7 @@ mod height_map_encoding;
 mod height_map_terrain_data;
 mod terrain_exaggeration;
 mod terrian_mesh;
-use bevy::math::DVec3;
+
 pub use create_vertice::*;
 pub use height_map_encoding::*;
 pub use height_map_terrain_data::*;

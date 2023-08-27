@@ -87,7 +87,7 @@ impl WMTSImageryLayerProvider {
         }
     }
     pub fn get_request_body(&self, col: u32, row: u32, level: u32) -> HashMap<String, String> {
-        let mut tile_matrix;
+        let tile_matrix;
         if let Some(real_labels) = &self.tile_matrix_labels {
             tile_matrix = real_labels[level as usize].clone();
         } else {

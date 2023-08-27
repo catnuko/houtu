@@ -1,14 +1,12 @@
 use crate::{Cartographic, Ellipsoid, Rectangle};
 use bevy::{
-    math::DVec2,
-    prelude::{info, Component, IVec2, Resource, UVec2, Vec2},
+    prelude::{Component, UVec2},
 };
 
 use crate::{
     geographic_projection::GeographicProjection,
-    projection::{self, Projection},
+    projection::{Projection},
     tiling_scheme::TilingScheme,
-    web_mercator_projection::WebMercatorProjection,
 };
 #[derive(Debug, Clone, PartialEq, Component)]
 pub struct GeographicTilingScheme {

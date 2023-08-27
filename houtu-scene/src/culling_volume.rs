@@ -1,6 +1,6 @@
 use bevy::math::DVec4;
 
-use crate::{BoundingSphere, BoundingVolume, Intersect, Plane};
+use crate::{BoundingVolume, Intersect, Plane};
 
 #[derive(Debug, Default, Clone)]
 pub struct CullingVolume {

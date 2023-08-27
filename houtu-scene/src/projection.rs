@@ -1,4 +1,4 @@
-use bevy::{math::DVec3, prelude::*};
+use bevy::{math::DVec3};
 
 use crate::{ellipsoid::Ellipsoid, math::Cartographic};
 

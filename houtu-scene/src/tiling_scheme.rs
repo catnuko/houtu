@@ -1,6 +1,5 @@
 use bevy::{
-    math::{DVec2, DVec3},
-    prelude::{IVec2, UVec2},
+    prelude::{UVec2},
 };
 
 use crate::{Cartographic, Ellipsoid, Rectangle};

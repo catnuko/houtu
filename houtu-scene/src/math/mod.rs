@@ -4,7 +4,6 @@ mod vec3;
 use std::f64::consts::{PI, TAU};
 
 use bevy::{
-    ecs::system::Command,
     math::DMat3,
     // math::{DMat3, DVec3},
     prelude::*,
@@ -44,7 +43,7 @@ pub fn computeEigenDecomposition(matrix: DMat3) -> EigenDecompositionResult {
     let mut count = 0;
     let mut sweep = 0;
 
-    let mut unitaryMatrix = DMat3::IDENTITY;
+    let _unitaryMatrix = DMat3::IDENTITY;
     let mut unitaryMatrix = DMat3::IDENTITY;
     let mut diagMatrix = matrix.clone();
 
@@ -81,7 +80,7 @@ pub fn computeFrobeniusNorm(matrix: DMat3) -> f64 {
 pub fn offDiagonalFrobeniusNorm(matrix: DMat3) -> f64 {
     let rowVal = [1, 0, 0];
     let colVal = [2, 2, 1];
-    let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
+    let _slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     matrix.write_cols_to_slice(&mut slice);
 
@@ -105,7 +104,7 @@ pub fn shurDecomposition(matrix: DMat3) -> DMat3 {
     // let mut slice: [f64; 16] = [
     //     0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
     // ];
-    let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
+    let _slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     let mut slice: [f64; 9] = [0., 0., 0., 0., 0., 0., 0., 0., 0.];
     matrix.write_cols_to_slice(&mut slice);
     let mut maxDiagonal = 0.0;

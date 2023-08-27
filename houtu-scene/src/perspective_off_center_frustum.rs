@@ -168,6 +168,8 @@ impl PerspectiveOffCenterFrustum {
 
 #[cfg(test)]
 mod tests {
+    use bevy::math::DVec4;
+
     use crate::{equals_epsilon, Cartesian4, EPSILON10, EPSILON15, EPSILON6};
 
     use super::*;

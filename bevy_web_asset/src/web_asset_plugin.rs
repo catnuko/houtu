@@ -1,5 +1,7 @@
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::asset::FileAssetIo;
 use bevy::prelude::*;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use super::filesystem_watcher::FilesystemWatcher;
@@ -51,8 +53,10 @@ impl Plugin for WebAssetPlugin {
             let default_io = asset_plugin.create_platform_default_asset_io();
 
             // The method doesn't change, so we just use `FileAssetIo`'s
+            #[cfg(not(target_arch = "wasm32"))]
             let root_path = FileAssetIo::get_base_path().join(&self.asset_plugin.asset_folder);
-
+            #[cfg(target_arch = "wasm32")]
+            let root_path = PathBuf::new();
             WebAssetIo {
                 default_io,
                 root_path,
@@ -65,13 +69,15 @@ impl Plugin for WebAssetPlugin {
 
         // Add the asset plugin
         app.add_plugin(asset_plugin);
-
-        // Optionally add the filesystem watcher system
-        if self.asset_plugin.watch_for_changes {
-            app.add_system(
-                super::filesystem_watcher::filesystem_watcher_system
-                    .in_base_set(CoreSet::PostUpdate),
-            );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Optionally add the filesystem watcher system
+            if self.asset_plugin.watch_for_changes {
+                app.add_system(
+                    super::filesystem_watcher::filesystem_watcher_system
+                        .in_base_set(CoreSet::PostUpdate),
+                );
+            }
         }
     }
 }

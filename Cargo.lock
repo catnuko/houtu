@@ -638,16 +638,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_easings"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3d00078837ace3e96d56c332a5cadf0c7c7a7021f8952d05e6a27f226405f3d"
-dependencies = [
- "bevy",
- "interpolation",
-]
-
-[[package]]
 name = "bevy_ecs"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2223,14 +2213,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "houtu"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "houtu-app"
 version = "0.1.0"
 dependencies = [
@@ -2256,16 +2238,13 @@ dependencies = [
 name = "houtu-renderer"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-channel",
  "bevy",
  "bevy-inspector-egui",
- "bevy_easings",
  "bevy_egui",
  "bevy_prototype_debug_lines",
  "bevy_reflect_derive",
  "bevy_web_asset",
- "bitflags 1.3.2",
  "bytemuck",
  "bytes",
  "futures-intrusive",
@@ -2273,7 +2252,6 @@ dependencies = [
  "houtu-jobs",
  "houtu-scene",
  "instant",
- "lazy_static",
  "new_string_template",
  "pollster",
  "rand 0.8.5",
@@ -2486,12 +2464,6 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
-
-[[package]]
-name = "interpolation"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3b7357d2bbc5ee92f8e899ab645233e43d21407573cceb37fed8bc3dede2c02"
 
 [[package]]
 name = "io-lifetimes"

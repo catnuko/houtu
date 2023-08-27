@@ -18,7 +18,6 @@ bevy = { version = "0.10.1", default-features = false, features = [
     "png",
 ] }
 bevy_reflect_derive = "0.10.1"
-bevy_easings = "0.10"
 bevy_egui = "0.20.3"
 # bevy_screen_diags = "0.6.0"
 houtu-scene = { path = "../houtu-scene" }
@@ -27,18 +26,12 @@ bevy_web_asset = { path = "../bevy_web_asset" }
 bevy-inspector-egui = "0.18.3"
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["stream"] }
 futures-util = "0.3"
-thiserror = "1.0.40"
 bytes = "1.4.0"
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1", features = ["full"] }
 async-channel = "1.8.0"
 instant = "0.1"
 rand="0.8.5"
-anyhow = "1.0"
 thiserror = "1.0"
-lazy_static = "1.4.0"
 bytemuck="*"
-bitflags = "1.3"
 new_string_template = "1.4"
 # debug
 bevy_prototype_debug_lines = {version="0.10",features=["3d"]}
@@ -47,3 +40,5 @@ futures-intrusive = "0.4.0"
 wgpu = "0.15.1"
 pollster = "0.2.5"
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1", features = ["full"] }

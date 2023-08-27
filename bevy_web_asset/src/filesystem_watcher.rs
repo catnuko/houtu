@@ -34,7 +34,7 @@ use bevy::utils::HashSet;
 use crossbeam_channel::TryRecvError;
 
 use super::WebAssetIo;
-
+#[cfg(not(target_arch = "wasm32"))]
 pub fn filesystem_watcher_system(asset_server: Res<AssetServer>) {
     let mut changed = HashSet::default();
 

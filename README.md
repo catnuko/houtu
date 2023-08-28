@@ -8,6 +8,8 @@
     <a href="https://github.com/catnuko/houtu/blob/master/README_ZH.md">中文</a>
     <span> | </span>
     <a href="https://github.com/catnuko/houtu/discussions">discussions</a>
+    <span> | </span>
+    <a href="https://imdodo.com/s/211509">dodo交流群-后土地球</a>
   </h3>
 </div>
 
@@ -31,12 +33,12 @@ Very early stage of the project, look forward to working with you to build the f
 ## 🌎Roadmap
 [projects](https://github.com/users/catnuko/projects/1)
 1. - [x] 3d globe
-2. - [x] 相机控制
-3. - [ ] 基本几何图形，多边形，折线，点，圆，球，椭球等形状
-4. - [x] 栅格瓦片图层，支持wgs84和web墨卡托投影的切片地图
-5. - [ ] 矢量瓦片图层
-6. - [ ] 倾斜摄影模型
-7. - [ ] 地形
+2. - [x] camera control
+3. - [ ] base geometry，point,polyline,polyogn...
+4. - [x] raster tile layer with wgs84 and webmercator projection.
+5. - [ ] vector tile layer in mvt format.
+6. - [ ] cesium 3d tile layer
+7. - [ ] terrain
 ## 📖Documentation
 1. chinese development experience，[理论3D地球](https://www.taihe.one/tag/%E7%90%86%E8%AE%BA%E5%9C%B0%E7%90%83)
 

@@ -1,15 +1,17 @@
 <div align="center">
 
-  <h1><code>houtu</code></h1>
+  <h1><code>HouTu</code></h1>
 
   <strong>webgpu based high performance 3D earth rendering engine</strong>
 
   <h3>
-    <a href="https://github.com/catnuko/houtu/blob/master/README_ZH.md">中文</a>
+    <a href="https://houtu.vercel.app/">website</a>
     <span> | </span>
     <a href="https://github.com/catnuko/houtu/discussions">discussions</a>
     <span> | </span>
     <a href="https://imdodo.com/s/211509">dodo交流群-后土地球</a>
+    <span> | </span>
+    <a href="https://github.com/catnuko/houtu/blob/master/README_ZH.md">中文</a>
   </h3>
 </div>
 
@@ -52,8 +54,10 @@ cargo run
 
 # Run in a browser using a trunk
 cd houtu-app
-cargo install trunk wasm-bindgen-cli # Yes, you can skip it
-trunk serve # Start the service and the console will give the service address，http://127.0.0.1:8080
+# Yes, you can skip it
+cargo install trunk wasm-bindgen-cli
+# Start the service and the console will give the service address，http://127.0.0.1:8080
+trunk serve
 
 # Run it in a browser with wasm-server-runner
 cd houtu-app
@@ -64,10 +68,10 @@ wasm-server-runner ../target/wasm32-unknown-unknown/debug/houtu-app.wasm
 cd houtu-app
 cargo build
 
-// Running website (No content)
-cd www
+// Running website
+cd website
 pnpm install
-pnpm dev
+pnpm docs:dev
 ```
 
 ## 💓Contribution

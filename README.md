@@ -27,9 +27,9 @@ Use bevy as rendering engine, open source free 3D Earth rendering engine for web
 Very early stage of the project, look forward to working with you to build the future.
 
 ## 🚀Feature
-1. pluggable:with bevy as the rendering engine, plugins can be flexibly customized.
-2. web-oriented:render to browser using wasm+webgpu.
-3. precision:reference cesium, with practical, GIS graphic accuracy.
+1. Pluggable:with bevy as the rendering engine, plugins can be flexibly customized.
+2. Web-Oriented:render to browser using wasm+webgpu.
+3. Precision:reference cesium, with practical, GIS graphic accuracy.
 ## 🌎Roadmap
 [projects](https://github.com/users/catnuko/projects/1)
 1. - [x] 3d globe

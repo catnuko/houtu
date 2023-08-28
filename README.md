@@ -1,36 +1,35 @@
 <div align="center">
 
-  <h1><code>后土</code></h1>
+  <h1><code>houtu</code></h1>
 
-  <strong>基于webgpu的高性能的真实地球渲染引擎</strong>
+  <strong>webgpu based high performance 3D earth rendering engine</strong>
 
   <h3>
-    <a href="#">暂无文档</a>
+    <a href="https://github.com/catnuko/houtu/blob/master/README_ZH.md">中文</a>
     <span> | </span>
-    <a href="https://imdodo.com/s/211509">dodo交流群-后土地球</a>
+    <a href="https://github.com/catnuko/houtu/discussions">discussions</a>
   </h3>
 </div>
 
-# **注意：本项目还在试验阶段，请斟酌使用。**
+# ⚠️This is very much work in progress, please use it with discretion.
 
-## 截图
+## Screenshot
 
-web墨卡托图层，瓦片资源来自[omniscale](https://maps.omniscale.net)，申请key即可免费试用，感谢。
+Layers of the web Mercator projection，Tile resources from [omniscale](https://maps.omniscale.net),thanks.
 
 ![瓦片网格](./www/public/assets/i53pd-qxcsr.gif)
 
-## 🔥介绍
-使用bevy作为渲染引擎，面向web端，目标成为国内一流的开源免费三维地球渲染引擎。
+## 🔥Introduction
+Use bevy as rendering engine, open source free 3D Earth rendering engine for web side.
 
-项目极早期阶段，望与诸位才子共建未来。
+Very early stage of the project, look forward to working with you to build the future.
 
-野蛮时代将去，未来是科技的未来。
-## 🚀特性
-1. bevy作为渲染引擎，高度可拆卸，定制自己需要的功能。
-2. 使用wasm+webgpu渲染web端，主打高性能高颜值。
-3. 参考cesium，具备实用性，GIS图形的精确性。
-## 🌎路线
-详情查看仓库的[Projects](https://github.com/users/catnuko/projects/1)
+## 🚀Feature
+1. pluggable:with bevy as the rendering engine, plugins can be flexibly customized.
+2. web-oriented:render to browser using wasm+webgpu.
+3. precision:reference cesium, with practical, GIS graphic accuracy.
+## 🌎Roadmap
+[projects](https://github.com/users/catnuko/projects/1)
 1. - [x] 3d globe
 2. - [x] 相机控制
 3. - [ ] 基本几何图形，多边形，折线，点，圆，球，椭球等形状
@@ -38,34 +37,36 @@ web墨卡托图层，瓦片资源来自[omniscale](https://maps.omniscale.net)�
 5. - [ ] 矢量瓦片图层
 6. - [ ] 倾斜摄影模型
 7. - [ ] 地形
-## 📖文档
-1. 本仓库的GIS理论基础，[理论3D地球](https://www.taihe.one/tag/%E7%90%86%E8%AE%BA%E5%9C%B0%E7%90%83)
+## 📖Documentation
+1. chinese development experience，[理论3D地球](https://www.taihe.one/tag/%E7%90%86%E8%AE%BA%E5%9C%B0%E7%90%83)
 
-## 💻开发
+## 💻Development
 ```bash
-# 运行程序
+# run
 cd houtu-app
 cargo run
 
-# 暂时无法在浏览器中运行
+# It doesn't work in the browser for now
 
-# 用trunk在浏览器中运行
+# Run in a browser using a trunk
 cd houtu-app
-cargo install trunk wasm-bindgen-cli # 已有可不安装
-trunk serve # 启动服务，控制台将给出服务地址，http://127.0.0.1:8080
-# 用wasm-server-runner在浏览器中运行
+cargo install trunk wasm-bindgen-cli # Yes, you can skip it
+trunk serve # Start the service and the console will give the service address，http://127.0.0.1:8080
+
+# Run it in a browser with wasm-server-runner
 cd houtu-app
 cargo run --target wasm32-unknown-unknown
 wasm-server-runner ../target/wasm32-unknown-unknown/debug/houtu-app.wasm
-# 构建
+
+# build
 cd houtu-app
 cargo build
 
-// 运行网站（暂无内容）
+// Running website (No content)
 cd www
 pnpm install
 pnpm dev
 ```
 
-## 💓贡献
-佛系参与，强烈欢迎。👏👏👏
+## 💓Contribution
+Welcome to participate in development.👏👏👏

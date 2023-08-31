@@ -21,6 +21,3 @@ bevy = { version = "0.11", default-features = false, features = [
 ] }
 serde_json = "1.0.96"
 serde = { version = "1.0.162", features = ["derive"] }
-
-[profile.dev.package."*"]
-opt-level = 3

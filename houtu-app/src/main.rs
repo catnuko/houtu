@@ -5,6 +5,6 @@ use bevy::prelude::*;
 fn main() {
     App::new()
         // .add_plugins(DefaultPlugins)
-        .add_plugins(houtu_renderer::RendererPlugin)
+        .add_plugins(houtu_renderer::RendererPlugin)//
         .run();
 }

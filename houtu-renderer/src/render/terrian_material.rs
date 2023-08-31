@@ -9,8 +9,9 @@ use bevy::{
         mesh::{MeshVertexAttribute, MeshVertexBufferLayout},
         render_asset::{self, RenderAssets},
         render_resource::{
-            self, AsBindGroup, AsBindGroupError, BindGroupLayout, PreparedBindGroup,
+            self, AsBindGroup, AsBindGroupError, BindGroupLayout, Buffer, PreparedBindGroup,
             RenderPipelineDescriptor, Sampler, ShaderRef, ShaderType, SpecializedMeshPipelineError,
+            Texture, TextureView,
         },
         renderer::{self, RenderDevice},
         texture::FallbackImage,
@@ -18,12 +19,12 @@ use bevy::{
 };
 use wgpu::{
     BindGroupEntry, BindGroupLayoutEntry, BufferBinding, Extent3d, ShaderStages, TextureDescriptor,
-    VertexFormat,
+    TextureFormat, TextureUsages, TextureViewDescriptor, VertexFormat,
 };
 /// A marker component used to identify a terrain entity.
 #[derive(Clone, Copy, Component, ExtractComponent)]
 pub struct Terrain;
-#[derive(Default, TypeUuid, Debug, Clone, Resource,Reflect)]
+#[derive(Default, TypeUuid, Debug, Clone, Resource, Reflect)]
 #[uuid = "886f4558-1621-492a-856e-ea1dbc9902d9"]
 pub struct TerrainMeshMaterial {
     pub textures: Vec<Handle<Image>>,
@@ -183,6 +184,7 @@ impl AsBindGroup for TerrainMeshMaterial {
         for (index, handle) in self.textures.iter().enumerate() {
             match image_assets.get(handle) {
                 Some(image) => images.push(&*image.texture_view),
+
                 None => return Err(AsBindGroupError::RetryNextUpdate),
             }
         }
@@ -197,7 +199,7 @@ impl AsBindGroup for TerrainMeshMaterial {
         let mut apply_day_night_alpha = false;
         let mut apply_split = false;
         let mut apply_cutout = false;
-        let mut apply_color_to_alpha = false;
+        let mut apply_color_to_alpha = false;//
         let mut apply_quantization_bits12 = self.quantization_bits12;
         let mut apply_webmercator_t = self.has_web_mercator_t;
 
@@ -224,7 +226,7 @@ impl AsBindGroup for TerrainMeshMaterial {
             // 导致传入的数据比着色器中的TerrainMaterialUniform多了4个字节，以至于第二次及其之后的循环的数据都不对
             // TODO alpha暂时在着色器中用不到，先不管
             // buffer_data.push(self.day_alpha[index]);
-            apply_day_night_alpha = apply_day_night_alpha || self.day_alpha[index] != 1.0;
+            apply_day_night_alpha = apply_day_night_alpha || self.day_alpha[index] != 1.0;//
 
             buffer_data.push(self.brightness[index]);
             apply_brightness = apply_brightness || self.brightness[index] != 1.0;
@@ -233,7 +235,7 @@ impl AsBindGroup for TerrainMeshMaterial {
             apply_contrast = apply_contrast || self.contrast[index] != 1.0;
 
             buffer_data.push(self.hue[index]);
-            apply_hue = apply_hue || self.hue[index] != 1.0;
+            apply_hue = apply_hue || self.hue[index] != 1.0;//sdfsf
 
             buffer_data.push(self.saturation[index]);
             apply_saturation = apply_saturation || self.saturation[index] != 1.0;
@@ -257,47 +259,9 @@ impl AsBindGroup for TerrainMeshMaterial {
                 contents: bytemuck::cast_slice(&state_uniform_buffer_data),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
-        let mut vertex_uniform_buffer_data = vec![0.0; 40];
-        let mut mvp_slice = vec![0.0; 16];
-        self.mvp.write_cols_to_slice(&mut mvp_slice);
-        if self.quantization_bits12 {
-            let mut slice = [0.0; 16];
-            self.scale_and_bias.write_cols_to_slice(&mut slice);
-            let mut res = vec![
-                self.min_max_height.x,
-                self.min_max_height.y,
-                0.0_f32,
-                0.0_f32,
-                self.center_3d.x,
-                self.center_3d.y,
-                self.center_3d.z,
-                0.0_f32,
-            ];
-            res.extend_from_slice(&slice);
-            res.extend_from_slice(&mvp_slice);
-            vertex_uniform_buffer_data = res;
-        } else {
-            let mut res = vec![
-                0f32,
-                0f32,
-                0f32,
-                0f32,
-                self.center_3d.x,
-                self.center_3d.y,
-                self.center_3d.z,
-                0.0_f32,
-            ];
-            let scale_bias = [0.0; 16];
-            res.extend_from_slice(&scale_bias);
-            res.extend_from_slice(&mvp_slice);
-            vertex_uniform_buffer_data = res;
-        };
-        let vertex_uniform_buffer =
-            render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
-                label: Some("vertex_uniform_buffer"),
-                contents: bytemuck::cast_slice(&vertex_uniform_buffer_data),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+
+        let vertex_uniform_buffer = make_vertex_uniform(render_device, self);
+        // let (array_texture, texture_view) = make_array_texture(render_device, self);
         let bind_group = render_device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("terrain_material"),
             layout: layout,
@@ -399,4 +363,78 @@ impl AsBindGroup for TerrainMeshMaterial {
             ],
         });
     }
+}
+fn make_array_texture(
+    render_device: &RenderDevice,
+    material: &TerrainMeshMaterial,
+) -> (Texture, TextureView) {
+    let texture_length = material.textures.len() as u32;
+    let array_texture = render_device.create_texture(&TextureDescriptor {
+        label: Some("terrain_material_array_texture"),
+        size: Extent3d {
+            width: material.texture_width,
+            height: material.texture_height,
+            depth_or_array_layers: texture_length,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba16Float,
+        usage: TextureUsages::RENDER_ATTACHMENT
+            | TextureUsages::COPY_SRC
+            | TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let texture_view = array_texture.create_view(&TextureViewDescriptor {
+        label: Some("terrain_material_array_texture_view"),
+        format: Some(TextureFormat::Rgba16Float),
+        dimension: Some(wgpu::TextureViewDimension::D2Array),
+        array_layer_count: Some(texture_length),
+        ..Default::default()
+    });
+    return (array_texture, texture_view);
+}
+fn make_vertex_uniform(render_device: &RenderDevice, material: &TerrainMeshMaterial) -> Buffer {
+    let mut vertex_uniform_buffer_data = vec![0.0; 40];
+    let mut mvp_slice = vec![0.0; 16];
+    material.mvp.write_cols_to_slice(&mut mvp_slice);
+    if material.quantization_bits12 {
+        let mut slice = [0.0; 16];
+        material.scale_and_bias.write_cols_to_slice(&mut slice);
+        let mut res = vec![
+            material.min_max_height.x,
+            material.min_max_height.y,
+            0.0_f32,
+            0.0_f32,
+            material.center_3d.x,
+            material.center_3d.y,
+            material.center_3d.z,
+            0.0_f32,
+        ];
+        res.extend_from_slice(&slice);
+        res.extend_from_slice(&mvp_slice);
+        vertex_uniform_buffer_data = res;
+    } else {
+        let mut res = vec![
+            0f32,
+            0f32,
+            0f32,
+            0f32,
+            material.center_3d.x,
+            material.center_3d.y,
+            material.center_3d.z,
+            0.0_f32,
+        ];
+        let scale_bias = [0.0; 16];
+        res.extend_from_slice(&scale_bias);
+        res.extend_from_slice(&mvp_slice);
+        vertex_uniform_buffer_data = res;
+    };
+    let vertex_uniform_buffer =
+        render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
+            label: Some("vertex_uniform_buffer"),
+            contents: bytemuck::cast_slice(&vertex_uniform_buffer_data),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+    return vertex_uniform_buffer;
 }

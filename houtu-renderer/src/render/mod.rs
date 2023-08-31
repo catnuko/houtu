@@ -122,7 +122,7 @@ fn real_render_system(
                 let imagery_opt = tile_imagery
                     .ready_imagery
                     .as_ref()
-                    .and_then(|x| imagery_storage.get(x));
+                    .and_then(|x| imagery_storage.get(x));//
                 let imagery_layer_opt =
                     imagery_opt.and_then(|x| imagery_layer_storage.get(&x.key.layer_id));
                 if let (None, None) = (imagery_opt, imagery_layer_opt) {
@@ -130,11 +130,11 @@ fn real_render_system(
                 }
                 let imagery = imagery_opt.unwrap();
                 imagery_key_list.push(&imagery.key.key);
-                let imagery_layer = imagery_layer_opt.unwrap();
+                let imagery_layer = imagery_layer_opt.unwrap();//
                 if imagery_layer.alpha == 0.0 {
                     continue;
                 }
-                let texture = match imagery.texture.as_ref() {
+                let texture = match imagery.texture.as_ref() {//
                     Some(v) => v.clone(),
                     None => panic!("readyImagery is not actually ready!"),
                 };

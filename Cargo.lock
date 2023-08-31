@@ -2308,6 +2308,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "houtu"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "houtu-renderer",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "houtu-app"
 version = "0.1.0"
 dependencies = [

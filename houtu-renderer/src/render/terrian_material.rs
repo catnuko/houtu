@@ -201,7 +201,7 @@ impl AsBindGroup for TerrainMeshMaterial {
         let mut apply_cutout = false;
         let mut apply_color_to_alpha = false;//
         let mut apply_quantization_bits12 = self.quantization_bits12;
-        let mut apply_webmercator_t = self.has_web_mercator_t;
+        let mut apply_webmercator_t = self.has_web_mercator_t;//
 
         for (index, _) in self.textures.iter().enumerate() {
             let translation_and_scale = self.translation_and_scale[index];
@@ -232,10 +232,10 @@ impl AsBindGroup for TerrainMeshMaterial {
             apply_brightness = apply_brightness || self.brightness[index] != 1.0;
 
             buffer_data.push(self.contrast[index]);
-            apply_contrast = apply_contrast || self.contrast[index] != 1.0;
+            apply_contrast = apply_contrast || self.contrast[index] != 1.0;//
 
             buffer_data.push(self.hue[index]);
-            apply_hue = apply_hue || self.hue[index] != 1.0;//sdfsf
+            apply_hue = apply_hue || self.hue[index] != 1.0;//sdfsfsdf
 
             buffer_data.push(self.saturation[index]);
             apply_saturation = apply_saturation || self.saturation[index] != 1.0;
@@ -248,14 +248,14 @@ impl AsBindGroup for TerrainMeshMaterial {
         let uniform_buffer =
             render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
                 label: Some("uniform_buffer"),
-                contents: bytemuck::cast_slice(&buffer_data),
-                usage: wgpu::BufferUsages::STORAGE,
+                contents: bytemuck::cast_slice(&buffer_data),//
+                usage: wgpu::BufferUsages::STORAGE,//
             });
         let state_uniform_buffer_data = vec![images.len() as i32];
 
         let state_uniform_buffer =
             render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
-                label: Some("state_uniform_buffer"),
+                label: Some("state_uniform_buffer"),//
                 contents: bytemuck::cast_slice(&state_uniform_buffer_data),
                 usage: wgpu::BufferUsages::UNIFORM,
             });

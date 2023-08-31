@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "houtu",
     "houtu-app",
     "houtu-renderer",
     "houtu-scene",
@@ -10,6 +11,3 @@ resolver = "2"
 
 [profile.release]
 debug = true
-
-[profile.dev.package."*"]
-opt-level = 3

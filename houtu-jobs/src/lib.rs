@@ -5,8 +5,6 @@
     clippy::indexing_slicing,
     clippy::expect_used
 )]
-mod executor;
-mod worker;
 use bevy::prelude::*;
 use std::{any, future, pin};
 

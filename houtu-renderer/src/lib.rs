@@ -38,7 +38,7 @@ impl Plugin for RendererPlugin {
                     .disable::<AssetPlugin>()
                     .set(WindowPlugin {
                         primary_window: Some(Window {
-                            title: "houtu!".into(),
+                            title: "后土地球!".into(),
                             // resolution: WindowResolution::new(900., 900.0 / 0.660105980317941),
                             ..default()
                         }),
@@ -46,7 +46,6 @@ impl Plugin for RendererPlugin {
                     }),
             )
             .add_plugins(helpers::Plugin)
-            .add_plugins(WireframePlugin)
             .add_plugins(WorldInspectorPlugin::new())
             .add_plugins(houtu_jobs::Plugin)
             .add_plugins(globe::GlobePlugin)

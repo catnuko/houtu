@@ -688,7 +688,7 @@ pub fn screen_space_event_hanlder_system(
                 button = get_mouse_button_name(MouseButton::Left);
                 // button_my = get_my_mouse_button_name(MouseButton::Left);
                 events.send(MouseEvent::LeftUp(position.clone()));
-                if checkPixelTolerance(
+                if check_pixel_tolerance(
                     &screen_space_event_hanlder._primary_start_position,
                     &position,
                     screen_space_event_hanlder._click_pixel_to_lerance,
@@ -699,7 +699,7 @@ pub fn screen_space_event_hanlder_system(
                 button = get_mouse_button_name(MouseButton::Right);
                 // button_my = get_my_mouse_button_name(MouseButton::Right);
                 events.send(MouseEvent::RightUp(position.clone()));
-                if checkPixelTolerance(
+                if check_pixel_tolerance(
                     &screen_space_event_hanlder._primary_start_position,
                     &position,
                     screen_space_event_hanlder._click_pixel_to_lerance,
@@ -710,7 +710,7 @@ pub fn screen_space_event_hanlder_system(
                 button = get_mouse_button_name(MouseButton::Middle);
                 // button_my = get_my_mouse_button_name(MouseButton::Middle);
                 events.send(MouseEvent::MiddleUp(position.clone()));
-                if checkPixelTolerance(
+                if check_pixel_tolerance(
                     &screen_space_event_hanlder._primary_start_position,
                     &position,
                     screen_space_event_hanlder._click_pixel_to_lerance,
@@ -753,7 +753,7 @@ pub fn screen_space_event_hanlder_system(
         }
     }
 }
-fn checkPixelTolerance(start_position: &DVec2, end_position: &DVec2, pixelTolerance: f64) -> bool {
+fn check_pixel_tolerance(start_position: &DVec2, end_position: &DVec2, pixelTolerance: f64) -> bool {
     let xDiff = start_position.x - end_position.x;
     let yDiff = start_position.y - end_position.y;
     let totalPixels = (xDiff * xDiff + yDiff * yDiff).sqrt();

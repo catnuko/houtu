@@ -15,7 +15,6 @@ use bevy::{
     },
     utils::HashMap,
 };
-use bevy_egui::egui::epaint::image;
 use houtu_scene::TerrainQuantization;
 
 use crate::{

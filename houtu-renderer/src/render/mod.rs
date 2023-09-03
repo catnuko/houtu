@@ -60,8 +60,8 @@ fn setup(
 ) {
     let xyz = XYZImageryProvider {
         // url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
-        // url: "icon.png",
-        url: "https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}.png?key=Modv7lN1eXX1gmlqW0wY",
+        url: "icon.png",
+        // url: "https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}.png?key=Modv7lN1eXX1gmlqW0wY",
         ..Default::default()
     };
     let mut imagery_layer = ImageryLayer::new(Box::new(xyz), &mut imagery_storage);

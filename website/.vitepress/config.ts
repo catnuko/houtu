@@ -22,6 +22,16 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/catnuko/houtu' }
-    ]
+    ],
+  },
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en'
+    },
+    zh: {
+      label: '简体中文',
+      lang: 'zh', // optional, will be added  as `lang` attribute on `html` tag
+    },
   }
 })

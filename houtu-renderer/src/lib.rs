@@ -19,7 +19,6 @@ mod render;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
 // use plugins::quadtree;
-use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {
     Polygon,
@@ -77,15 +76,13 @@ impl Plugin for RendererPlugin {
                         ..default()
                     }),
             )
-            .add_plugins(ScreenDiagnosticsPlugin::default())
-            .add_plugins(ScreenFrameDiagnosticsPlugin)
-            .add_plugins(helpers::Plugin)
-            .add_plugins(WorldInspectorPlugin::new())
+            .add_plugins(helpers::Plugin) //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
             .add_plugins(houtu_jobs::Plugin)
-            .add_plugins(globe::GlobePlugin)
             .add_plugins(camera::CameraPlugin)
             .add_plugins(quadtree::Plugin)
             .add_plugins(render::Plugin);
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_plugins(WorldInspectorPlugin::new());
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
 }

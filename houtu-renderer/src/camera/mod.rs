@@ -39,7 +39,7 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
         return;
     };
     let ellipsoid = Ellipsoid::WGS84;
-    let _x = ellipsoid.semimajor_axis() as f32;
+    let x = ellipsoid.semimajor_axis() as f32;
     commands.spawn((
         Camera3dBundle {
             projection: bevy::prelude::Projection::Perspective(PerspectiveProjection {
@@ -48,6 +48,12 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
                 near: 0.1,
                 far: 10000000000.0,
             }),
+            transform: Transform::from_translation(Vec3 {
+                x: x + 10000000.,
+                y: x + 10000000.,
+                z: x + 10000000.,
+            })
+            .looking_at(Vec3::ZERO, Vec3::Z),
             ..Default::default()
         },
         GlobeCamera::default(),

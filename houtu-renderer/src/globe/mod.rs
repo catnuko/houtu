@@ -1,5 +1,3 @@
-
-
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 mod ellipsoid_shape;
@@ -17,7 +15,7 @@ impl bevy::app::Plugin for GlobePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Ellipsoid::WGS84);
         app.insert_resource(EllipsoidalOccluder::default());
-        app.add_systems(Startup,setup);
+        app.add_systems(Startup, setup);
     }
 }
 fn setup(
@@ -25,9 +23,11 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut asset_server: ResMut<AssetServer>,
 ) {
     let debug_material = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(uv_debug_texture())),
+        // base_color_texture: Some(images.add(uv_debug_texture())),
+        base_color_texture: Some(asset_server.load("icon.png")),
         ..default()
     });
     let ellipsoid = Ellipsoid::WGS84;
@@ -40,7 +40,7 @@ fn setup(
         mesh: meshes.add(mesh),
         material: debug_material.into(),
         transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        visibility: Visibility::Hidden,
+        // visibility: Visibility::Hidden,
         ..default()
     },));
     // commands.spawn({

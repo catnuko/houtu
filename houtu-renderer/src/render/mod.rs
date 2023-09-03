@@ -15,8 +15,8 @@ use rand::Rng;
 use crate::xyz_imagery_provider::XYZImageryProvider;
 
 use self::{
-    terrain_data::TerrainBundle,
-    terrian_material::TerrainMeshMaterial, wrap_terrain_mesh::WrapTerrainMesh,
+    terrain_data::TerrainBundle, terrian_material::TerrainMeshMaterial,
+    wrap_terrain_mesh::WrapTerrainMesh,
 };
 
 use super::quadtree::{
@@ -31,13 +31,13 @@ use super::quadtree::{
     tile_key::TileKey,
     traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
 };
+mod node_atlas;
+mod node_atlas_render;
 mod terrain_data;
+mod terrain_data_render;
 mod terrain_render_pipeline;
 mod terrian_material;
 mod wrap_terrain_mesh;
-mod terrain_data_render;
-mod node_atlas;
-mod node_atlas_render;
 use super::{
     camera::GlobeCamera,
     wmts_imagery_provider::{WMTSImageryProvider, WMTSImageryProviderOptions},
@@ -60,7 +60,8 @@ fn setup(
 ) {
     let xyz = XYZImageryProvider {
         // url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
-        url: "icon.png",
+        // url: "icon.png",
+        url: "https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}.png?key=Modv7lN1eXX1gmlqW0wY",
         ..Default::default()
     };
     let mut imagery_layer = ImageryLayer::new(Box::new(xyz), &mut imagery_storage);

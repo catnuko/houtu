@@ -6,6 +6,7 @@ members = [
     "houtu-scene",
     "houtu-jobs",
     "bevy_web_asset",
+    "quantized-mesh-decoder",
 ]
 resolver = "2"
 

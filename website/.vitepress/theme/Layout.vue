@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
 import DefaultTheme from 'vitepress/theme'
+import Demo from './Demo.vue'
 const { Layout } = DefaultTheme
 // https://vitepress.dev/reference/runtime-api#usedata
-const { site, frontmatter,page } = useData()
+const data = useData()
+const { site, frontmatter,page } = data
+console.log(data)
 </script>
 
 <template>
  <Layout>
-  </Layout>
+  <template #page-top v-if="page.filePath==='demo.md'">
+    <Demo></Demo>
+  </template>
+ </Layout>
 </template>
 
 <style>

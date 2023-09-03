@@ -343,7 +343,7 @@ dependencies = [
  "bevy_ptr",
  "bevy_reflect",
  "bevy_render",
- "bevy_sprite",
+ 
  "bevy_tasks",
  "bevy_time",
  "bevy_transform",
@@ -579,7 +579,7 @@ dependencies = [
  "bevy_math",
  "bevy_reflect",
  "bevy_render",
- "bevy_sprite",
+ 
  "bevy_transform",
  "bevy_utils",
  "bevy_window",
@@ -631,7 +631,7 @@ dependencies = [
  "bevy_math",
  "bevy_reflect",
  "bevy_render",
- "bevy_sprite",
+ 
  "bevy_text",
  "bevy_transform",
  "bevy_utils",

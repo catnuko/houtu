@@ -40,17 +40,6 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
     };
     let ellipsoid = Ellipsoid::WGS84;
     let _x = ellipsoid.semimajor_axis() as f32;
-    // let perspective_projection = PerspectiveProjection {
-    //     fov: (60.0 as f32).to_radians(),
-    //     aspect_ratio: primary.width() / primary.height(),
-    //     near: 0.1,
-    //     far: 10000000000.0,
-    // };
-    // frustum construction code copied from Bevy
-    // let view_projection = perspective_projection.get_projection_matrix();
-    // let transform = Transform::default();
-    // let projection = bevy::prelude::Projection::Perspective(perspective_projection);
-    // let frustum = Frustum::from_view_projection(&view_projection);
     commands.spawn((
         Camera3dBundle {
             projection: bevy::prelude::Projection::Perspective(PerspectiveProjection {
@@ -59,14 +48,6 @@ fn setup(mut commands: Commands, primary_query: Query<&Window, With<PrimaryWindo
                 near: 0.1,
                 far: 10000000000.0,
             }),
-            // transform,
-            // frustum,
-            // transform: Transform::from_translation(Vec3 {
-            //     x: x + 10000000.,
-            //     y: x + 10000000.,
-            //     z: x + 10000000.,
-            // })
-            // .looking_at(Vec3::ZERO, Vec3::Z),
             ..Default::default()
         },
         GlobeCamera::default(),

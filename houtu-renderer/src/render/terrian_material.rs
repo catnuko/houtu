@@ -199,10 +199,12 @@ impl AsBindGroup for TerrainMeshMaterial {
         let mut apply_day_night_alpha = false;
         let mut apply_split = false;
         let mut apply_cutout = false;
-        let mut apply_color_to_alpha = false;//
+        let mut apply_color_to_alpha = false; //
         let mut apply_quantization_bits12 = self.quantization_bits12;
-        let mut apply_webmercator_t = self.has_web_mercator_t;//
-
+        let mut apply_webmercator_t = self.has_web_mercator_t; //
+        let mut command_encoder = render_device.create_command_encoder(
+            &bevy::render::render_resource::CommandEncoderDescriptor::default(),
+        );
         for (index, _) in self.textures.iter().enumerate() {
             let translation_and_scale = self.translation_and_scale[index];
             buffer_data.push(translation_and_scale.x);
@@ -226,16 +228,16 @@ impl AsBindGroup for TerrainMeshMaterial {
             // 导致传入的数据比着色器中的TerrainMaterialUniform多了4个字节，以至于第二次及其之后的循环的数据都不对
             // TODO alpha暂时在着色器中用不到，先不管
             // buffer_data.push(self.day_alpha[index]);
-            apply_day_night_alpha = apply_day_night_alpha || self.day_alpha[index] != 1.0;//
+            apply_day_night_alpha = apply_day_night_alpha || self.day_alpha[index] != 1.0; //
 
             buffer_data.push(self.brightness[index]);
             apply_brightness = apply_brightness || self.brightness[index] != 1.0;
 
             buffer_data.push(self.contrast[index]);
-            apply_contrast = apply_contrast || self.contrast[index] != 1.0;//
+            apply_contrast = apply_contrast || self.contrast[index] != 1.0; //
 
             buffer_data.push(self.hue[index]);
-            apply_hue = apply_hue || self.hue[index] != 1.0;//sdfsfsdf
+            apply_hue = apply_hue || self.hue[index] != 1.0; //sdfsfsdf
 
             buffer_data.push(self.saturation[index]);
             apply_saturation = apply_saturation || self.saturation[index] != 1.0;
@@ -248,14 +250,14 @@ impl AsBindGroup for TerrainMeshMaterial {
         let uniform_buffer =
             render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
                 label: Some("uniform_buffer"),
-                contents: bytemuck::cast_slice(&buffer_data),//
-                usage: wgpu::BufferUsages::STORAGE,//
+                contents: bytemuck::cast_slice(&buffer_data), //
+                usage: wgpu::BufferUsages::STORAGE,           //
             });
         let state_uniform_buffer_data = vec![images.len() as i32];
 
         let state_uniform_buffer =
             render_device.create_buffer_with_data(&wgpu::util::BufferInitDescriptor {
-                label: Some("state_uniform_buffer"),//
+                label: Some("state_uniform_buffer"), //
                 contents: bytemuck::cast_slice(&state_uniform_buffer_data),
                 usage: wgpu::BufferUsages::UNIFORM,
             });

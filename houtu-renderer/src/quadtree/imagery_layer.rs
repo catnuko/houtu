@@ -1,4 +1,5 @@
 use bevy::{
+    asset::LoadState,
     core::cast_slice,
     math::{DMat4, DVec4},
     prelude::*,
@@ -682,21 +683,30 @@ impl ImageryLayer {
         imagery_storage: &mut ImageryStorage,
     ) {
         let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
-
         if loading_imagery.state == ImageryState::UNLOADED && !skip_loading {
-            loading_imagery.state = ImageryState::TRANSITIONING;
+            loading_imagery.state = ImageryState::REQUESTING;
             let request = self
                 .imagery_provider
                 .request_image(&imagery_key.key.clone(), asset_server);
             let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
             if let Some(v) = request {
                 loading_imagery.texture = Some(v);
-                loading_imagery.state = ImageryState::RECEIVED;
             } else {
                 loading_imagery.state = ImageryState::UNLOADED;
             }
         }
-
+        let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
+        if loading_imagery.state == ImageryState::REQUESTING {
+            let state = asset_server.get_load_state(loading_imagery.texture.as_ref().unwrap());
+            match state {
+                LoadState::Loaded => {
+                    loading_imagery.state = ImageryState::RECEIVED;
+                    // info!("imagery is ok");
+                }
+                LoadState::Failed => loading_imagery.state = ImageryState::FAILED,
+                _ => {}
+            }
+        }
         let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
 
         if loading_imagery.state == ImageryState::RECEIVED {
@@ -714,21 +724,22 @@ impl ImageryLayer {
 
         if loading_imagery.state == ImageryState::TEXTURE_LOADED || needs_reprojection {
             loading_imagery.state = ImageryState::TRANSITIONING;
-            let mut key = loading_imagery.key.clone();
+            // let mut key = loading_imagery.key.clone();
 
-            ImageryLayer::reproject_texture(
-                &mut key,
-                imagery_storage,
-                need_geographic_projection,
-                images,
-                256,
-                256,
-                render_world_queue,
-                indices_and_edges_cache,
-                render_device,
-                globe_camera,
-                self.imagery_provider.get_tiling_scheme().get_name(),
-            );
+            // ImageryLayer::reproject_texture(
+            //     &mut key,
+            //     imagery_storage,
+            //     need_geographic_projection,
+            //     images,
+            //     256,
+            //     256,
+            //     render_world_queue,
+            //     indices_and_edges_cache,
+            //     render_device,
+            //     globe_camera,
+            //     self.imagery_provider.get_tiling_scheme().get_name(),
+            // );
+            loading_imagery.state = ImageryState::READY;
         }
     }
     pub fn finalize_reproject_texture(&self, pixel_format: TextureFormat) {

@@ -16,7 +16,8 @@ struct Vertex {
 };
 #endif
 struct VertexUniform {
-    min_max_height: vec2<f32>,
+    minimum_height: f32,
+    maximum_height: f32,
     center_3d: vec3<f32>,
     scale_and_bias_x: vec4<f32>,
     scale_and_bias_y: vec4<f32>,
@@ -43,7 +44,7 @@ fn vertex(in: Vertex) -> VertexOutput {
     var height = zh.y;
     let scale_and_bias = mat4x4<f32>(vertex_uniform.scale_and_bias_x, vertex_uniform.scale_and_bias_y, vertex_uniform.scale_and_bias_z, vertex_uniform.scale_and_bias_w);
     let uv = czm_decompressTextureCoordinates(in.compressed0.z);
-    height = height * (vertex_uniform.min_max_height.y - vertex_uniform.min_max_height.x) + vertex_uniform.min_max_height.x;
+    height = height * (vertex_uniform.maximum_height - vertex_uniform.minimum_height) + vertex_uniform.minimum_height;
     position = (scale_and_bias * vec4(position, 1.)).xyz;
     position = position + vertex_uniform.center_3d;
     let web_mercator_t = czm_decompressTextureCoordinates(in.compressed0.w).x;
@@ -86,7 +87,7 @@ struct StateUniform {
  
 }
 
-@group(1) @binding(0) var texture_array: binding_array<texture_2d<f32>>;
+@group(1) @binding(0) var texture_array: texture_2d_array<f32>;
 @group(1) @binding(1) var my_sampler: sampler;
 @group(1) @binding(2) var<storage,read> terrain_material_uniforms: array<TerrainMaterialUniform>;
 @group(1) @binding(3) var<uniform> state_uniform: StateUniform;
@@ -102,7 +103,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         }
         let u = terrain_material_uniforms[i];
 
-        let texture_to_sample = texture_array[i];
+        // let texture_to_sample = texture_array[i];
         let texture_sampler = my_sampler;
         let use_web_mercator_t = u.use_web_mercator_t;
         let clamped_texture_coordinates = clamp(in.texture_coordinates, vec3<f32>(0.0), vec3<f32>(1.0));
@@ -161,8 +162,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         let translation = translation_and_scale.xy;
         let scale = translation_and_scale.zw;
         let texture_coordinates = tile_texture_coordinates * scale + translation;
-        // let texture_coordinates = tile_texture_coordinates;
-        let value = textureSample(texture_array[i], my_sampler, texture_coordinates);
+        let value = textureSample(texture_array, my_sampler, texture_coordinates.xy, i);
         var color = value.rgb;
         var alpha = value.a;
 

@@ -115,6 +115,7 @@ pub enum ImageryState {
     FAILED = 5,
     INVALID = 6,
     PLACEHOLDER = 7,
+    REQUESTING = 8,
 }
 impl PartialEq for Imagery {
     fn eq(&self, other: &Self) -> bool {

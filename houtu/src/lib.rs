@@ -5,7 +5,6 @@
     clippy::indexing_slicing,
     clippy::expect_used
 )]
-
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

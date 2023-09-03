@@ -396,6 +396,7 @@ pub fn pan_orbit_camera(
                         &mut movement,
                         &window_size,
                     );
+                    // info!("{:?}",data);
                     globe_camera.update_camera_matrix(&mut transform);
                 }
 

@@ -701,7 +701,7 @@ impl ImageryLayer {
             match state {
                 LoadState::Loaded => {
                     loading_imagery.state = ImageryState::RECEIVED;
-                    info!("imagery is ok");
+                    // info!("imagery is ok");
                 }
                 LoadState::Failed => loading_imagery.state = ImageryState::FAILED,
                 _ => {}

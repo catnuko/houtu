@@ -32,7 +32,7 @@ impl bevy::app::Plugin for Plugin {
         app.insert_resource(ReleaseTimeWrap::default());
 
         app.insert_resource(MovementStateWrap::default());
-        app.add_startup_system(setup);
+        app.add_systems(Startup, setup);
     }
 }
 
@@ -350,10 +350,11 @@ pub fn maintain_inertia_system(
                         &is_down_wrap,
                         &time,
                     ) {
+                        // info!("start spin inertia");
                         let start_position = aggregator
                             .get_start_mouse_position(type_name, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaSpinMovement").unwrap();
-                        control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+                        control_event_writer.send(ControlEvent::Spin(ControlEventData {
                             movement: movement.clone(),
                             start_position: start_position,
                         }))
@@ -374,7 +375,7 @@ pub fn maintain_inertia_system(
                         let start_position = aggregator
                             .get_start_mouse_position(type_name, &event_start_position_wrap);
                         let movement = movement_state_wrap.get("_lastInertiaTiltMovement").unwrap();
-                        control_event_writer.send(ControlEvent::Zoom(ControlEventData {
+                        control_event_writer.send(ControlEvent::Tilt(ControlEventData {
                             movement: movement.clone(),
                             start_position: start_position,
                         }))
@@ -444,15 +445,20 @@ fn maintain_inertia(
     let tr = tr.unwrap();
 
     let threshold = tr - ts;
-    let now = time.elapsed_seconds_f64();
-    let fromNow = now - tr;
+    // if last_movement_name=="_lastInertiaSpinMovement"{
+    //     info!("threshold {}",threshold);
+    // }
     //如果按键释放事件和点击事件之间的时间差在0.4秒内才会保持惯性，滚轮缩放时，阈值=0，所以会保持惯性，而spin和tilt大于0.4，一般不会保持惯性，除非很快的拉动地球才会。
     if threshold < INERTIA_MAX_CLICK_TIME_THRESHOLD {
+        let now = time.elapsed_seconds_f64();
         //随时间增加，从1无限接近于0
-        let d = decay(fromNow, inertia_constant);
+        let d = decay(now - tr, inertia_constant);
 
         let last_movement = last_movement_wrap.get(type_name);
         if last_movement.is_none() || !movement_state.inertiaEnabled {
+            // if last_movement_name=="_lastInertiaSpinMovement"{
+            //     info!("spin inertia over 0");
+            // }
             return false;
         }
         let last_movement = last_movement.unwrap();
@@ -461,6 +467,9 @@ fn maintain_inertia(
             Some(EPSILON14),
             None,
         ) {
+            // if last_movement_name=="_lastInertiaSpinMovement"{
+            //     info!("spin inertia over 1");
+            // }
             return false;
         }
         //不清楚为什么乘以0.5,可能想减小动作幅度
@@ -475,11 +484,13 @@ fn maintain_inertia(
         //     last_movement.end_position.clone(),
         //     motion.clone() * d
         // );
-        movement_state.end_position = motion * (d as f64);
-        movement_state.end_position = movement_state.start_position + movement_state.end_position;
+        // movement_state.end_position = motion * (d as f64);
+        movement_state.end_position =
+            movement_state.start_position + motion.multiply_by_scalar(d as f64);
 
         // If value from the decreasing exponential function is close to zero,
         // the end coordinates may be NaN.
+        // 移动幅度太小了，或者惯性移动结束了，不保持惯性
         if movement_state.end_position.x.is_nan()
             || movement_state.end_position.y.is_nan()
             || movement_state
@@ -487,10 +498,14 @@ fn maintain_inertia(
                 .distance(movement_state.end_position)
                 < 0.5
         {
+            // if last_movement_name=="_lastInertiaSpinMovement"{
+            //     info!("spin inertia over 2");
+            // }
             return false;
         }
+        let down = is_down_wrap.get(type_name);
 
-        if is_down_wrap.get(type_name).is_none() {
+        if down == Some(&false) || down == None {
             //可以保持惯性，更新相机
             return true;
         }
@@ -633,10 +648,7 @@ pub fn screen_space_event_hanlder_system(
         let Some((_left_top,_)) = camera.physical_viewport_rect() else {
             return;
         };
-        let position = DVec2::new(
-            raw_position.x as f64,
-            window.height() as f64 - raw_position.y as f64,
-        );
+        let position = DVec2::new(raw_position.x as f64, raw_position.y as f64);
 
         //收集移动事件
         screen_space_event_hanlder._primary_position = position.clone();
@@ -753,7 +765,11 @@ pub fn screen_space_event_hanlder_system(
         }
     }
 }
-fn check_pixel_tolerance(start_position: &DVec2, end_position: &DVec2, pixelTolerance: f64) -> bool {
+fn check_pixel_tolerance(
+    start_position: &DVec2,
+    end_position: &DVec2,
+    pixelTolerance: f64,
+) -> bool {
     let xDiff = start_position.x - end_position.x;
     let yDiff = start_position.y - end_position.y;
     let totalPixels = (xDiff * xDiff + yDiff * yDiff).sqrt();

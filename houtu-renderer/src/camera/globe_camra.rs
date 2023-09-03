@@ -156,9 +156,9 @@ fn globe_camera_setup_system(
             transform.translation.x as f64,
             transform.translation.x as f64,
         );
-        let rotMat = Mat3::from_quat(transform.rotation);
-        let x_axis = rotMat.x_axis;
-        let y_axis = rotMat.y_axis;
+        let rot_mat = Mat3::from_quat(transform.rotation);
+        let x_axis = rot_mat.x_axis;
+        let y_axis = rot_mat.y_axis;
         globe_camera.direction = DVec3::new(x_axis.x as f64, x_axis.y as f64, x_axis.z as f64);
         globe_camera.up = DVec3::new(y_axis.x as f64, y_axis.y as f64, y_axis.z as f64);
         globe_camera.right = globe_camera.direction.cross(globe_camera.up);
@@ -201,11 +201,13 @@ impl GlobeCamera {
         self.position = self
             .rectangle_camera_position_3d(&GlobeCamera::DEFAULT_VIEW_RECTANGLE, Some(true))
             .unwrap();
-        self.position = DVec3::new(0., 0., 11347315.0);
+        // self.position = DVec3::new(0., 0., 11347315.0);
         let mut mag = self.position.magnitude();
         mag += mag * Self::DEFAULT_VIEW_FACTOR;
         self.position = self.position.normalize().multiply_by_scalar(mag);
-        self.direction = (DVec3::ZERO - self.position).normalize();
+        // self.up = DVec3::UNIT_Y;
+        // self.direction = (DVec3::ZERO - self.position).normalize();
+        self.update_members();
         self.constrained_axis = Some(DVec3::UNIT_Z);
     }
     pub fn get_position_wc(&mut self) -> DVec3 {

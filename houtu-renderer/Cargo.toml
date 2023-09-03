@@ -36,6 +36,8 @@ bevy_prototype_debug_lines = {version="0.11",features=["3d"]}
 futures-intrusive = "0.4.0"
 wgpu = "0.16.3"
 pollster = "0.2.5"
+# fps
+bevy_screen_diagnostics="0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["full"] }

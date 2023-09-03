@@ -1,4 +1,7 @@
-use bevy::{pbr::{wireframe::WireframePlugin, PbrPlugin}, prelude::*};
+use bevy::{
+    pbr::{wireframe::WireframePlugin, PbrPlugin},
+    prelude::*,
+};
 
 //https://github.com/valkum/terrain_tests
 //https://github.com/Dimev/lodtree
@@ -16,7 +19,7 @@ mod render;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
 // use plugins::quadtree;
-
+use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {
     Polygon,
@@ -31,6 +34,36 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
+        // app.add_plugins(MinimalPlugins);
+        // app.add_plugins((
+        //     WebAssetPlugin::default(),
+        //     WindowPlugin {
+        //         primary_window: Some(Window {
+        //             title: "houtu".to_string(),
+        //             fit_canvas_to_parent: true,
+        //             ..Default::default()
+        //         }),
+        //         ..Default::default()
+        //     },
+        //     bevy::a11y::AccessibilityPlugin,
+        //     bevy::winit::WinitPlugin::default(),
+        //     bevy::render::RenderPlugin::default(),
+        //     bevy::render::texture::ImagePlugin::default(),
+        //     bevy::log::LogPlugin::default(),
+        //     bevy::input::InputPlugin::default(),
+        //     bevy::core_pipeline::CorePipelinePlugin::default(),
+        //     bevy::transform::TransformPlugin::default(),
+        //     bevy::diagnostic::DiagnosticsPlugin,
+        //     bevy::diagnostic::FrameTimeDiagnosticsPlugin,
+        // ));
+        // app.add_plugins((
+        //     helpers::Plugin,
+        //     houtu_jobs::Plugin,
+        //     globe::GlobePlugin,
+        //     camera::CameraPlugin,
+        //     quadtree::Plugin,
+        //     render::Plugin,
+        // ));
         app.add_plugins(WebAssetPlugin::default())
             .add_plugins(
                 DefaultPlugins
@@ -39,12 +72,13 @@ impl Plugin for RendererPlugin {
                     .set(WindowPlugin {
                         primary_window: Some(Window {
                             title: "后土地球!".into(),
-                            // resolution: WindowResolution::new(900., 900.0 / 0.660105980317941),
                             ..default()
                         }),
                         ..default()
                     }),
             )
+            .add_plugins(ScreenDiagnosticsPlugin::default())
+            .add_plugins(ScreenFrameDiagnosticsPlugin)
             .add_plugins(helpers::Plugin)
             .add_plugins(WorldInspectorPlugin::new())
             .add_plugins(houtu_jobs::Plugin)

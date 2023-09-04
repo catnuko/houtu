@@ -71,6 +71,7 @@ impl Plugin for RendererPlugin {
                     .set(WindowPlugin {
                         primary_window: Some(Window {
                             title: "后土地球!".into(),
+                            canvas: Some("#rgis".into()), // selector
                             ..default()
                         }),
                         ..default()

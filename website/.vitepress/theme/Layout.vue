@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
 import DefaultTheme from 'vitepress/theme'
-import Demo from './Demo.vue'
+import Demo from '../../src/Demo.vue'
 const { Layout } = DefaultTheme
 // https://vitepress.dev/reference/runtime-api#usedata
 const data = useData()

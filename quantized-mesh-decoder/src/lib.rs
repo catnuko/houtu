@@ -120,7 +120,7 @@ pub fn from_reader(mut rdr: impl Read) -> std::io::Result<QuantizedMeshTerrainDa
             for i in 0..(triangle_count * 3) as usize {
                 let code = indices[i];
                 indices[i] = highest - code;
-                if (code == 0) {
+                if code == 0 {
                     highest += 1;
                 }
             }
@@ -133,7 +133,7 @@ pub fn from_reader(mut rdr: impl Read) -> std::io::Result<QuantizedMeshTerrainDa
             for i in 0..(triangle_count * 3) as usize {
                 let code = indices[i];
                 indices[i] = highest - code;
-                if (code == 0) {
+                if code == 0 {
                     highest += 1;
                 }
             }
@@ -213,7 +213,7 @@ pub fn from_reader(mut rdr: impl Read) -> std::io::Result<QuantizedMeshTerrainDa
 fn create_typed_array_from_array_buffer(
     rdr: &mut impl Read,
     vertex_count: u32,
-    count: u32,
+    _count: u32,
     length: usize,
 ) -> std::io::Result<Indices> {
     if vertex_count < SIXTY_FOUR_KILOBYTES {

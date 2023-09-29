@@ -54,7 +54,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Read;
 use std::vec;
 
-const SIXTY_FOUR_KILOBYTES: u32 = 65536;
+pub const SIXTY_FOUR_KILOBYTES: u32 = 65536;
 pub fn from_reader(mut rdr: impl Read) -> std::io::Result<QuantizedMeshTerrainData> {
     //decode header
     let center_x = rdr.read_f64::<LittleEndian>()?;

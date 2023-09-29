@@ -23,8 +23,9 @@ const {
 } = Cesium;
 const CesiumMath = Cesium.Math;
 let viewer: Cesium.Viewer;
+import axios from 'axios';
 onMounted(() => {
-	viewer = new Cesium.Viewer('map', { baseLayer: false });
+	viewer = new Cesium.Viewer('map', { baseLayer: false, terrain: Cesium.Terrain.fromWorldTerrain() });
 	console.log(viewer);
 	var TDTURL_CONFIG = {
 		TDT_IMG_W:
@@ -94,9 +95,25 @@ onMounted(() => {
 	// 	maximumLevel: 18,
 	// });
 	// viewer.imageryLayers.addImageryProvider(tdtCva);
-	let t = AttributeCompression.compressTextureCoordinates(new Cartesian2(0.5, 1.0));
-	let tt = AttributeCompression.decompressTextureCoordinates(t, new Cartesian2());
-	console.log(t,tt)
+	const OLD_MIN = 0;
+	const OLD_MAX = 1;
+
+	const NEW_MIN = 0;
+	const NEW_MAX = 32767;
+	const changeRange = (value) => ((value - OLD_MIN) * (NEW_MAX - NEW_MIN)) / (OLD_MAX - OLD_MIN) + NEW_MIN;
+
+	// Math.floor is needed because quantized-mesh uses integers
+	const triangleOne = [
+		[8380, 26387, 0],
+		[9841, 24918, 32767],
+		[9841, 26387, 0],
+	];
+
+	const triangleTwo = [
+		[9841, 24918, 32767],
+		[8380, 26387, 0],
+		[8380, 24918, 0],
+	];
 });
 onBeforeUnmount(() => {
 	viewer.destroy();

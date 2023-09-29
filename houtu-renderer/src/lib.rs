@@ -16,6 +16,7 @@ mod bing_maps_imagery_provider;
 mod helpers;
 mod quadtree;
 mod render;
+mod image;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
 // use plugins::quadtree;

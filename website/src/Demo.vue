@@ -1,5 +1,7 @@
 <template>
-    <canvas id="rgis"></canvas>
+    <div class="map-container">
+        <canvas id="rgis"></canvas>
+    </div>
 </template>
 <script setup lang="ts">
 import * as wasm from "../../houtu/pkg/";
@@ -8,3 +10,9 @@ onMounted(()=>{
     wasm.run()
 })
 </script>
+<style scoped>
+.map-container{
+    width: fit-content;
+    margin: auto;
+}
+</style>

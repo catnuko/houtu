@@ -5,9 +5,9 @@ edition = "2021"
 authors = ["ZhenYu Qiu<catnuko6912@gmail.com>"]
 license = "MIT"
 description = "Rust decoder for the Quantized Mesh format"
-homepage = "https://github.com/catnuko/houtu/tree/master/quantized-mesh-decoder"
+homepage = "https://github.com/catnuko/houtu/tree/dev/quantized-mesh-decoder"
 repository = "https://github.com/catnuko/houtu"
-documentation = "https://github.com/worace/geoq/blob/master/manual.md"
+documentation = "https://github.com/catnuko/houtu/blob/dev/quantized-mesh-decoder/README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

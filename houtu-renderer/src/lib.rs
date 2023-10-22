@@ -14,9 +14,9 @@ mod globe;
 
 mod bing_maps_imagery_provider;
 mod helpers;
+mod image;
 mod quadtree;
 mod render;
-mod image;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
 // use plugins::quadtree;
@@ -34,36 +34,6 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        // app.add_plugins(MinimalPlugins);
-        // app.add_plugins((
-        //     WebAssetPlugin::default(),
-        //     WindowPlugin {
-        //         primary_window: Some(Window {
-        //             title: "houtu".to_string(),
-        //             fit_canvas_to_parent: true,
-        //             ..Default::default()
-        //         }),
-        //         ..Default::default()
-        //     },
-        //     bevy::a11y::AccessibilityPlugin,
-        //     bevy::winit::WinitPlugin::default(),
-        //     bevy::render::RenderPlugin::default(),
-        //     bevy::render::texture::ImagePlugin::default(),
-        //     bevy::log::LogPlugin::default(),
-        //     bevy::input::InputPlugin::default(),
-        //     bevy::core_pipeline::CorePipelinePlugin::default(),
-        //     bevy::transform::TransformPlugin::default(),
-        //     bevy::diagnostic::DiagnosticsPlugin,
-        //     bevy::diagnostic::FrameTimeDiagnosticsPlugin,
-        // ));
-        // app.add_plugins((
-        //     helpers::Plugin,
-        //     houtu_jobs::Plugin,
-        //     globe::GlobePlugin,
-        //     camera::CameraPlugin,
-        //     quadtree::Plugin,
-        //     render::Plugin,
-        // ));
         app.add_plugins(WebAssetPlugin::default())
             .add_plugins(
                 DefaultPlugins
@@ -78,11 +48,13 @@ impl Plugin for RendererPlugin {
                         ..default()
                     }),
             )
-            .add_plugins(helpers::Plugin) //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
-            .add_plugins(houtu_jobs::Plugin)
-            .add_plugins(camera::CameraPlugin)
-            .add_plugins(quadtree::Plugin)
-            .add_plugins(render::Plugin);
+            .add_plugins((
+                helpers::Plugin,
+                houtu_jobs::Plugin,
+                camera::CameraPlugin,
+                quadtree::Plugin,
+                render::Plugin,
+            )); //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
         #[cfg(not(target_arch = "wasm32"))]
         app.add_plugins(WorldInspectorPlugin::new());
         // .add_plugin(plugins::wmts::WMTSPlugin);

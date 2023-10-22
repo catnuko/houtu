@@ -94,6 +94,7 @@ impl ImageryProvider for XYZImageryProvider {
         args.insert("x", x.as_str());
         args.insert("y", y.as_str());
         if let Ok(url) = template.render(&args) {
+            bevy::log::info!("img url = {}", url);
             let image = asset_server.load(url);
             // let image = asset_server.load("icon.png");
             return Some(image);

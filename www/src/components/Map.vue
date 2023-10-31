@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 // window.CESIUM_BASE_URL = '/Cesium';
 import { onBeforeUnmount, onMounted } from 'vue';
 Cesium.Ion.defaultAccessToken =
@@ -20,9 +20,12 @@ const {
 	MapMode2D,
 	SceneMode,
 	Rectangle,
+	WebMercatorTilingScheme,
+	GeographicTilingScheme,
+	TileAvailability,
 } = Cesium;
 const CesiumMath = Cesium.Math;
-let viewer: Cesium.Viewer;
+let viewer;
 import axios from 'axios';
 onMounted(() => {
 	viewer = new Cesium.Viewer('map', { baseLayer: false, terrain: Cesium.Terrain.fromWorldTerrain() });
@@ -85,35 +88,19 @@ onMounted(() => {
 		maximumLevel: 18,
 	});
 	viewer.imageryLayers.addImageryProvider(tdtCva);
-	// var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
-	// 	url: TDTURL_CONFIG.TDT_CIA_W,
-	// 	layer: 'tdtImgLayer',
-	// 	style: 'default',
-	// 	format: "image/jpeg",
-	// 	tileMatrixSetID: 'c',
-	// 	subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
-	// 	maximumLevel: 18,
-	// });
-	// viewer.imageryLayers.addImageryProvider(tdtCva);
-	const OLD_MIN = 0;
-	const OLD_MAX = 1;
 
-	const NEW_MIN = 0;
-	const NEW_MAX = 32767;
-	const changeRange = (value) => ((value - OLD_MIN) * (NEW_MAX - NEW_MIN)) / (OLD_MAX - OLD_MIN) + NEW_MIN;
+	const webMercator = new WebMercatorTilingScheme();
+	const geographic = new GeographicTilingScheme();
 
-	// Math.floor is needed because quantized-mesh uses integers
-	const triangleOne = [
-		[8380, 26387, 0],
-		[9841, 24918, 32767],
-		[9841, 26387, 0],
-	];
+	function createAvailability(tilingScheme, maxLevel) {
+		const availability = new TileAvailability(tilingScheme, 15);
+		availability.addAvailableTileRange(0, 0, 0, tilingScheme.getNumberOfXTilesAtLevel(), tilingScheme.getNumberOfYTilesAtLevel());
+		return availability;
+	}
 
-	const triangleTwo = [
-		[9841, 24918, 32767],
-		[8380, 26387, 0],
-		[8380, 24918, 0],
-	];
+	const availability = createAvailability(geographic, 15);
+	let value = availability.computeMaximumLevelAtPosition(Cartographic.fromDegrees(25.0, 88.0));
+	console.log(value)
 });
 onBeforeUnmount(() => {
 	viewer.destroy();

@@ -1,6 +1,4 @@
-use bevy::{
-    prelude::{UVec2},
-};
+use bevy::prelude::UVec2;
 
 use crate::{Cartographic, Ellipsoid, Rectangle};
 

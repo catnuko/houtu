@@ -2422,6 +2422,7 @@ dependencies = [
  "instant",
  "new_string_template",
  "pollster",
+ "quantized-mesh-decoder",
  "rand 0.8.5",
  "reqwest",
  "thiserror",

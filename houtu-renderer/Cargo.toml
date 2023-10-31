@@ -20,6 +20,7 @@ bevy_egui = "0.21"
 houtu-scene = { path = "../houtu-scene" }
 houtu-jobs = { path = "../houtu-jobs" }
 bevy_web_asset = { path = "../bevy_web_asset" }
+quantized-mesh-decoder = {path="../quantized-mesh-decoder"}
 bevy-inspector-egui = "0.19"
 reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["stream"] }
 futures-util = "0.3"

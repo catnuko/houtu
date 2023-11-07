@@ -1,4 +1,7 @@
-use bevy::{pbr::{wireframe::WireframePlugin, PbrPlugin}, prelude::*};
+use bevy::{
+    pbr::{wireframe::WireframePlugin, PbrPlugin},
+    prelude::*,
+};
 
 //https://github.com/valkum/terrain_tests
 //https://github.com/Dimev/lodtree
@@ -11,12 +14,14 @@ mod globe;
 
 mod bing_maps_imagery_provider;
 mod helpers;
+mod image;
 mod quadtree;
 mod render;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
+mod quantized_mesh_terrain_data;
+mod cesium_terrain_provider;
 // use plugins::quadtree;
-
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {
     Polygon,
@@ -39,19 +44,21 @@ impl Plugin for RendererPlugin {
                     .set(WindowPlugin {
                         primary_window: Some(Window {
                             title: "后土地球!".into(),
-                            // resolution: WindowResolution::new(900., 900.0 / 0.660105980317941),
+                            canvas: Some("#rgis".into()), // selector
                             ..default()
                         }),
                         ..default()
                     }),
             )
-            .add_plugins(helpers::Plugin)
-            .add_plugins(WorldInspectorPlugin::new())
-            .add_plugins(houtu_jobs::Plugin)
-            .add_plugins(globe::GlobePlugin)
-            .add_plugins(camera::CameraPlugin)
-            .add_plugins(quadtree::Plugin)
-            .add_plugins(render::Plugin);
+            .add_plugins((
+                helpers::Plugin,
+                houtu_jobs::Plugin,
+                camera::CameraPlugin,
+                quadtree::Plugin,
+                render::Plugin,
+            )); //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_plugins(WorldInspectorPlugin::new());
         // .add_plugin(plugins::wmts::WMTSPlugin);
     }
 }

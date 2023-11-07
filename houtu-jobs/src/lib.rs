@@ -7,7 +7,6 @@
 )]
 use bevy::prelude::*;
 use std::{any, future, pin};
-
 pub struct Plugin;
 
 impl bevy::prelude::Plugin for Plugin {

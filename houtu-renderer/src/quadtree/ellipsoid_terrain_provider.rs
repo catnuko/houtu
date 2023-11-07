@@ -61,7 +61,7 @@ impl TerrainProvider for EllipsoidTerrainProvider {
     fn get_has_vertex_normals(&self) -> bool {
         false
     }
-    fn get_availability(&self) -> Option<super::tile_availability::TileAvailability> {
+    fn get_availability(&mut self) -> Option<&mut super::tile_availability::TileAvailability> {
         return None;
     }
     fn get_ready(&self) -> bool {

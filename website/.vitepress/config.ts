@@ -8,7 +8,8 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'ChangeLog', link: '/changelog' }
+      { text: 'ChangeLog', link: '/changelog' },
+      { text: 'Demo', link: '/demo' }
     ],
 
     sidebar: [
@@ -22,6 +23,16 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/catnuko/houtu' }
-    ]
+    ],
+  },
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en'
+    },
+    zh: {
+      label: '简体中文',
+      lang: 'zh', // optional, will be added  as `lang` attribute on `html` tag
+    },
   }
 })

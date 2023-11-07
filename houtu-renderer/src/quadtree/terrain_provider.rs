@@ -10,7 +10,7 @@ pub trait TerrainProvider: Send + Sync {
     fn get_ready(&self) -> bool;
     fn get_has_water_mask(&self) -> bool;
     fn get_has_vertex_normals(&self) -> bool;
-    fn get_availability(&self) -> Option<TileAvailability>;
+    fn get_availability(&mut self) -> Option<&mut TileAvailability>;
     // fn get_regular_grid_indices(&self, width: u32, height: u32);
     // fn get_regular_grid_indices_and_edge_indices(&self, width: u32, height: u32);
     fn request_tile_geometry(&self) -> Option<HeightmapTerrainData>;

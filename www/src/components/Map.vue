@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 // window.CESIUM_BASE_URL = '/Cesium';
 import { onBeforeUnmount, onMounted } from 'vue';
 Cesium.Ion.defaultAccessToken =
@@ -20,11 +20,15 @@ const {
 	MapMode2D,
 	SceneMode,
 	Rectangle,
+	WebMercatorTilingScheme,
+	GeographicTilingScheme,
+	TileAvailability,
 } = Cesium;
 const CesiumMath = Cesium.Math;
-let viewer: Cesium.Viewer;
+let viewer;
+import axios from 'axios';
 onMounted(() => {
-	viewer = new Cesium.Viewer('map', { baseLayer: false });
+	viewer = new Cesium.Viewer('map', { baseLayer: false, terrain: Cesium.Terrain.fromWorldTerrain() });
 	console.log(viewer);
 	var TDTURL_CONFIG = {
 		TDT_IMG_W:
@@ -84,19 +88,19 @@ onMounted(() => {
 		maximumLevel: 18,
 	});
 	viewer.imageryLayers.addImageryProvider(tdtCva);
-	// var tdtCva = new Cesium.WebMapTileServiceImageryProvider({
-	// 	url: TDTURL_CONFIG.TDT_CIA_W,
-	// 	layer: 'tdtImgLayer',
-	// 	style: 'default',
-	// 	format: "image/jpeg",
-	// 	tileMatrixSetID: 'c',
-	// 	subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
-	// 	maximumLevel: 18,
-	// });
-	// viewer.imageryLayers.addImageryProvider(tdtCva);
-	let t = AttributeCompression.compressTextureCoordinates(new Cartesian2(0.5, 1.0));
-	let tt = AttributeCompression.decompressTextureCoordinates(t, new Cartesian2());
-	console.log(t,tt)
+
+	const webMercator = new WebMercatorTilingScheme();
+	const geographic = new GeographicTilingScheme();
+
+	function createAvailability(tilingScheme, maxLevel) {
+		const availability = new TileAvailability(tilingScheme, 15);
+		availability.addAvailableTileRange(0, 0, 0, tilingScheme.getNumberOfXTilesAtLevel(), tilingScheme.getNumberOfYTilesAtLevel());
+		return availability;
+	}
+
+	const availability = createAvailability(geographic, 15);
+	let value = availability.computeMaximumLevelAtPosition(Cartographic.fromDegrees(25.0, 88.0));
+	console.log(value)
 });
 onBeforeUnmount(() => {
 	viewer.destroy();

@@ -1,9 +1,9 @@
+use self::ui_state::UiState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_prototype_debug_lines::*;
+use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid};
-
-use self::ui_state::UiState;
 mod camera;
 mod font;
 mod genera;
@@ -11,19 +11,23 @@ mod ui_state;
 pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EguiPlugin)
-            // .add_plugin(bevy_screen_diags::ScreenDiagsTextPlugin)
-            .add_plugins(DebugLinesPlugin::with_depth_test(true))
-            .insert_resource(UiState::default())
-            .add_systems(Startup, (font::config_ctx, setup))
-            .add_systems(
-                Update,
-                (
-                    camera::debug_system,
-                    ui_example_system,
-                    genera::debug_system,
-                ),
-            );
+        app.add_plugins(EguiPlugin);
+        app.add_plugins(DebugLinesPlugin::with_depth_test(true));
+        app.add_plugins(ScreenDiagnosticsPlugin::default());
+        app.add_plugins(ScreenFrameDiagnosticsPlugin);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            app.insert_resource(UiState::default())
+                .add_systems(Startup, (font::config_ctx, setup))
+                .add_systems(
+                    Update,
+                    (
+                        camera::debug_system,
+                        ui_example_system,
+                        genera::debug_system,
+                    ),
+                );
+        }
     }
 }
 

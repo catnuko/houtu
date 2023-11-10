@@ -1,4 +1,10 @@
 # quantized-mesh-decoder
+
+A Rust library for decoding Cesium [quantized-mesh-1.0 terrain](https://github.com/CesiumGS/quantized-mesh)
+
+```rust
+quantized-mesh-decoder = "0.1.0"
+```
 ```rust
 use quantized_mesh_decoder::{from_reader,QuantizedMeshTerrainData};
 use std::{path::Path, fs::File};

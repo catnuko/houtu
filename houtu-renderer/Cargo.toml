@@ -7,38 +7,40 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.11", default-features = false, features = [
+bevy = { version = "0.12", default-features = false, features = [
     "bevy_winit",
     "bevy_core_pipeline",
     "bevy_render",
     "bevy_pbr",
     "png",
 ] }
-bevy_reflect_derive = "0.11"
-bevy_egui = "0.21"
+bevy_reflect_derive = "0.12"
+bevy_egui = "0.23"
 # bevy_screen_diags = "0.6.0"
 houtu-scene = { path = "../houtu-scene" }
 houtu-jobs = { path = "../houtu-jobs" }
 bevy_web_asset = { path = "../bevy_web_asset" }
-quantized-mesh-decoder = {path="../quantized-mesh-decoder"}
-bevy-inspector-egui = "0.19"
-reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["stream"] }
+quantized-mesh-decoder = { path = "../quantized-mesh-decoder" }
+bevy-inspector-egui = "0.21"
+reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = [
+    "stream",
+] }
 futures-util = "0.3"
 bytes = "1.4.0"
 async-channel = "1.8.0"
 instant = "0.1"
-rand="0.8.5"
+rand = "0.8.5"
 thiserror = "1.0"
-bytemuck="*"
+bytemuck = "*"
 new_string_template = "1.4"
 # debug
-bevy_prototype_debug_lines = {version="0.11",features=["3d"]}
+bevy_prototype_debug_lines = { version = "0.11", features = ["3d"] }
 # 重投影
 futures-intrusive = "0.4.0"
 wgpu = "0.16.3"
 pollster = "0.2.5"
 # fps
-bevy_screen_diagnostics="0.3"
+bevy_screen_diagnostics = "0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["full"] }

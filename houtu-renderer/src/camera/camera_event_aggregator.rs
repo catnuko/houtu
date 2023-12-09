@@ -645,9 +645,9 @@ pub fn screen_space_event_hanlder_system(
         let Some(raw_position) = window.cursor_position() else {
             return;
         };
-        let Some((_left_top,_)) = camera.physical_viewport_rect() else {
-            return;
-        };
+        // let Some((_left_top,_)) = camera.physical_viewport_rect() else {
+        //     return;
+        // };
         let position = DVec2::new(raw_position.x as f64, raw_position.y as f64);
 
         //收集移动事件

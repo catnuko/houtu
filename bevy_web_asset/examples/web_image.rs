@@ -3,13 +3,13 @@ use bevy_web_asset::WebAssetPlugin;
 
 fn main() {
     App::new()
-        // The web asset plugin must be inserted before the `AssetPlugin` so
-        // that the asset plugin doesn't create another instance of an asset
-        // server. WebAssetPlugin will handle initialization of AssetPlugin
-        // so we remove it from the default plugins group.
-        .add_plugin(WebAssetPlugin::default())
-        .add_plugins(DefaultPlugins.build().disable::<AssetPlugin>())
-        .add_startup_system(setup)
+        .add_plugins((
+            // The web asset plugin must be inserted before the `AssetPlugin` so
+            // that the AssetPlugin recognizes the new sources.
+            WebAssetPlugin,
+            DefaultPlugins,
+        ))
+        .add_systems(Startup, setup)
         .run();
 }
 

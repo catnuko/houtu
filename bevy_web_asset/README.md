@@ -5,13 +5,9 @@
 [![crates.io](https://img.shields.io/crates/d/bevy_web_asset.svg)](https://crates.io/crates/bevy_web_asset)
 [![docs.rs](https://img.shields.io/docsrs/bevy_web_asset)](https://docs.rs/bevy_web_asset)
 
-This is a tiny crate that that wraps the standard bevy asset loader, and adds
-the ability to load assets from http and https urls.
+This is a tiny crate that that adds the ability to load assets from http and https urls.
 
 Supports both wasm (web-sys) and native.
-
-If asset paths start with http:// or https://, then we try to do a web request
-to load the asset, otherwise, we just call the normal asset io.
 
 This is nice if you want to keep your content on a server, even when developing
 native games. Use cases can be:
@@ -25,11 +21,7 @@ native games. Use cases can be:
 
 ## Usage
 
-NOTE: You need to add the plugin instead of `AssetPlugin` and before `DefaultPlugins`:
-
-Bevy 0.7 users, see [the 0.3.0 readme](https://github.com/johanhelsing/bevy_web_asset/tree/v0.3.0) for how to add the plugin.
-
-Bevy 0.8 users, see [the 0.4.0 readme](https://github.com/johanhelsing/bevy_web_asset/tree/v0.4.0) for how to add the plugin.
+NOTE: You need to add the plugin before `AssetPlugin`:
 
 ```rust no_run
 use bevy::prelude::*;
@@ -37,9 +29,11 @@ use bevy_web_asset::WebAssetPlugin;
 
 fn main() {
     App::new()
-        // The `WebAssetPlugin` must be inserted instead of `AssetPlugin` and before `DefaultPlugins`
-        .add_plugin(WebAssetPlugin::default())
-        .add_plugins(DefaultPlugins.build().disable::<AssetPlugin>())
+        // The `WebAssetPlugin` must be inserted before the `AssetPlugin`
+        .add_plugins((
+            WebAssetPlugin::default(),
+            DefaultPlugins
+        ))
         // ...
         .run();
 }
@@ -61,7 +55,7 @@ commands.spawn(SpriteBundle {
 });
 ```
 
-# Bevy version support
+## Bevy version support
 
 I intend to support the latest bevy release in the `main` branch.
 
@@ -69,10 +63,23 @@ Fixes against the Bevy `main` branch goes in the the `bevy-main` branch and are
 merged back into `main` whenever bevy is released.
 
 |bevy|bevy_web_asset|
-|---|---|
-|main|bevy-main|
-|0.9|0.5, main|
-|0.8|0.4|
-|0.7|0.3|
-|0.6|0.2|
-|0.5|0.1|
+|----|--------------|
+|0.12|0.7, main     |
+|0.9 |0.5           |
+|0.8 |0.4           |
+|0.7 |0.3           |
+|0.6 |0.2           |
+|0.5 |0.1           |
+
+## License
+
+`bevy_web_asset` is dual-licensed under either
+
+- MIT License (./LICENSE-MIT or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 (./LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+
+at your option.
+
+## Contributions
+
+PRs welcome!

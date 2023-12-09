@@ -11,7 +11,7 @@ use bevy::{
         render_resource::{
             self, AsBindGroup, AsBindGroupError, BindGroupLayout, Buffer, PreparedBindGroup,
             RenderPipelineDescriptor, Sampler, ShaderRef, ShaderType, SpecializedMeshPipelineError,
-            Texture, TextureView,
+            Texture, TextureView, UnpreparedBindGroup,
         },
         renderer::{self, RenderDevice},
         texture::FallbackImage,
@@ -24,7 +24,7 @@ use wgpu::{
 /// A marker component used to identify a terrain entity.
 #[derive(Clone, Copy, Component, ExtractComponent)]
 pub struct Terrain;
-#[derive(Default, TypeUuid, Debug, Clone, Resource, Reflect)]
+#[derive(Default, TypePath, Debug, Clone, Resource, TypeUuid, Asset)]
 #[uuid = "886f4558-1621-492a-856e-ea1dbc9902d9"]
 pub struct TerrainMeshMaterial {
     pub textures: Vec<Handle<Image>>,
@@ -264,10 +264,10 @@ impl AsBindGroup for TerrainMeshMaterial {
 
         let vertex_uniform_buffer = make_vertex_uniform(render_device, self);
         // let (array_texture, texture_view) = make_array_texture(render_device, self);
-        let bind_group = render_device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("terrain_material"),
-            layout: layout,
-            entries: &[
+        let bind_group = render_device.create_bind_group(
+            Some("terrain_material"),
+            layout,
+            &[
                 BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureViewArray(&images),
@@ -289,7 +289,7 @@ impl AsBindGroup for TerrainMeshMaterial {
                     resource: vertex_uniform_buffer.as_entire_binding(),
                 },
             ],
-        });
+        );
         Ok(PreparedBindGroup {
             bindings: vec![],
             bind_group,
@@ -309,61 +309,69 @@ impl AsBindGroup for TerrainMeshMaterial {
             },
         })
     }
-    fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout
+    fn bind_group_layout_entries(render_device: &RenderDevice) -> Vec<BindGroupLayoutEntry>
     where
         Self: Sized,
     {
-        return render_device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("terrain_material_bindgroup_layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: NonZeroU32::new(MAX_TEXTURE),
+        vec![
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
                 },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
+                count: NonZeroU32::new(MAX_TEXTURE),
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 2,
+                visibility: ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
                 },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 3,
+                visibility: ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
                 },
-                BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 4,
+                visibility: ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
                 },
-                BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+                count: None,
+            },
+        ]
+    }
+    fn unprepared_bind_group(
+        &self,
+        _: &BindGroupLayout,
+        _: &RenderDevice,
+        _: &RenderAssets<Image>,
+        _: &FallbackImage,
+    ) -> Result<UnpreparedBindGroup<Self::Data>, AsBindGroupError> {
+        // we implement as_bind_group directly because
+        panic!("bindless texture arrays can't be owned")
+        // or rather, they can be owned, but then you can't make a `&'a [&'a TextureView]` from a vec of them in get_binding().
     }
 }
 fn make_array_texture(

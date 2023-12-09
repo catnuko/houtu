@@ -7,7 +7,7 @@ use bevy::{
         define_atomic_id,
         render_resource::{
             encase, BufferInitDescriptor, BufferUsages, Extent3d, TextureDescriptor,
-            TextureDimension, TextureFormat, TextureUsages,
+            TextureDimension, TextureFormat, TextureUsages, BufferDescriptor,
         },
         renderer::RenderDevice,
     },
@@ -16,7 +16,6 @@ use bevy::{
 
 use bevy_egui::egui::epaint::image;
 use houtu_scene::{lerp_f32, Matrix4, Rectangle, TilingScheme, WebMercatorProjection};
-use wgpu::BufferDescriptor;
 
 use crate::{
     camera::GlobeCamera,
@@ -699,11 +698,11 @@ impl ImageryLayer {
         if loading_imagery.state == ImageryState::REQUESTING {
             let state = asset_server.get_load_state(loading_imagery.texture.as_ref().unwrap());
             match state {
-                LoadState::Loaded => {
+                Some(LoadState::Loaded) => {
                     loading_imagery.state = ImageryState::RECEIVED;
                     // info!("imagery is ok");
                 }
-                LoadState::Failed => loading_imagery.state = ImageryState::FAILED,
+                Some(LoadState::Failed) => loading_imagery.state = ImageryState::FAILED,
                 _ => {}
             }
         }

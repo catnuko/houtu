@@ -83,25 +83,25 @@ pub fn prepare_terrain(
         buffer.write(terrain_config_uniform).unwrap();
         let vertex_uniform_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
             label: Some("vertex_uniform_buffer"),
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: BufferUsages::UNIFORM,
             contents: &buffer.into_inner(),
         });
         let sampler = render_device.create_sampler(&SamplerDescriptor::default());
         let (uniform_buffer, state_uniform_buffer, shader_defines) =
             other_uniform(&gpu_node_atlas, &render_device);
-        let bind_group = render_device.create_bind_group(&BindGroupDescriptor {
-            label: Some("terrain_material"),
-            layout: &pipeline.layout,
-            entries: &[
+        let bind_group = render_device.create_bind_group(
+            Some("terrain_material"),
+            &pipeline.layout,
+            &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(
+                    resource: BindingResource::TextureView(
                         &gpu_node_atlas.create_texture_view(),
                     ),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
+                    resource: BindingResource::Sampler(&sampler),
                 },
                 BindGroupEntry {
                     binding: 2,
@@ -116,7 +116,7 @@ pub fn prepare_terrain(
                     resource: vertex_uniform_buffer.as_entire_binding(),
                 },
             ],
-        });
+        );
         commands.entity(entity).insert(TerrainBindGroup {
             bind_group: bind_group,
             shader_defines: shader_defines,

@@ -204,10 +204,10 @@ pub(crate) fn finish_loading_attachment_from_disk(
         for attachment in &config.attachments {
             let state = server.get_load_state(&attachment.handle);
             match state {
-                LoadState::Failed => {
+                Some(LoadState::Failed) => {
                     info!("Image loading failure")
                 }
-                LoadState::Loaded => {
+                Some(LoadState::Loaded) => {
                     let image = images.get_mut(&attachment.handle).unwrap();
                     image.texture_descriptor.usage |= TextureUsages::COPY_SRC;
                 }

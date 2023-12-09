@@ -1,7 +1,7 @@
 use self::ui_state::UiState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use bevy_prototype_debug_lines::*;
+// use bevy_prototype_debug_lines::*;
 use bevy_screen_diagnostics::{ScreenDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin};
 use houtu_scene::{Cartesian2, Cartesian3, Ellipsoid};
 mod camera;
@@ -12,13 +12,13 @@ pub struct Plugin;
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin);
-        app.add_plugins(DebugLinesPlugin::with_depth_test(true));
+        // app.add_plugins(DebugLinesPlugin::with_depth_test(true));
         app.add_plugins(ScreenDiagnosticsPlugin::default());
         app.add_plugins(ScreenFrameDiagnosticsPlugin);
         #[cfg(not(target_arch = "wasm32"))]
         {
             app.insert_resource(UiState::default())
-                .add_systems(Startup, (font::config_ctx, setup))
+                .add_systems(Startup, (font::config_ctx,))
                 .add_systems(
                     Update,
                     (
@@ -72,25 +72,25 @@ fn ui_example_system(mut contexts: EguiContexts, mut state: ResMut<UiState>) {
         });
 }
 
-fn setup(_commands: Commands, mut lines: ResMut<DebugLines>) {
-    let length = (Ellipsoid::WGS84.maximum_radius as f32) + 10000000.0;
-    // A line that stays on screen 9 seconds
-    lines.line_colored(
-        Vec3::ZERO,
-        Vec3::new(length, 0.0, 0.0),
-        100000000.,
-        Color::RED,
-    );
-    lines.line_colored(
-        Vec3::ZERO,
-        Vec3::new(0.0, length, 0.0),
-        100000000.,
-        Color::GREEN,
-    );
-    lines.line_colored(
-        Vec3::ZERO,
-        Vec3::new(0.0, 0.0, length),
-        100000000.,
-        Color::BLUE,
-    );
-}
+// fn setup(_commands: Commands, mut lines: ResMut<DebugLines>) {
+//     let length = (Ellipsoid::WGS84.maximum_radius as f32) + 10000000.0;
+//     // A line that stays on screen 9 seconds
+//     lines.line_colored(
+//         Vec3::ZERO,
+//         Vec3::new(length, 0.0, 0.0),
+//         100000000.,
+//         Color::RED,
+//     );
+//     lines.line_colored(
+//         Vec3::ZERO,
+//         Vec3::new(0.0, length, 0.0),
+//         100000000.,
+//         Color::GREEN,
+//     );
+//     lines.line_colored(
+//         Vec3::ZERO,
+//         Vec3::new(0.0, 0.0, length),
+//         100000000.,
+//         Color::BLUE,
+//     );
+// }

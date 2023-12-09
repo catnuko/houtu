@@ -347,32 +347,28 @@ impl render_graph::Node for ReprojectTextureNode {
             };
 
             // bevy::log::info!("reprojecting texture for tile {:?}", task.1.key);
-            let bind_group =
-                render_context
-                    .render_device()
-                    .create_bind_group(&BindGroupDescriptor {
-                        label: None,
-
-                        layout: &pipeline.texture_bind_group_layout,
-                        entries: &[
-                            BindGroupEntry {
-                                binding: 0,
-                                resource: BindingResource::TextureView(&input_image.texture_view),
-                            },
-                            BindGroupEntry {
-                                binding: 1,
-                                resource: BindingResource::Sampler(&input_image.sampler),
-                            },
-                            BindGroupEntry {
-                                binding: 2,
-                                resource: BindingResource::Buffer(BufferBinding {
-                                    buffer: &task.1.uniform_buffer,
-                                    offset: 0,
-                                    size: BufferSize::new(UNIFORM_BUFFER_SIZE),
-                                }),
-                            },
-                        ],
-                    });
+            let bind_group = render_context.render_device().create_bind_group(
+                None,
+                &pipeline.texture_bind_group_layout,
+                &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(&input_image.texture_view),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::Sampler(&input_image.sampler),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &task.1.uniform_buffer,
+                            offset: 0,
+                            size: BufferSize::new(UNIFORM_BUFFER_SIZE),
+                        }),
+                    },
+                ],
+            );
 
             {
                 let mut render_pass =

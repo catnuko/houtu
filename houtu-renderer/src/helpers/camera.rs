@@ -1,5 +1,5 @@
 use bevy::{math::DVec2, prelude::*, window::PrimaryWindow};
-use bevy_prototype_debug_lines::*;
+// use bevy_prototype_debug_lines::*;
 use houtu_scene::Ellipsoid;
 
 use crate::camera::{GlobeCamera, MouseEvent};
@@ -17,7 +17,7 @@ pub fn debug_system(
         &mut GlobalTransform,
         &mut GlobeCamera,
     )>,
-    mut lines: ResMut<DebugLines>,
+    // mut lines: ResMut<DebugLines>,
 ) {
     let Ok(primary) = primary_query.get_single() else {
         return;
@@ -68,45 +68,45 @@ pub fn debug_system(
                         }
                     }
 
-                    if state.debug_camera_dur {
-                        let _ray = globe_camera.getPickRay(&position, &window_size);
-                        let direction = globe_camera.position
-                            + globe_camera.get_direction_wc().normalize() * 100000000.0;
-                        let up = globe_camera.position
-                            + globe_camera.get_up_wc().normalize() * 100000000.0;
-                        let right = globe_camera.position
-                            + globe_camera.get_right_wc().normalize() * 100000000.0;
-                        lines.line_colored(
-                            Vec3::new(
-                                globe_camera.position.x as f32,
-                                globe_camera.position.y as f32,
-                                globe_camera.position.z as f32,
-                            ),
-                            Vec3::new(direction.x as f32, direction.y as f32, direction.z as f32),
-                            3.0,
-                            Color::RED,
-                        );
-                        lines.line_colored(
-                            Vec3::new(
-                                globe_camera.position.x as f32,
-                                globe_camera.position.y as f32,
-                                globe_camera.position.z as f32,
-                            ),
-                            Vec3::new(right.x as f32, right.y as f32, right.z as f32),
-                            3.0,
-                            Color::GREEN,
-                        );
-                        lines.line_colored(
-                            Vec3::new(
-                                globe_camera.position.x as f32,
-                                globe_camera.position.y as f32,
-                                globe_camera.position.z as f32,
-                            ),
-                            Vec3::new(up.x as f32, up.y as f32, up.z as f32),
-                            3.0,
-                            Color::BLUE,
-                        );
-                    }
+                    // if state.debug_camera_dur {
+                    //     let _ray = globe_camera.getPickRay(&position, &window_size);
+                    //     let direction = globe_camera.position
+                    //         + globe_camera.get_direction_wc().normalize() * 100000000.0;
+                    //     let up = globe_camera.position
+                    //         + globe_camera.get_up_wc().normalize() * 100000000.0;
+                    //     let right = globe_camera.position
+                    //         + globe_camera.get_right_wc().normalize() * 100000000.0;
+                    //     lines.line_colored(
+                    //         Vec3::new(
+                    //             globe_camera.position.x as f32,
+                    //             globe_camera.position.y as f32,
+                    //             globe_camera.position.z as f32,
+                    //         ),
+                    //         Vec3::new(direction.x as f32, direction.y as f32, direction.z as f32),
+                    //         3.0,
+                    //         Color::RED,
+                    //     );
+                    //     lines.line_colored(
+                    //         Vec3::new(
+                    //             globe_camera.position.x as f32,
+                    //             globe_camera.position.y as f32,
+                    //             globe_camera.position.z as f32,
+                    //         ),
+                    //         Vec3::new(right.x as f32, right.y as f32, right.z as f32),
+                    //         3.0,
+                    //         Color::GREEN,
+                    //     );
+                    //     lines.line_colored(
+                    //         Vec3::new(
+                    //             globe_camera.position.x as f32,
+                    //             globe_camera.position.y as f32,
+                    //             globe_camera.position.z as f32,
+                    //         ),
+                    //         Vec3::new(up.x as f32, up.y as f32, up.z as f32),
+                    //         3.0,
+                    //         Color::BLUE,
+                    //     );
+                    // }
                 }
                 _ => {}
             }

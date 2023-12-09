@@ -173,6 +173,8 @@ pub(crate) fn queue_terrain(
                     pipeline: pipeline_id,
                     draw_function,
                     distance: f32::MIN, // draw terrain first
+                    batch_range:0..1,
+                    dynamic_offset:None
                 });
             }
         }

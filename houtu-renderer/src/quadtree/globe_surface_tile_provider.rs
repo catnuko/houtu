@@ -399,6 +399,8 @@ fn compute_distance_to_tile(
     }
     tile_bounding_region.minimum_height = min;
     tile_bounding_region.maximum_height = min;
+
+
     let distance = tile_bounding_region.distance_to_camera_region(
         &camera.get_position_wc(),
         &camera.get_position_cartographic(),

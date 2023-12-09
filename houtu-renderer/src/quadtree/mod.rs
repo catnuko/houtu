@@ -59,9 +59,12 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(IndicesAndEdgesCacheArc::new());
         app.insert_resource(ImageryStorage::new());
-        app.add_systems(Update,render_system);
-        app.add_systems(Update,process_terrain_state_machine_system.after(render_system));
-        app.add_systems(Update,imagery_layer::finish_reproject_texture_system);
+        app.add_systems(Update, render_system);
+        app.add_systems(
+            Update,
+            process_terrain_state_machine_system.after(render_system),
+        );
+        app.add_systems(Update, imagery_layer::finish_reproject_texture_system);
     }
 }
 
@@ -88,6 +91,9 @@ fn render_system(
     let mut globe_camera = globe_camera_query
         .get_single_mut()
         .expect("GlobeCamera不存在");
+    if !globe_camera.inited {
+        return;
+    }
     primitive.begin_frame();
     primitive.render(
         &mut globe_camera,

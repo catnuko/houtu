@@ -8,6 +8,7 @@ use bevy::{
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_web_asset::WebAssetPlugin;
+use globe::GlobePlugin;
 
 mod camera;
 mod globe;
@@ -47,6 +48,7 @@ impl Plugin for RendererPlugin {
             }),
         ))
         .add_plugins((
+            GlobePlugin,
             helpers::Plugin,
             houtu_jobs::Plugin,
             camera::CameraPlugin,

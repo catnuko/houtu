@@ -26,8 +26,8 @@ fn setup(
     mut asset_server: ResMut<AssetServer>,
 ) {
     let debug_material = materials.add(StandardMaterial {
-        // base_color_texture: Some(images.add(uv_debug_texture())),
-        base_color_texture: Some(asset_server.load("icon.png")),
+        base_color_texture: Some(images.add(uv_debug_texture())),
+        // base_color_texture: Some(asset_server.load("icon.png")),
         ..default()
     });
     let ellipsoid = Ellipsoid::WGS84;

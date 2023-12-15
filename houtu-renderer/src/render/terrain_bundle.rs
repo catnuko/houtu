@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::{node_atlas::AtlasAttachment, wrap_terrain_mesh::WrapTerrainMesh, TileRendered};
+use super::{wrap_terrain_mesh::WrapTerrainMesh, TileRendered, terrain_plugin::TerrainAttachment};
 
 #[derive(Component, Clone)]
 pub struct TerrainConfig {
@@ -36,7 +36,7 @@ pub struct TerrainConfig {
     pub center_3d: Vec3,
     pub scale_and_bias: Mat4,
     pub mvp: Mat4,
-    pub attachments: Vec<AtlasAttachment>,
+    pub attachments: Vec<TerrainAttachment>,
     pub tile_key: TileKey,
 }
 impl TerrainConfig {
@@ -141,7 +141,7 @@ impl TerrainBundle {
                         imagery.rectangle.clone(),
                     ))
             }
-            let attachment = AtlasAttachment {
+            let attachment = TerrainAttachment {
                 handle: texture,
                 translation_and_scale: tile_imagery
                     .texture_translation_and_scale
@@ -194,25 +194,4 @@ fn get_mvp(globe_camera: &mut GlobeCamera, rtc: &DVec3) -> DMat4 {
     // mvp.set_translation(&center_eye);
     mvp = projection_matrix * mvp;
     return mvp;
-}
-pub(crate) fn finish_loading_attachment_from_disk(
-    mut images: ResMut<Assets<Image>>,
-    mut terrain_query: Query<&mut TerrainConfig>,
-    server: Res<AssetServer>,
-) {
-    for config in terrain_query.iter_mut() {
-        for attachment in &config.attachments {
-            let state = server.get_load_state(&attachment.handle);
-            match state {
-                Some(LoadState::Failed) => {
-                    info!("Image loading failure")
-                }
-                Some(LoadState::Loaded) => {
-                    let image = images.get_mut(&attachment.handle).unwrap();
-                    image.texture_descriptor.usage |= TextureUsages::COPY_SRC;
-                }
-                _ => {}
-            }
-        }
-    }
 }

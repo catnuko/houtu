@@ -12,12 +12,14 @@ use bevy::{
         texture::BevyDefault,
         Extract, RenderApp,
     },
-    utils::HashMap,
+    utils::HashMap, asset::load_internal_asset,
 };
 use pollster::FutureExt;
 use std::mem;
 
 use super::{imagery_layer::ImageryLayerId, imagery_storage::ImageryKey, tile_key::TileKey};
+pub const REPROJECT_TEXTURE_SHADER_HANDLE: Handle<Shader> =
+    Handle::weak_from_u128(9404852314583658);
 
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
@@ -26,6 +28,12 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(queue);
         app.add_systems(Update, receive_images);
         app.add_event::<FinishReprojectTexture>();
+        load_internal_asset!(
+            app,
+            REPROJECT_TEXTURE_SHADER_HANDLE,
+            "reproject_webmecator.wgsl",
+            Shader::from_wgsl
+        );
     }
     fn finish(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
@@ -205,16 +213,13 @@ impl FromWorld for ReprojectTexturePipeline {
                         },
                     ],
                 });
-        let shader = world
-            .resource::<AssetServer>()
-            .load("reproject_webmecator.wgsl");
         let pipeline_cache = world.resource::<PipelineCache>();
         let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: None,
             layout: vec![texture_bind_group_layout.clone()],
             push_constant_ranges: Vec::new(),
             vertex: VertexState {
-                shader: shader.clone(),
+                shader: REPROJECT_TEXTURE_SHADER_HANDLE,
                 shader_defs: vec![],
                 entry_point: Cow::from("vertex_main"),
                 buffers: vec![
@@ -239,7 +244,7 @@ impl FromWorld for ReprojectTexturePipeline {
                 ],
             },
             fragment: Some(FragmentState {
-                shader: shader.clone(),
+                shader: REPROJECT_TEXTURE_SHADER_HANDLE,
                 shader_defs: vec![],
                 entry_point: Cow::from("fragment_main"),
                 targets: vec![Some(ColorTargetState {

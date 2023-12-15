@@ -159,13 +159,13 @@ impl HeightmapTerrainData {
 
         let structure = self._structure;
 
-        let levelZeroMaxError = get_estimated_level_zero_geometric_error_for_a_heightmap(
+        let level_zero_max_error = get_estimated_level_zero_geometric_error_for_a_heightmap(
             &ellipsoid,
             self._width,
             tiling_scheme.get_number_of_x_tiles_at_level(0),
         );
-        let thisLevelMaxError = levelZeroMaxError / (1 << level) as f64;
-        let skirt_height = (thisLevelMaxError * 4.0).min(1000.0);
+        let this_level_max_error = level_zero_max_error / (1 << level) as f64;
+        let skirt_height = (this_level_max_error * 4.0).min(1000.0);
         self._skirt_height = Some(skirt_height);
         let result = create_vertice(CreateVerticeOptions {
             heightmap: &mut self._buffer,
@@ -302,45 +302,45 @@ fn interpolateMeshHeight(
     latitude: f64,
 ) -> f64 {
     // returns a height encoded according to the structure's height_scale and height_offset.
-    let fromWest = ((longitude - source_rectangle.west) * (width - 1) as f64)
+    let from_west = ((longitude - source_rectangle.west) * (width - 1) as f64)
         / (source_rectangle.east - source_rectangle.west);
-    let fromSouth = ((latitude - source_rectangle.south) * (height - 1) as f64)
+    let from_south = ((latitude - source_rectangle.south) * (height - 1) as f64)
         / (source_rectangle.north - source_rectangle.south);
 
-    let mut westInteger = fromWest.round() as u32;
-    let mut eastInteger = westInteger + 1;
-    if eastInteger >= width {
-        eastInteger = width - 1;
-        westInteger = width - 2;
+    let mut west_integer = from_west.round() as u32;
+    let mut east_integer = west_integer + 1;
+    if east_integer >= width {
+        east_integer = width - 1;
+        west_integer = width - 2;
     }
 
-    let mut southInteger = fromSouth.round() as u32;
-    let mut northInteger = southInteger + 1;
-    if northInteger >= height {
-        northInteger = height - 1;
-        southInteger = height - 2;
+    let mut south_integer = from_south.round() as u32;
+    let mut north_integer = south_integer + 1;
+    if north_integer >= height {
+        north_integer = height - 1;
+        south_integer = height - 2;
     }
 
-    let dx = fromWest - westInteger as f64;
-    let dy = fromSouth - southInteger as f64;
+    let dx = from_west - west_integer as f64;
+    let dy = from_south - south_integer as f64;
 
-    southInteger = height - 1 - southInteger;
-    northInteger = height - 1 - northInteger;
+    south_integer = height - 1 - south_integer;
+    north_integer = height - 1 - north_integer;
 
     let south_west_height = (encoding
-        .decode_height(buffer, (southInteger * width + westInteger) as usize)
+        .decode_height(buffer, (south_integer * width + west_integer) as usize)
         - height_offset)
         / height_scale;
     let south_east_height = (encoding
-        .decode_height(buffer, (southInteger * width + eastInteger) as usize)
+        .decode_height(buffer, (south_integer * width + east_integer) as usize)
         - height_offset)
         / height_scale;
     let north_west_height = (encoding
-        .decode_height(buffer, (northInteger * width + westInteger) as usize)
+        .decode_height(buffer, (north_integer * width + west_integer) as usize)
         - height_offset)
         / height_scale;
     let north_east_height = (encoding
-        .decode_height(buffer, (northInteger * width + eastInteger) as usize)
+        .decode_height(buffer, (north_integer * width + east_integer) as usize)
         - height_offset)
         / height_scale;
 
@@ -355,25 +355,25 @@ fn interpolateMeshHeight(
 }
 
 fn triangle_interpolate_height(
-    dX: f64,
-    dY: f64,
+    d_x: f64,
+    d_y: f64,
     south_west_height: f64,
     south_east_height: f64,
     north_west_height: f64,
     north_east_height: f64,
 ) -> f64 {
     // The HeightmapTessellator bisects the quad from southwest to northeast.
-    if dY < dX {
+    if d_y < d_x {
         // Lower right triangle
         return south_west_height
-            + dX * (south_east_height - south_west_height)
-            + dY * (north_east_height - south_east_height);
+            + d_x * (south_east_height - south_west_height)
+            + d_y * (north_east_height - south_east_height);
     }
 
     // Upper left triangle
     return south_west_height
-        + dX * (north_east_height - north_west_height)
-        + dY * (north_west_height - south_west_height);
+        + d_x * (north_east_height - north_west_height)
+        + d_y * (north_west_height - south_west_height);
 }
 fn set_height(
     heights: &mut Vec<f32>,

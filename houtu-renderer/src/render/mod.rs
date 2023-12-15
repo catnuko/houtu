@@ -1,53 +1,33 @@
-use bevy::{
-    core::FrameCount,
-    math::{DMat4, DVec2, DVec3, Vec4Swizzles},
-    prelude::*,
-    reflect::List,
-    render::renderer::RenderDevice,
-    window::PrimaryWindow,
-};
-use houtu_jobs::JobSpawner;
-use houtu_scene::{
-    GeographicTilingScheme, Matrix4, TerrainMesh, TerrainQuantization, WebMercatorTilingScheme,
-};
-use rand::Rng;
-
+use self::terrain_bundle::TerrainBundle;
 use crate::xyz_imagery_provider::XYZImageryProvider;
-
-use self::{
-    terrain_data::TerrainBundle, terrian_material::TerrainMeshMaterial,
-    wrap_terrain_mesh::WrapTerrainMesh,
-};
+use bevy::asset::{embedded_asset, load_internal_asset};
+use bevy::prelude::*;
 
 use super::quadtree::{
-    globe_surface_tile::process_terrain_state_machine_system,
-    imagery_layer::ImageryLayer,
-    imagery_layer_storage::ImageryLayerStorage,
-    imagery_storage::ImageryStorage,
-    indices_and_edges_cache::IndicesAndEdgesCacheArc,
-    quadtree_primitive::QuadtreePrimitive,
-    quadtree_tile::QuadtreeTileLoadState,
-    reproject_texture::ReprojectTextureTaskQueue,
-    tile_key::TileKey,
-    traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
+    globe_surface_tile::process_terrain_state_machine_system, imagery_layer::ImageryLayer,
+    imagery_layer_storage::ImageryLayerStorage, imagery_storage::ImageryStorage,
+    quadtree_primitive::QuadtreePrimitive, quadtree_tile::QuadtreeTileLoadState, tile_key::TileKey,
 };
-mod node_atlas;
-mod node_atlas_render;
-mod terrain_data;
-mod terrain_data_render;
-mod terrain_render_pipeline;
+mod terrain_bundle;
+mod terrain_pipeline;
+mod terrain_plugin;
 mod terrian_material;
 mod wrap_terrain_mesh;
-use super::{
-    camera::GlobeCamera,
-    wmts_imagery_provider::{WMTSImageryProvider, WMTSImageryProviderOptions},
-};
+use super::camera::GlobeCamera;
+pub const TERRAIN_MATERIAN_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(9275037169799534);
 /// 负责渲染quadtree调度后生成的瓦片
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(terrain_render_pipeline::TerrainRenderPlugin);
+        app.add_plugins(terrain_plugin::Plugin);
         app.add_systems(Startup, setup);
+        // embedded_asset!(app, "terrain_material.wgsl");
+        load_internal_asset!(
+            app,
+            TERRAIN_MATERIAN_SHADER_HANDLE,
+            "terrain_material.wgsl",
+            Shader::from_wgsl
+        );
         app.add_systems(
             Update,
             real_render_system.after(process_terrain_state_machine_system),

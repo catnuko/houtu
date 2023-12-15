@@ -48,7 +48,7 @@ impl Plugin for RendererPlugin {
             }),
         ))
         .add_plugins((
-            GlobePlugin,
+            // GlobePlugin,
             helpers::Plugin,
             houtu_jobs::Plugin,
             camera::CameraPlugin,

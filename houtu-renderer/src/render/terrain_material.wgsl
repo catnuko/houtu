@@ -1,6 +1,6 @@
-#import bevy_pbr::mesh_view_bindings
-#import bevy_pbr::mesh_bindings
-#import bevy_pbr::mesh_functions
+// #import bevy_pbr::mesh_view_bindings
+// #import bevy_pbr::mesh_bindings
+// #import bevy_pbr::mesh_functions
 
 #ifdef QUANTIZATION_BITS12
 struct Vertex {
@@ -87,11 +87,11 @@ struct StateUniform {
  
 }
 
-@group(1) @binding(0) var texture_array: texture_2d_array<f32>;
-@group(1) @binding(1) var my_sampler: sampler;
-@group(1) @binding(2) var<storage,read> terrain_material_uniforms: array<TerrainMaterialUniform>;
-@group(1) @binding(3) var<uniform> state_uniform: StateUniform;
-@group(1) @binding(4) var<uniform> vertex_uniform: VertexUniform;
+@group(0) @binding(0) var texture_array: texture_2d_array<f32>;
+@group(0) @binding(1) var my_sampler: sampler;
+@group(0) @binding(2) var<storage,read> terrain_material_uniforms: array<TerrainMaterialUniform>;
+@group(0) @binding(3) var<uniform> state_uniform: StateUniform;
+@group(0) @binding(4) var<uniform> vertex_uniform: VertexUniform;
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {

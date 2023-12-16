@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "houtu",
-    "houtu-app",
     "houtu-renderer",
     "houtu-scene",
     "houtu-jobs",

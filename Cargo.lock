@@ -2438,15 +2438,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "houtu-app"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "houtu-renderer",
- "houtu-scene",
-]
-
-[[package]]
 name = "houtu-jobs"
 version = "0.1.0"
 dependencies = [

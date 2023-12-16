@@ -104,12 +104,6 @@ impl bevy::prelude::Plugin for Plugin {
         }
     }
 }
-fn test_prepare() {
-    println!("in prepare")
-}
-fn test_queue() {
-    println!("in queue")
-}
 fn finish_loading_attachment_from_disk(
     mut images: ResMut<Assets<Image>>,
     mut terrain_query: Query<&mut TerrainConfig>,
@@ -138,7 +132,6 @@ fn extract_terrain_config(
 ) {
     for (entity, terrain_config, handle) in query.iter() {
         let terrain_config_uniform: TerrainConfigUniform = terrain_config.into();
-        //TODO 提取时除了复制，尽量少搞其它逻辑
         let texture = terrain_config.create(&device);
         let gpu_node_atlas = GpuNodeAtlas {
             attachments: terrain_config.attachments.clone(),
@@ -152,33 +145,22 @@ fn extract_terrain_config(
 }
 
 /// Queses all terrain entities for rendering via the terrain pipeline.
-pub(crate) fn queue_terrain(
+fn queue_terrain(
     draw_functions: Res<DrawFunctions<Opaque3d>>,
-    terrain_pipeline: Res<TerrainPipeline>,
-    pipeline_cache: Res<PipelineCache>,
-    msaa: Res<Msaa>,
-    mut pipelines: ResMut<SpecializedMeshPipelines<TerrainPipeline>>,
     mut view_query: Query<(&ExtractedView, &mut RenderPhase<Opaque3d>)>,
-    render_meshes: Res<RenderAssets<Mesh>>,
-    // terrain_query: Query<(Entity, &Handle<Mesh>, &TerrainBindGroup)>,
-    terrain_query: Query<(Entity, &Handle<Mesh>, &TerrainBindGroup)>,
+    terrain_query: Query<(Entity, &TerrainBindGroup), With<Handle<Mesh>>>,
 ) {
     let draw_function = draw_functions.read().get_id::<DrawTerrain>().unwrap();
-    let msaa_key = MeshPipelineKey::from_msaa_samples(msaa.samples());
-
     for (view, mut opaque_phase) in view_query.iter_mut() {
-        let view_key = msaa_key | MeshPipelineKey::from_hdr(view.hdr);
-        for (entity, mesh_handle, terrain_bind_group) in terrain_query.iter() {
-            if let Some(mesh) = render_meshes.get(mesh_handle) {
-                opaque_phase.add(Opaque3d {
-                    entity,
-                    pipeline: terrain_bind_group.pipeline_id,
-                    draw_function,
-                    distance: f32::MIN, // draw terrain first
-                    batch_range: 0..1,
-                    dynamic_offset: None,
-                });
-            }
+        for (entity, terrain_bind_group) in terrain_query.iter() {
+            opaque_phase.add(Opaque3d {
+                entity,
+                pipeline: terrain_bind_group.pipeline_id,
+                draw_function,
+                distance: f32::MIN, // draw terrain first
+                batch_range: 0..1,
+                dynamic_offset: None,
+            });
         }
     }
     println!("terrain_query,{}", terrain_query.iter().len());

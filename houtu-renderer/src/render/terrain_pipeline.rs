@@ -15,14 +15,14 @@ use bevy::{
     prelude::*,
     reflect::TypeUuid,
     render::{
-        mesh::{MeshVertexBufferLayout, GpuBufferInfo},
+        mesh::{GpuBufferInfo, MeshVertexBufferLayout},
         render_asset::RenderAssets,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, RenderCommand, RenderCommandResult,
             RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::*,
-        renderer::RenderDevice,
+        renderer::RenderDevice, texture::BevyDefault,
     },
 };
 
@@ -173,14 +173,18 @@ impl SpecializedMeshPipeline for TerrainPipeline {
                 shader: TERRAIN_MATERIAN_SHADER_HANDLE,
                 entry_point: "fragment".into(),
                 shader_defs: fragment_shader_defs,
-                targets: vec![],
+                targets: vec![Some(ColorTargetState {
+                    format:TextureFormat::bevy_default(),
+                    blend: Some(BlendState::ALPHA_BLENDING),
+                    write_mask: ColorWrites::ALL,
+                })],
             }),
             layout: vec![self.layout.clone()],
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
-                cull_mode: None,
+                cull_mode: Some(Face::Back),
                 unclipped_depth: false,
                 polygon_mode: PolygonMode::Fill,
                 conservative: false,
@@ -202,7 +206,7 @@ impl SpecializedMeshPipeline for TerrainPipeline {
                 },
             }),
             multisample: MultisampleState {
-                count: 1,
+                count: 4,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
@@ -232,19 +236,19 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTerrainBindGroup<I> {
 }
 /// The draw function of the terrain. It sets the pipeline and the bind groups and then issues the
 /// draw call.0
-pub(crate) type DrawTerrain = (
+pub(super) type DrawTerrain = (
     SetItemPipeline,
     // SetMeshViewBindGroup<0>,
     SetTerrainBindGroup<0>,
     // SetMeshBindGroup<1>,
-    DrawTerrainCommand
+    DrawTerrainCommand,
 );
 
 pub struct DrawTerrainCommand;
 
 impl<P: PhaseItem> RenderCommand<P> for DrawTerrainCommand {
     type ViewWorldQuery = ();
-    type ItemWorldQuery = (Read<Handle<Mesh>>);
+    type ItemWorldQuery = (Read<Handle<Mesh>>, Read<TerrainBindGroup>);
     type Param = SRes<RenderAssets<Mesh>>;
     fn render<'w>(
         item: &P,
@@ -253,7 +257,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawTerrainCommand {
         meshes: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        if let Some(gpu_mesh) = meshes.into_inner().get(mesh_handle) {
+        if let Some(gpu_mesh) = meshes.into_inner().get(mesh_handle.0) {
             pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
             match &gpu_mesh.buffer_info {
                 GpuBufferInfo::Indexed {

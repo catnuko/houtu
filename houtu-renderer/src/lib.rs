@@ -1,4 +1,5 @@
 use bevy::{
+    asset::AssetMetaCheck,
     pbr::{wireframe::WireframePlugin, PbrPlugin},
     prelude::*,
 };
@@ -36,25 +37,26 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            WebAssetPlugin::default(),
-            DefaultPlugins.build().set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "后土地球!".into(),
-                    canvas: Some("#rgis".into()), // selector
+        app.insert_resource(AssetMetaCheck::Never)
+            .add_plugins((
+                WebAssetPlugin::default(),
+                DefaultPlugins.build().set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "后土地球!".into(),
+                        canvas: Some("#rgis".into()), // selector
+                        ..default()
+                    }),
                     ..default()
                 }),
-                ..default()
-            }),
-        ))
-        .add_plugins((
-            // GlobePlugin,
-            helpers::Plugin,
-            houtu_jobs::Plugin,
-            camera::CameraPlugin,
-            quadtree::Plugin,
-            render::Plugin,
-        )); //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
+            ))
+            .add_plugins((
+                // GlobePlugin,
+                helpers::Plugin,
+                houtu_jobs::Plugin,
+                camera::CameraPlugin,
+                quadtree::Plugin,
+                render::Plugin,
+            )); //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
         #[cfg(not(target_arch = "wasm32"))]
         app.add_plugins(WorldInspectorPlugin::new());
         // .add_plugin(plugins::wmts::WMTSPlugin);

@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{asset::AssetPath, prelude::*};
 
 use crate::web_asset_source::*;
 use bevy::asset::io::AssetSource;
@@ -27,11 +27,15 @@ impl Plugin for WebAssetPlugin {
     fn build(&self, app: &mut App) {
         app.register_asset_source(
             "http",
-            AssetSource::build().with_reader(|| Box::new(WebAssetReader::Http)),
+            AssetSource::build()
+                .with_processed_reader(|| Box::new(WebAssetReader::Http))
+                .with_reader(|| Box::new(WebAssetReader::Http)),
         );
         app.register_asset_source(
             "https",
-            AssetSource::build().with_reader(|| Box::new(WebAssetReader::Https)),
+            AssetSource::build()
+                .with_processed_reader(|| Box::new(WebAssetReader::Https))
+                .with_reader(|| Box::new(WebAssetReader::Https)),
         );
     }
 }

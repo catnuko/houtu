@@ -60,7 +60,15 @@ async fn get<'a>(path: PathBuf) -> Result<Box<Reader<'a>>, AssetReaderError> {
     }
 
     let window = web_sys::window().unwrap();
-    let resp_value = JsFuture::from(window.fetch_with_str(path.to_str().unwrap()))
+    let mut new_path = path.clone();
+    let test_path = new_path.with_extension("");
+    if let Some(extension) = test_path.extension() {
+        if extension == "noextension" {
+            new_path = new_path.with_extension("");
+            new_path = new_path.with_extension("");
+        }
+    }
+    let resp_value = JsFuture::from(window.fetch_with_str(new_path.to_str().unwrap()))
         .await
         .map_err(js_value_to_err("fetch path"))?;
     let resp = resp_value
@@ -104,8 +112,15 @@ async fn get<'a>(path: PathBuf) -> Result<Box<Reader<'a>>, AssetReaderError> {
             self.project().0.poll(cx)
         }
     }
-
-    let str_path = path.to_str().ok_or_else(|| {
+    let mut new_path = path.clone();
+    let test_path = new_path.with_extension("");
+    if let Some(extension) = test_path.extension() {
+        if extension == "noextension" {
+            new_path = new_path.with_extension("");
+            new_path = new_path.with_extension("");
+        }
+    }
+    let str_path = new_path.to_str().ok_or_else(|| {
         AssetReaderError::Io(io::Error::new(
             io::ErrorKind::Other,
             format!("non-utf8 path: {}", path.display()),

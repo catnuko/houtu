@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.12", default-features = false, features = [
+bevy = { version = "0.12.1", default-features = false, features = [
     "bevy_winit",
     "bevy_core_pipeline",
     "bevy_render",
@@ -35,7 +35,7 @@ thiserror = "1.0"
 bytemuck = "*"
 new_string_template = "1.4"
 # debug
-# bevy_prototype_debug_lines = { version = "0.12", features = ["3d"] }
+# bevy_prototype_debug_lines = { version = "0.12.1", features = ["3d"] }
 # 重投影
 futures-intrusive = "0.4.0"
 wgpu = "0.17.1"

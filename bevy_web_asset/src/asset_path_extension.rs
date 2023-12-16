@@ -1,6 +1,6 @@
 use bevy::{asset::AssetPath, prelude::*};
 /// In order not to include the extension in the path, but to make use of the extension's decoder
-/// 
+///
 /// with some extension
 /// ```
 /// let path = AssetPathExtension{
@@ -28,6 +28,14 @@ pub struct AssetPathExtension {
     pub path: String,
     /// enable No extension
     pub extension: Option<String>,
+}
+impl AssetPathExtension {
+    pub fn from_png(path: String) -> Self {
+        return AssetPathExtension {
+            path: path,
+            extension: Some("png".to_string()),
+        };
+    }
 }
 impl Into<String> for AssetPathExtension {
     fn into(self) -> String {

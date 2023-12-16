@@ -20,7 +20,7 @@ use self::{
 
 use super::{
     camera::GlobeCamera,
-    wmts_imagery_provider::{WMTSImageryProvider, WMTSImageryProviderOptions},
+    // wmts_imagery_provider::{WMTSImageryProvider},
 };
 
 pub mod create_terrain_mesh_job;

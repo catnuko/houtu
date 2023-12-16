@@ -4,7 +4,7 @@ use bevy::prelude::warn;
 use houtu_scene::{GeographicTilingScheme, Rectangle, TilingScheme, WebMercatorTilingScheme};
 use new_string_template::template::Template;
 
-use crate::quadtree::imagery_provider::ImageryProvider;
+use crate::{quadtree::imagery_provider::ImageryProvider, utils::get_subdomain};
 
 pub struct XYZImageryProvider {
     pub tiling_scheme: Box<dyn TilingScheme>,
@@ -32,13 +32,6 @@ impl Default for XYZImageryProvider {
             tile_width: 256,
             tile_height: 256,
         }
-    }
-}
-impl XYZImageryProvider {
-    pub fn get_subdomain(&self, key: &crate::quadtree::tile_key::TileKey) -> Option<&'static str> {
-        self.subdomains
-            .as_ref()
-            .and_then(|subs| Some(subs[(key.y + key.x + key.level) as usize % subs.len()]))
     }
 }
 impl ImageryProvider for XYZImageryProvider {
@@ -84,9 +77,11 @@ impl ImageryProvider for XYZImageryProvider {
     ) -> Option<bevy::prelude::Handle<bevy::prelude::Image>> {
         // bevy::log::info!("xyz imagery provider is requeting image for tile {:?}", key);
         let template = Template::new(self.url);
-        let subdomain = self.get_subdomain(key);
         let mut args = HashMap::new();
-        subdomain.and_then(|sub| args.insert("s", sub));
+        if let Some(subdomains) = self.subdomains.as_ref() {
+            let subdomain = get_subdomain(&subdomains, key);
+            args.insert("s", subdomain);
+        }
         let level = key.level.to_string();
         let x = key.x.to_string();
         let y = key.y.to_string();

@@ -22,6 +22,7 @@ mod quantized_mesh_terrain_data;
 mod render;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
+mod utils;
 // use plugins::quadtree;
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {

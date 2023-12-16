@@ -2471,6 +2471,7 @@ dependencies = [
  "reqwest",
  "thiserror",
  "tokio",
+ "url",
  "wgpu",
 ]
 

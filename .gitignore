@@ -2,3 +2,4 @@ target/
 **/*.rs.bk
 dist
 pkg
+trace*.json

@@ -13,7 +13,8 @@ bevy = { version = "0.12.1", default-features = false, features = [
     "bevy_render",
     "bevy_pbr",
     "png",
-    "tonemapping_luts"
+    "tonemapping_luts",
+    "trace"
 ] }
 bevy_reflect_derive = "0.12"
 bevy_egui = "0.23"

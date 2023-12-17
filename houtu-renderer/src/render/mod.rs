@@ -52,14 +52,13 @@ fn setup(
     // };
     let tiling_scheme = GeographicTilingScheme::default();
     let rectangle = tiling_scheme.get_rectangle().clone();
-    let params = vec![("tk", "b931d6faa76fc3fbe622bddd6522e57b")];
     let wmts_provider = WMTSImageryProvider {
         name: "test",
-        url: "https://{s}.tianditu.gov.cn/img_w/wmts",
-        layer: "img_w",
+        url: "https://{s}.tianditu.gov.cn/img_c/wmts",
+        layer: "img_c",
         style: "default",
         format: "tiles",
-        tile_matrix_set_id: "c",
+        tile_matrix_set_id: "w",
         subdomains: Some(vec!["t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7"]),
         tiling_scheme: Box::new(tiling_scheme),
         minimum_level: 0,
@@ -68,7 +67,7 @@ fn setup(
         tile_width: 256,
         tile_height: 256,
         tile_matrix_labels: None,
-        params: Some(params),
+        params: Some(vec![("tk", "b931d6faa76fc3fbe622bddd6522e57b")]),
     };
     let mut imagery_layer = ImageryLayer::new(Box::new(wmts_provider), &mut imagery_storage);
     imagery_layer.is_base_layer = true;

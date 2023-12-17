@@ -101,7 +101,6 @@ impl QuadtreePrimitive {
         self.tile_replacement_queue.clear();
         self.clear_tile_load_queue();
     }
-
     pub fn begin_frame(&mut self) {
         if self.tiles_invalidated {
             self.invalidate_all_tiles();

@@ -8,7 +8,7 @@ use bevy::{
         render_asset::RenderAssets,
         render_graph::RenderGraph,
         render_resource::*,
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         texture::GpuImage,
         view::NoFrustumCulling,
         RenderApp, RenderSet,
@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::{wrap_terrain_mesh::WrapTerrainMesh, TileRendered, terrain_plugin::TerrainAttachment};
+use super::{terrain_plugin::TerrainAttachment, wrap_terrain_mesh::WrapTerrainMesh, TileRendered};
 
 #[derive(Component, Clone)]
 pub struct TerrainConfig {
@@ -58,29 +58,41 @@ impl TerrainConfig {
             z: self.attachments.len() as u32,
         };
     }
-    pub fn create(&self, device: &RenderDevice) -> Texture {
+    pub fn create(&self, device: &RenderDevice, queue: &RenderQueue) -> Texture {
         let first_attachment = self.attachments.get(0).expect("expect first attachment");
-        let texture = device.create_texture(&TextureDescriptor {
-            label: Some(
-                &(format!(
-                    "terrain_atlas_attachment_{}_{}_{}",
-                    self.tile_key.x, self.tile_key.y, self.tile_key.level
-                )),
-            ),
-            size: Extent3d {
-                width: first_attachment.width,
-                height: first_attachment.height,
-                depth_or_array_layers: self.attachments.len() as u32,
+        let blue = [0, 0, 255, 255];
+        let data = vec![
+            blue;
+            (first_attachment.width as usize)
+                * (first_attachment.height as usize)
+                * self.attachments.len()
+        ];
+
+        let texture = device.create_texture_with_data(
+            &queue,
+            &TextureDescriptor {
+                label: Some(
+                    &(format!(
+                        "terrain_atlas_attachment_{}_{}_{}",
+                        self.tile_key.x, self.tile_key.y, self.tile_key.level
+                    )),
+                ),
+                size: Extent3d {
+                    width: first_attachment.width,
+                    height: first_attachment.height,
+                    depth_or_array_layers: self.attachments.len() as u32,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8UnormSrgb,
+                usage: TextureUsages::COPY_DST
+                    | TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
             },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsages::COPY_DST
-                | TextureUsages::TEXTURE_BINDING
-                | TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        });
+            bytemuck::cast_slice(&data),
+        );
         return texture;
     }
 }

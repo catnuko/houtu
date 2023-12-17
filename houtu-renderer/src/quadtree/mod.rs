@@ -18,10 +18,7 @@ use self::{
     traversal_details::{AllTraversalQuadDetails, RootTraversalDetails},
 };
 
-use super::{
-    camera::GlobeCamera,
-    // wmts_imagery_provider::{WMTSImageryProvider},
-};
+use super::camera::GlobeCamera;
 
 pub mod create_terrain_mesh_job;
 pub mod credit;
@@ -59,13 +56,19 @@ impl bevy::prelude::Plugin for Plugin {
         app.insert_resource(AllTraversalQuadDetails::new());
         app.insert_resource(IndicesAndEdgesCacheArc::new());
         app.insert_resource(ImageryStorage::new());
-        app.add_systems(Update, render_system);
         app.add_systems(
             Update,
-            process_terrain_state_machine_system.after(render_system),
+            (
+                clear_quadtree.before(render_system),
+                render_system,
+                process_terrain_state_machine_system.after(render_system),
+                imagery_layer::finish_reproject_texture_system,
+            ),
         );
-        app.add_systems(Update, imagery_layer::finish_reproject_texture_system);
     }
+}
+fn clear_quadtree(mut primitive: ResMut<QuadtreePrimitive>) {
+    primitive.begin_frame();
 }
 
 fn render_system(
@@ -94,7 +97,6 @@ fn render_system(
     if !globe_camera.inited {
         return;
     }
-    primitive.begin_frame();
     primitive.render(
         &mut globe_camera,
         &frame_count,

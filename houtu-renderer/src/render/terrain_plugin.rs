@@ -128,11 +128,12 @@ fn finish_loading_attachment_from_disk(
 fn extract_terrain_config(
     mut command: Commands,
     device: Res<RenderDevice>,
+    queue: Res<RenderQueue>,
     query: Extract<Query<(Entity, &TerrainConfig, &Handle<Mesh>)>>,
 ) {
     for (entity, terrain_config, handle) in query.iter() {
         let terrain_config_uniform: TerrainConfigUniform = terrain_config.into();
-        let texture = terrain_config.create(&device);
+        let texture = terrain_config.create(&device, &queue);
         let gpu_node_atlas = GpuNodeAtlas {
             attachments: terrain_config.attachments.clone(),
             array_texture: texture,
@@ -148,7 +149,7 @@ fn extract_terrain_config(
 fn queue_terrain(
     draw_functions: Res<DrawFunctions<Opaque3d>>,
     mut view_query: Query<(&ExtractedView, &mut RenderPhase<Opaque3d>)>,
-    terrain_query: Query<(Entity, &TerrainBindGroup), With<Handle<Mesh>>>,
+    terrain_query: Query<(Entity, &TerrainBindGroup)>,
 ) {
     let draw_function = draw_functions.read().get_id::<DrawTerrain>().unwrap();
     for (view, mut opaque_phase) in view_query.iter_mut() {

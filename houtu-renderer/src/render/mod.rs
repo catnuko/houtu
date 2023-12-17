@@ -42,34 +42,34 @@ fn setup(
     mut imagery_layer_storage: ResMut<ImageryLayerStorage>,
     mut imagery_storage: ResMut<ImageryStorage>,
 ) {
-    // let xyz = XYZImageryProvider {
-    //     // url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
-    //     // url: "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    //     // subdomains: Some(vec!["a", "b", "c"]),
-    //     url: "icon.png",
-    //     // url: "https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}.png?key=Modv7lN1eXX1gmlqW0wY",
-    //     ..Default::default()
-    // };
-    let tiling_scheme = GeographicTilingScheme::default();
-    let rectangle = tiling_scheme.get_rectangle().clone();
-    let wmts_provider = WMTSImageryProvider {
-        name: "test",
-        url: "https://{s}.tianditu.gov.cn/img_c/wmts",
-        layer: "img_c",
-        style: "default",
-        format: "tiles",
-        tile_matrix_set_id: "w",
-        subdomains: Some(vec!["t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7"]),
-        tiling_scheme: Box::new(tiling_scheme),
-        minimum_level: 0,
-        maximum_level: 17,
-        rectangle: rectangle,
-        tile_width: 256,
-        tile_height: 256,
-        tile_matrix_labels: None,
-        params: Some(vec![("tk", "b931d6faa76fc3fbe622bddd6522e57b")]),
+    let provider = XYZImageryProvider {
+        // url: "https://maps.omniscale.net/v2/houtuearth-4781e785/style.default/{z}/{x}/{y}.png",
+        // url: "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        // subdomains: Some(vec!["a", "b", "c"]),
+        url: "icon.png",
+        // url: "https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}.png?key=Modv7lN1eXX1gmlqW0wY",
+        ..Default::default()
     };
-    let mut imagery_layer = ImageryLayer::new(Box::new(wmts_provider), &mut imagery_storage);
+    // let tiling_scheme = GeographicTilingScheme::default();
+    // let rectangle = tiling_scheme.get_rectangle().clone();
+    // let provider = WMTSImageryProvider {
+    //     name: "test",
+    //     url: "https://{s}.tianditu.gov.cn/img_c/wmts",
+    //     layer: "img_c",
+    //     style: "default",
+    //     format: "tiles",
+    //     tile_matrix_set_id: "w",
+    //     subdomains: Some(vec!["t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7"]),
+    //     tiling_scheme: Box::new(tiling_scheme),
+    //     minimum_level: 0,
+    //     maximum_level: 17,
+    //     rectangle: rectangle,
+    //     tile_width: 256,
+    //     tile_height: 256,
+    //     tile_matrix_labels: None,
+    //     params: Some(vec![("tk", "b931d6faa76fc3fbe622bddd6522e57b")]),
+    // };
+    let mut imagery_layer = ImageryLayer::new(Box::new(provider), &mut imagery_storage);
     imagery_layer.is_base_layer = true;
     imagery_layer_storage.add(imagery_layer)
 }

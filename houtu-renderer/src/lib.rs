@@ -18,11 +18,12 @@ mod bing_maps_imagery_provider;
 mod helpers;
 mod image;
 mod quadtree;
+mod quadtree_ecs;
 mod quantized_mesh_terrain_data;
 mod render;
+mod utils;
 mod wmts_imagery_provider;
 mod xyz_imagery_provider;
-mod utils;
 // use plugins::quadtree;
 #[derive(Clone, Copy, Component, PartialEq, Eq)]
 pub enum RenderEntityType {
@@ -51,7 +52,6 @@ impl Plugin for RendererPlugin {
                 }),
             ))
             .add_plugins((
-                // GlobePlugin,
                 helpers::Plugin,
                 houtu_jobs::Plugin,
                 camera::CameraPlugin,

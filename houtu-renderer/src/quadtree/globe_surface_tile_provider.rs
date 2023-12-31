@@ -400,7 +400,6 @@ fn compute_distance_to_tile(
     tile_bounding_region.minimum_height = min;
     tile_bounding_region.maximum_height = min;
 
-
     let distance = tile_bounding_region.distance_to_camera_region(
         &camera.get_position_wc(),
         &camera.get_position_cartographic(),
@@ -442,12 +441,10 @@ pub fn update_tile_bounding_region(
         let cloned = tile.data.get_cloned_terrain_data();
         let terrain_data = cloned.lock().unwrap();
         let mesh = terrain_data._mesh.as_ref().unwrap();
-        if let (Some(min), Some(max)) = (mesh.minimum_height, mesh.maximum_height) {
-            let tile_bounding_region = tile.data.tile_bounding_region.as_mut().unwrap();
-            tile_bounding_region.minimum_height = min;
-            tile_bounding_region.maximum_height = max;
-            has_bounding_volumes_from_mesh = true
-        }
+        let tile_bounding_region = tile.data.tile_bounding_region.as_mut().unwrap();
+        tile_bounding_region.minimum_height = mesh.minimum_height;
+        tile_bounding_region.maximum_height = mesh.maximum_height;
+        has_bounding_volumes_from_mesh = true
     } else {
         let tile_bounding_region = tile.data.tile_bounding_region.as_mut().unwrap();
         tile_bounding_region.minimum_height = -1.;
@@ -466,7 +463,7 @@ pub fn update_tile_bounding_region(
 
                 map.insert(
                     tile_key,
-                    (mesh.minimum_height.unwrap(), mesh.maximum_height.unwrap()),
+                    (mesh.minimum_height, mesh.maximum_height),
                 );
             }
             ancestor_tile = in_ancestor_tile.parent.and_then(|x| {

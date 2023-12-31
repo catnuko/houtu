@@ -195,7 +195,13 @@ impl GlobeCamera {
         north: 1.5707963267948966,
     };
     pub const DEFAULT_VIEW_FACTOR: f64 = 0.5;
-
+    pub fn get_mvp(&mut self) -> DMat4 {
+        let view_matrix = self.get_view_matrix();
+        let projection_matrix = self.frustum.get_projection_matrix().clone();
+        let mut mvp = view_matrix.clone();
+        mvp = projection_matrix * mvp;
+        return mvp;
+    }
     fn update_self(&mut self) {
         self.update_view_matrix();
         self.position = self

@@ -1,11 +1,8 @@
 use crate::{Cartographic, Ellipsoid, Rectangle};
-use bevy::{
-    prelude::{Component, UVec2},
-};
+use bevy::prelude::{Component, UVec2};
 
 use crate::{
-    geographic_projection::GeographicProjection,
-    projection::{Projection},
+    geographic_projection::GeographicProjection, projection::Projection,
     tiling_scheme::TilingScheme,
 };
 #[derive(Debug, Clone, PartialEq, Component)]
@@ -44,13 +41,22 @@ impl Default for GeographicTilingScheme {
     }
 }
 impl GeographicTilingScheme {
-    fn new(options: GeographicTilingSchemeOptions) -> Self {
+    pub fn new(options: GeographicTilingSchemeOptions) -> Self {
         return Self {
             ellipsoid: options.ellipsoid,
             rectangle: options.rectangle,
             projection: options.projection,
             number_of_level_zero_tiles_x: options.number_of_level_zero_tiles_x,
             number_of_level_zero_tiles_y: options.number_of_level_zero_tiles_y,
+        };
+    }
+    pub fn from_ellipsoid(ellipsoid: &Ellipsoid) -> Self {
+        return Self {
+            ellipsoid: ellipsoid.clone(),
+            rectangle: Rectangle::MAX_VALUE,
+            projection: GeographicProjection::from_ellipsoid(ellipsoid),
+            number_of_level_zero_tiles_x: 2,
+            number_of_level_zero_tiles_y: 1,
         };
     }
 }
@@ -282,19 +288,19 @@ mod tests {
     fn tile_011() {
         let tiling_scheme = GeographicTilingScheme::default();
         let rectangle = tiling_scheme.tile_x_y_to_rectange(0, 1, 1);
-        assert!(equals_epsilon(rectangle.east, -1.5707963267948966, Some(EPSILON15), None));
+        assert!(equals_epsilon(
+            rectangle.east,
+            -1.5707963267948966,
+            Some(EPSILON15),
+            None
+        ));
         assert!(equals_epsilon(
             rectangle.west,
             -3.141592653589793,
             Some(EPSILON15),
             None
         ));
-        assert!(equals_epsilon(
-            rectangle.north,
-            0.,
-            Some(EPSILON15),
-            None
-        ));
+        assert!(equals_epsilon(rectangle.north, 0., Some(EPSILON15), None));
         assert!(equals_epsilon(
             rectangle.south,
             -1.5707963267948966,
@@ -306,7 +312,12 @@ mod tests {
     fn tile_834() {
         let tiling_scheme = GeographicTilingScheme::default();
         let rectangle = tiling_scheme.tile_x_y_to_rectange(8, 3, 4);
-        assert!(equals_epsilon(rectangle.east, -1.3744467859455345, Some(EPSILON15), None));
+        assert!(equals_epsilon(
+            rectangle.east,
+            -1.3744467859455345,
+            Some(EPSILON15),
+            None
+        ));
         assert!(equals_epsilon(
             rectangle.west,
             -1.5707963267948966,

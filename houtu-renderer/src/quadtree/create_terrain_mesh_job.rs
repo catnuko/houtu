@@ -48,8 +48,7 @@ impl Job for CreateTileJob {
                         None,
                         None,
                         self.indices_and_edges_cache,
-                    )
-                    .await;
+                    );
                 Ok(CreateTileJobOutcome { key: self.key })
             };
             #[cfg(not(target_arch = "wasm32"))]

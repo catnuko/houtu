@@ -42,24 +42,6 @@ impl QuadtreeTileStorage {
     pub fn get_mut(&mut self, k: &TileKey) -> Option<&mut QuadtreeTile> {
         return self.map.get_mut(k);
     }
-    pub fn get_children_mut(
-        &mut self,
-        parent_key: &TileKey,
-        location: Quadrant,
-    ) -> &mut QuadtreeTile {
-        let parent = self.get(parent_key).unwrap();
-        let southeast = parent.southeast.clone().unwrap();
-        let southwest = parent.southwest.clone().unwrap();
-        let northeast = parent.northeast.clone().unwrap();
-        let northwest = parent.northwest.clone().unwrap();
-        return match location {
-            Quadrant::Southeast => self.get_mut(&southeast).unwrap(),
-            Quadrant::Southwest => self.get_mut(&southwest).unwrap(),
-            Quadrant::Northeast => self.get_mut(&northeast).unwrap(),
-            Quadrant::Northwest => self.get_mut(&northwest).unwrap(),
-            _ => panic!("no children for tile {:?}", parent_key),
-        };
-    }
     fn make_new_root_tile(&self, k: &TileKey) -> QuadtreeTile {
         let r = self.tiling_scheme.tile_x_y_to_rectange(k.x, k.y, k.level);
         return QuadtreeTile::new(k.clone(), Quadrant::Root(self.root.len()), None, r);

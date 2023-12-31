@@ -19,7 +19,7 @@ pub struct XYZImageryProvider {
 }
 impl Default for XYZImageryProvider {
     fn default() -> Self {
-        let tiling_scheme = Box::new(WebMercatorTilingScheme::default());
+        let tiling_scheme = Box::new(GeographicTilingScheme::default());
         let rectangle = tiling_scheme.get_rectangle();
         Self {
             tiling_scheme: tiling_scheme,

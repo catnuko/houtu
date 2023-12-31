@@ -1,6 +1,6 @@
-use bevy::math::UVec3;
+use bevy::{math::UVec3, prelude::Component};
 
-#[derive(Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd)]
+#[derive(Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd,Component)]
 pub struct TileKey {
     pub x: u32,
     pub y: u32,

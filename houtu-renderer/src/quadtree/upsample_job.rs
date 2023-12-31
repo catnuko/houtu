@@ -1,10 +1,6 @@
-use bevy::{prelude::*};
-use houtu_jobs::{
-    AsyncReturn, Context, Job,
-};
-use houtu_scene::{
-    GeographicTilingScheme, HeightmapTerrainData,
-};
+use bevy::prelude::*;
+use houtu_jobs::{AsyncReturn, Context, Job};
+use houtu_scene::{GeographicTilingScheme, HeightmapTerrainData};
 use std::{
     io,
     sync::{Arc, Mutex},
@@ -50,8 +46,7 @@ impl Job for UpsampleJob {
                         self.key.x,
                         self.key.y,
                         self.key.level,
-                    )
-                    .await;
+                    );
                 Ok(UpsampleJobOutcome {
                     terrain_data: new_terrain_data,
                     key: self.key,

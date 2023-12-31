@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use self::terrain_bundle::TerrainBundle;
 use crate::wmts_imagery_provider::WMTSImageryProvider;
 use crate::xyz_imagery_provider::XYZImageryProvider;
 use bevy::asset::{embedded_asset, load_internal_asset};
@@ -14,24 +13,18 @@ use super::quadtree::{
 };
 mod terrain_bundle;
 mod terrain_pipeline;
-mod terrain_plugin;
+pub mod terrain_plugin;
 mod terrian_material;
-mod wrap_terrain_mesh;
+pub mod wrap_terrain_mesh;
 use super::camera::GlobeCamera;
-pub const TERRAIN_MATERIAN_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(9275037169799534);
+pub use terrain_plugin::TerrainAttachment;
+pub use terrain_bundle::{TerrainConfig,TerrainBundle};
 /// 负责渲染quadtree调度后生成的瓦片
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(terrain_plugin::Plugin);
         app.add_systems(Startup, setup);
-        // embedded_asset!(app, "terrain_material.wgsl");
-        load_internal_asset!(
-            app,
-            TERRAIN_MATERIAN_SHADER_HANDLE,
-            "terrain_material.wgsl",
-            Shader::from_wgsl
-        );
         app.add_systems(
             Update,
             real_render_system.after(process_terrain_state_machine_system),
@@ -75,7 +68,7 @@ fn setup(
 }
 
 #[derive(Component)]
-pub struct TileRendered(TileKey);
+pub struct TileRendered(pub TileKey);
 fn real_render_system(
     mut primitive: ResMut<QuadtreePrimitive>,
     mut commands: Commands,

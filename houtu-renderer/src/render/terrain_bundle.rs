@@ -99,11 +99,11 @@ impl TerrainConfig {
 
 #[derive(Bundle)]
 pub struct TerrainBundle {
-    mesh: Handle<Mesh>,
-    config: TerrainConfig,
-    tile_rendered: TileRendered,
-    spatial_bundle: SpatialBundle,
-    no_frustum_culling: NoFrustumCulling,
+    pub mesh: Handle<Mesh>,
+    pub config: TerrainConfig,
+    pub tile_rendered: TileRendered,
+    pub spatial_bundle: SpatialBundle,
+    pub no_frustum_culling: NoFrustumCulling,
 }
 impl TerrainBundle {
     pub fn from_quadtree_tile(
@@ -117,7 +117,7 @@ impl TerrainBundle {
         let data = tile.data.get_cloned_terrain_data();
         let surface_tile = data.lock().unwrap();
         let terrain_mesh = surface_tile.get_mesh().unwrap();
-        let mvp = get_mvp(globe_camera, &terrain_mesh.center);
+        let mvp = globe_camera.get_mvp();
 
         let mut attachments = vec![];
         let wrap_terrain_mesh = WrapTerrainMesh(terrain_mesh);
@@ -197,13 +197,4 @@ impl TerrainBundle {
             no_frustum_culling: NoFrustumCulling,
         };
     }
-}
-fn get_mvp(globe_camera: &mut GlobeCamera, rtc: &DVec3) -> DMat4 {
-    let view_matrix = globe_camera.get_view_matrix();
-    let projection_matrix = globe_camera.frustum.get_projection_matrix().clone();
-    // let center_eye = view_matrix.multiply_by_point(rtc);
-    let mut mvp = view_matrix.clone();
-    // mvp.set_translation(&center_eye);
-    mvp = projection_matrix * mvp;
-    return mvp;
 }

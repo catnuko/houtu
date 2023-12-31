@@ -13,8 +13,8 @@ impl Default for GlobePlugin {
 }
 impl bevy::app::Plugin for GlobePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(Ellipsoid::WGS84);
-        app.insert_resource(EllipsoidalOccluder::default());
+        // app.insert_resource(Ellipsoid::WGS84);
+        // app.insert_resource(EllipsoidalOccluder::default());
         app.add_systems(Startup, setup);
     }
 }

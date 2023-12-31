@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use bevy::{
     math::{DVec3, DVec4},
-    prelude::{AssetServer, Assets, Handle, Image, ResMut},
+    prelude::{AssetServer, Assets, Handle, Image, ResMut, Component},
     render::renderer::RenderDevice,
 };
 use houtu_jobs::{FinishedJobs, JobSpawner};
@@ -25,9 +25,10 @@ use super::{
     tile_key::TileKey,
     upsample_job::UpsampleJob,
 };
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone,Component,Default)]
 pub enum TerrainState {
     FAILED = 0,
+    #[default]
     UNLOADED = 1,
     RECEIVING = 2,
     RECEIVED = 3,
@@ -35,18 +36,13 @@ pub enum TerrainState {
     TRANSFORMED = 5,
     READY = 6,
 }
-impl Default for TerrainState {
-    fn default() -> Self {
-        Self::UNLOADED
-    }
-}
 pub struct GlobeSurfaceTile {
     pub tile_bounding_region: Option<TileBoundingRegion>,
     pub occludee_point_in_scaled_space: Option<DVec3>,
     pub terrain_state: TerrainState,
     pub bounding_volume_is_from_mesh: bool,
-    pub clipped_by_boundaries: bool,
     pub bounding_volume_source_tile: Option<TileKey>,
+    pub clipped_by_boundaries: bool,
     pub vertex_array: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,
     pub terrain_data: Option<Arc<Mutex<HeightmapTerrainData>>>,

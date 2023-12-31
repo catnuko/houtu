@@ -1,5 +1,5 @@
 use bevy::{
-    asset::LoadState,
+    asset::{LoadState, load_internal_asset},
     core_pipeline::core_3d::Opaque3d,
     pbr::MeshPipelineKey,
     prelude::*,
@@ -76,15 +76,19 @@ impl GpuNodeAtlas {
     }
 }
 #[derive(Component)]
-pub struct TerrainBindGroup {
-    pub bind_group: BindGroup,
-    // pub shader_defines: ShaderDefines,
-    pub pipeline_id: CachedRenderPipelineId,
-}
+struct TerrainPipelineId(CachedRenderPipelineId);
+#[derive(Component)]
+pub struct TerrainBindGroup(pub BindGroup);
 pub struct Plugin;
-
+pub const TERRAIN_MATERIAN_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(9275037169799534);
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
+        load_internal_asset!(
+            app,
+            TERRAIN_MATERIAN_SHADER_HANDLE,
+            "terrain_material.wgsl",
+            Shader::from_wgsl
+        );
         app.add_systems(PostUpdate, finish_loading_attachment_from_disk);
     }
     fn finish(&self, app: &mut App) {
@@ -98,7 +102,7 @@ impl bevy::prelude::Plugin for Plugin {
                     bevy::render::Render,
                     (
                         prepare_terrain.in_set(RenderSet::Queue),
-                        queue_terrain.after(RenderSet::Prepare),
+                        queue_terrain.in_set(RenderSet::Prepare),
                     ),
                 );
         }
@@ -148,15 +152,15 @@ fn extract_terrain_config(
 /// Queses all terrain entities for rendering via the terrain pipeline.
 fn queue_terrain(
     draw_functions: Res<DrawFunctions<Opaque3d>>,
-    mut view_query: Query<(&ExtractedView, &mut RenderPhase<Opaque3d>)>,
-    terrain_query: Query<(Entity, &TerrainBindGroup)>,
+    mut view_query: Query<(&mut RenderPhase<Opaque3d>)>,
+    terrain_query: Query<(Entity, &TerrainPipelineId)>,
 ) {
     let draw_function = draw_functions.read().get_id::<DrawTerrain>().unwrap();
-    for (view, mut opaque_phase) in view_query.iter_mut() {
-        for (entity, terrain_bind_group) in terrain_query.iter() {
+    for (mut opaque_phase) in view_query.iter_mut() {
+        for (entity, pipeline_id) in terrain_query.iter() {
             opaque_phase.add(Opaque3d {
                 entity,
-                pipeline: terrain_bind_group.pipeline_id,
+                pipeline: pipeline_id.0,
                 draw_function,
                 distance: f32::MIN, // draw terrain first
                 batch_range: 0..1,
@@ -166,7 +170,6 @@ fn queue_terrain(
     }
     println!("terrain_query,{}", terrain_query.iter().len());
 }
-
 fn prepare_terrain(
     mut commands: Commands,
     images: Res<RenderAssets<Image>>,
@@ -233,13 +236,12 @@ fn prepare_terrain(
                 Ok(id) => id,
                 Err(err) => {
                     error!("{}", err);
-                    return;
+                    continue;
                 }
             };
-            commands.entity(entity).insert(TerrainBindGroup {
-                bind_group: bind_group,
-                pipeline_id,
-            });
+            commands
+                .entity(entity)
+                .insert((TerrainBindGroup(bind_group), TerrainPipelineId(pipeline_id)));
         }
     }
     queue.submit(vec![command_encoder.finish()]);

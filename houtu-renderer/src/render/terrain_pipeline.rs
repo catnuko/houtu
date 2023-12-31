@@ -28,7 +28,7 @@ use bevy::{
 
 use crate::render::terrian_material::TerrainMeshMaterial;
 
-use super::{terrain_plugin::TerrainBindGroup, TileRendered, TERRAIN_MATERIAN_SHADER_HANDLE};
+use super::{terrain_plugin::{TerrainBindGroup, TERRAIN_MATERIAN_SHADER_HANDLE}, TileRendered};
 #[derive(PartialEq, Eq, Clone, Hash)]
 pub struct ShaderDefines {
     pub apply_brightness: bool,
@@ -230,7 +230,7 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTerrainBindGroup<I> {
         _: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        pass.set_bind_group(I, &terrain_bind_group.bind_group, &[]);
+        pass.set_bind_group(I, &terrain_bind_group.0, &[]);
         RenderCommandResult::Success
     }
 }

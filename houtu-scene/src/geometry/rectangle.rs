@@ -4,7 +4,7 @@ use bevy::{math::DVec3, prelude::Component};
 
 use crate::{ellipsoid::Ellipsoid, math::*};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Default,Component)]
 pub struct Rectangle {
     pub west: f64,
     pub south: f64,
@@ -21,8 +21,8 @@ impl Rectangle {
     pub fn compute_width(&self) -> f64 {
         let mut east = self.east;
         let west = self.west;
-        if east<west{
-            east+=TAU;
+        if east < west {
+            east += TAU;
         }
         return east - west;
     }

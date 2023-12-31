@@ -65,7 +65,8 @@ impl HeightmapTerrainData {
         return self._mesh.as_ref();
     }
     pub fn has_mesh(&self) -> bool {
-        return self._mesh.is_some();
+        let res =  self._mesh.is_some();
+        return res;
     }
     pub fn can_upsample(&self) -> bool {
         return self._mesh.is_some();
@@ -84,7 +85,7 @@ impl HeightmapTerrainData {
     pub fn was_created_by_upsampling(&self) -> bool {
         return self._created_by_upsampling;
     }
-    pub async fn createMesh<T: TilingScheme>(
+    pub fn createMesh<T: TilingScheme>(
         &mut self,
         tiling_scheme: &T,
         x: u32,
@@ -120,8 +121,8 @@ impl HeightmapTerrainData {
             indices_and_edges.indices,
             indices_and_edges.index_count_without_skirts,
             vertex_count_without_skirts,
-            Some(result.minimum_height),
-            Some(result.maximum_height),
+            result.minimum_height,
+            result.maximum_height,
             result.bounding_sphere_3d,
             result.occludee_point_in_scaled_space,
             result.encoding.stride,
@@ -187,7 +188,7 @@ impl HeightmapTerrainData {
         return result;
     }
     //上采样 https://zhuanlan.zhihu.com/p/579702765
-    pub async fn upsample(
+    pub fn upsample(
         &self,
         tiling_scheme: &GeographicTilingScheme,
         thisX: u32,

@@ -1,10 +1,9 @@
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
 use bevy::{prelude::*, utils::HashMap};
 
 use super::{
     imagery_layer::{ImageryLayer, ImageryLayerId},
-    imagery_provider::ImageryProvider,
-    indices_and_edges_cache::IndicesAndEdgesCacheArc,
-    reproject_texture::ReprojectTextureTaskQueue,
     tile_key::TileKey,
 };
 use houtu_scene::{Rectangle, TilingScheme};
@@ -19,6 +18,10 @@ impl ImageryStorage {
         }
     }
     #[inline]
+    pub fn get_cloned(&self, key: &ImageryKey) -> Option<Imagery> {
+        return self.map.get(key).and_then(|x| Some(x.clone()));
+    }
+    #[inline]
     pub fn get(&self, key: &ImageryKey) -> Option<&Imagery> {
         return self.map.get(key);
     }
@@ -31,81 +34,32 @@ impl ImageryStorage {
         tile_key: &TileKey,
         imagery_layer_id: &ImageryLayerId,
         tiling_scheme: &Box<dyn TilingScheme>,
-    ) -> ImageryKey {
+    ) -> Imagery {
         let imagery_key = ImageryKey::new(tile_key.clone(), imagery_layer_id.clone());
-        if self.map.contains_key(&imagery_key) {
-            return imagery_key;
+        if let Some(v) = self.get(&imagery_key) {
+            return v.clone();
         } else {
-            let cloned = imagery_key.clone();
             let rectangle =
                 tiling_scheme.tile_x_y_to_rectange(tile_key.x, tile_key.y, tile_key.level);
             let mut new_imagery = Imagery::new(
                 imagery_key,
                 tile_key.parent().and_then(|x| {
                     let parent_key = ImageryKey::new(x, imagery_layer_id.clone());
-                    self.add_reference(&parent_key);
-                    Some(parent_key)
+                    self.get_cloned(&parent_key)
                 }),
                 rectangle,
             );
-            new_imagery.add_reference();
-            self.map.insert(new_imagery.key, new_imagery);
+            self.map.insert(imagery_key, new_imagery.clone());
             // bevy::log::info!("add new imagery {:?}", imagery_key);
-            return cloned;
+            return new_imagery;
         }
     }
     #[inline]
     pub fn remove(&mut self, key: &ImageryKey) -> Option<Imagery> {
         self.map.remove(key)
     }
-    pub fn add_reference(&mut self, key: &ImageryKey) {
-        if let Some(v) = self.get_mut(key) {
-            v.add_reference();
-        };
-    }
-    pub fn release_reference(&mut self, key: &ImageryKey) -> u32 {
-        if let Some(v) = self.get_mut(key) {
-            v.release_reference();
-            if v.reference_count == 0 {
-                if v.parent.is_some() {
-                    let parent_key = v.parent.as_ref().unwrap().clone();
-                    self.release_reference(&parent_key);
-                }
-                let v = self.get_mut(key).unwrap();
-                if v.texture.is_some() {
-                    //销毁v.texture
-                }
-                // TODO 还有很多没做，不确定会不会有问题
-                self.remove(key);
-                // bevy::log::info!("imagery is removed {:?}", key);
-                return 0;
-            }
-            let v = self.get_mut(key).unwrap();
-            return v.reference_count;
-        } else {
-            panic!("imagery is not existed,{:?}", key);
-        };
-    }
-    pub fn create_placeholder(
-        &mut self,
-        imagery_layer_id: &ImageryLayerId,
-        tiling_scheme: &Box<dyn TilingScheme>,
-    ) -> ImageryKey {
-        let key = self.add(
-            &TileKey {
-                x: 0,
-                y: 0,
-                level: 0,
-            },
-            imagery_layer_id,
-            tiling_scheme,
-        );
-        let imagery = self.get_mut(&key).unwrap();
-        imagery.state = ImageryState::PLACEHOLDER;
-        return key.clone();
-    }
 }
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum ImageryState {
     UNLOADED = 0,
     TRANSITIONING = 1,
@@ -119,7 +73,7 @@ pub enum ImageryState {
 }
 impl PartialEq for Imagery {
     fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
+        self.read().key == other.read().key
     }
 }
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -133,17 +87,40 @@ impl ImageryKey {
         return Self { key, layer_id };
     }
 }
-pub struct Imagery {
+#[derive(Clone)]
+pub struct Imagery(pub Arc<RwLock<ImageryInternal>>);
+impl Imagery {
+    pub fn new(imagery_key: ImageryKey, parent: Option<Imagery>, rectangle: Rectangle) -> Self {
+        Self(Arc::new(RwLock::new(ImageryInternal::new(
+            imagery_key,
+            parent,
+            rectangle,
+        ))))
+    }
+    pub fn read(&self) -> RwLockReadGuard<'_, ImageryInternal> {
+        self.0.read().unwrap()
+    }
+    pub fn write(&self) -> RwLockWriteGuard<'_, ImageryInternal> {
+        self.0.write().unwrap()
+    }
+    pub fn get_state(&self) -> ImageryState {
+        return self.read().state;
+    }
+    pub fn get_layer_id(&self) -> ImageryLayerId {
+        return self.read().key.layer_id.clone();
+    }
+}
+pub struct ImageryInternal {
     pub state: ImageryState,
     pub image_url: Option<String>,
     pub texture: Option<Handle<Image>>,
     pub rectangle: Rectangle,
     pub reference_count: u32,
-    pub parent: Option<ImageryKey>,
+    pub parent: Option<Imagery>,
     pub key: ImageryKey,
 }
-impl Imagery {
-    pub fn new(imagery_key: ImageryKey, parent: Option<ImageryKey>, rectangle: Rectangle) -> Self {
+impl ImageryInternal {
+    pub fn new(imagery_key: ImageryKey, parent: Option<Imagery>, rectangle: Rectangle) -> Self {
         Self {
             key: imagery_key,
             state: ImageryState::UNLOADED,

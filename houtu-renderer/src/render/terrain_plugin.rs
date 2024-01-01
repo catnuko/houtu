@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{LoadState, load_internal_asset},
+    asset::{load_internal_asset, LoadState},
     core_pipeline::core_3d::Opaque3d,
     pbr::MeshPipelineKey,
     prelude::*,
@@ -100,10 +100,7 @@ impl bevy::prelude::Plugin for Plugin {
                 .add_systems(ExtractSchedule, extract_terrain_config)
                 .add_systems(
                     bevy::render::Render,
-                    (
-                        prepare_terrain.in_set(RenderSet::Queue),
-                        queue_terrain.in_set(RenderSet::Prepare),
-                    ),
+                    (prepare_terrain.in_set(RenderSet::Prepare)),
                 );
         }
     }
@@ -148,28 +145,6 @@ fn extract_terrain_config(
         command.spawn((terrain_config_uniform, gpu_node_atlas, handle.clone()));
     }
 }
-
-/// Queses all terrain entities for rendering via the terrain pipeline.
-fn queue_terrain(
-    draw_functions: Res<DrawFunctions<Opaque3d>>,
-    mut view_query: Query<(&mut RenderPhase<Opaque3d>)>,
-    terrain_query: Query<(Entity, &TerrainPipelineId)>,
-) {
-    let draw_function = draw_functions.read().get_id::<DrawTerrain>().unwrap();
-    for (mut opaque_phase) in view_query.iter_mut() {
-        for (entity, pipeline_id) in terrain_query.iter() {
-            opaque_phase.add(Opaque3d {
-                entity,
-                pipeline: pipeline_id.0,
-                draw_function,
-                distance: f32::MIN, // draw terrain first
-                batch_range: 0..1,
-                dynamic_offset: None,
-            });
-        }
-    }
-    println!("terrain_query,{}", terrain_query.iter().len());
-}
 fn prepare_terrain(
     mut commands: Commands,
     images: Res<RenderAssets<Image>>,
@@ -185,63 +160,79 @@ fn prepare_terrain(
     pipeline_cache: Res<PipelineCache>,
     render_meshes: Res<RenderAssets<Mesh>>,
     mut pipelines: ResMut<SpecializedMeshPipelines<TerrainPipeline>>,
+    mut view_query: Query<(&mut RenderPhase<Opaque3d>)>,
+    draw_functions: Res<DrawFunctions<Opaque3d>>,
 ) {
     let mut command_encoder =
         render_device.create_command_encoder(&CommandEncoderDescriptor::default());
-    for (entity, terrain_config_uniform, mut gpu_node_atlas, mesh_handle) in &mut query {
-        update(&mut gpu_node_atlas, &mut command_encoder, &images);
-        let mut buffer = encase::UniformBuffer::new(Vec::new());
-        buffer.write(terrain_config_uniform).unwrap();
-        let vertex_uniform_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            label: Some("vertex_uniform_buffer"),
-            usage: BufferUsages::UNIFORM,
-            contents: &buffer.into_inner(),
-        });
-        let sampler = render_device.create_sampler(&SamplerDescriptor::default());
-        let (uniform_buffer, state_uniform_buffer, shader_defines) =
-            other_uniform(&gpu_node_atlas, &render_device);
-        let bind_group = render_device.create_bind_group(
-            Some("terrain_material"),
-            &terrain_pipeline.layout,
-            &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&gpu_node_atlas.create_texture_view()),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&sampler),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 3,
-                    resource: state_uniform_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 4,
-                    resource: vertex_uniform_buffer.as_entire_binding(),
-                },
-            ],
-        );
-        let key = TerrainPipelineKey {
-            shader_defines: shader_defines,
-        };
-        if let Some(mesh) = render_meshes.get(mesh_handle) {
-            let pipeline_id =
-                pipelines.specialize(&pipeline_cache, &terrain_pipeline, key, &mesh.layout);
-            let pipeline_id = match pipeline_id {
-                Ok(id) => id,
-                Err(err) => {
-                    error!("{}", err);
-                    continue;
-                }
+    let draw_function = draw_functions.read().get_id::<DrawTerrain>().unwrap();
+    for (mut opaque_phase) in view_query.iter_mut() {
+        for (entity, terrain_config_uniform, mut gpu_node_atlas, mesh_handle) in &mut query {
+            update(&mut gpu_node_atlas, &mut command_encoder, &images);
+            let mut buffer = encase::UniformBuffer::new(Vec::new());
+            buffer.write(terrain_config_uniform).unwrap();
+            let vertex_uniform_buffer =
+                render_device.create_buffer_with_data(&BufferInitDescriptor {
+                    label: Some("vertex_uniform_buffer"),
+                    usage: BufferUsages::UNIFORM,
+                    contents: &buffer.into_inner(),
+                });
+            let sampler = render_device.create_sampler(&SamplerDescriptor::default());
+            let (uniform_buffer, state_uniform_buffer, shader_defines) =
+                other_uniform(&gpu_node_atlas, &render_device);
+            let bind_group = render_device.create_bind_group(
+                Some("terrain_material"),
+                &terrain_pipeline.layout,
+                &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(
+                            &gpu_node_atlas.create_texture_view(),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::Sampler(&sampler),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: uniform_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 3,
+                        resource: state_uniform_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 4,
+                        resource: vertex_uniform_buffer.as_entire_binding(),
+                    },
+                ],
+            );
+            let key = TerrainPipelineKey {
+                shader_defines: shader_defines,
             };
-            commands
-                .entity(entity)
-                .insert((TerrainBindGroup(bind_group), TerrainPipelineId(pipeline_id)));
+            if let Some(mesh) = render_meshes.get(mesh_handle) {
+                let pipeline_id =
+                    pipelines.specialize(&pipeline_cache, &terrain_pipeline, key, &mesh.layout);
+                let pipeline_id = match pipeline_id {
+                    Ok(id) => id,
+                    Err(err) => {
+                        error!("{}", err);
+                        continue;
+                    }
+                };
+                opaque_phase.add(Opaque3d {
+                    entity,
+                    pipeline: pipeline_id,
+                    draw_function,
+                    distance: f32::MIN, // draw terrain first
+                    batch_range: 0..1,
+                    dynamic_offset: None,
+                });
+                commands
+                    .entity(entity)
+                    .insert((TerrainBindGroup(bind_group)));
+            }
         }
     }
     queue.submit(vec![command_encoder.finish()]);

@@ -123,20 +123,12 @@ impl TerrainBundle {
         let wrap_terrain_mesh = WrapTerrainMesh(terrain_mesh);
         let mesh: Mesh = wrap_terrain_mesh.into();
         for tile_imagery in tile.data.imagery.iter_mut() {
-            let imagery_opt = tile_imagery
-                .ready_imagery
-                .as_ref()
-                .and_then(|x| imagery_storage.get(x));
-            let imagery_layer_opt =
-                imagery_opt.and_then(|x| imagery_layer_storage.get(&x.key.layer_id));
-            if let (None, None) = (imagery_opt, imagery_layer_opt) {
-                continue;
-            }
-            let imagery_layer = imagery_layer_opt.expect("expect imagery layer of imagery"); //
+            let ready_imagery = tile_imagery.ready_imagery.as_ref().unwrap().clone();
+            let imagery = ready_imagery.0.read().unwrap();
+            let imagery_layer = imagery_layer_storage.get(imagery.get_layer_id()).unwrap();
             if imagery_layer.alpha == 0.0 {
                 continue;
             }
-            let imagery = imagery_opt.expect("expect a imagery");
             let texture = match imagery.texture.as_ref() {
                 Some(v) => v.clone(),
                 None => panic!("readyImagery is not actually ready!"),

@@ -19,12 +19,12 @@ pub struct TileImagery {
     pub texture_coordinate_rectangle: Option<DVec4>,
     pub texture_translation_and_scale: Option<DVec4>,
     pub use_web_mercator_t: bool,
-    pub loading_imagery: Option<ImageryKey>,
-    pub ready_imagery: Option<ImageryKey>,
+    pub loading_imagery: Option<Imagery>,
+    pub ready_imagery: Option<Imagery>,
 }
 impl TileImagery {
     pub fn new(
-        imagery_key: ImageryKey,
+        imagery: Imagery,
         texture_coordinate_rectangle: Option<DVec4>,
         use_web_mercator_t: bool,
     ) -> Self {
@@ -33,50 +33,13 @@ impl TileImagery {
             use_web_mercator_t,
             texture_translation_and_scale: None,
             ready_imagery: None,
-            loading_imagery: Some(imagery_key),
+            loading_imagery: Some(imagery),
         }
     }
-    pub fn free_resources(&mut self, imagery_storage: &mut ImageryStorage) {
-        if self.loading_imagery.is_some() {
-            imagery_storage.release_reference(self.loading_imagery.as_ref().unwrap());
-        }
-        if self.ready_imagery.is_some() {
-            imagery_storage.release_reference(self.ready_imagery.as_ref().unwrap());
-        }
+    pub fn free_resources(&mut self) {
+        self.loading_imagery = None;
+        self.ready_imagery = None;
     }
-    pub fn get_loading_imagery_mut<'a>(
-        &self,
-        imagery_storage: &'a mut ImageryStorage,
-    ) -> Option<&'a mut Imagery> {
-        self.loading_imagery
-            .as_ref()
-            .and_then(|x| imagery_storage.get_mut(x))
-    }
-    pub fn get_loading_imagery<'a>(
-        &self,
-        imagery_storage: &'a ImageryStorage,
-    ) -> Option<&'a Imagery> {
-        self.loading_imagery
-            .as_ref()
-            .and_then(|x| imagery_storage.get(x))
-    }
-    pub fn get_ready_imagery_mut<'a>(
-        &self,
-        imagery_storage: &'a mut ImageryStorage,
-    ) -> Option<&'a mut Imagery> {
-        self.ready_imagery
-            .as_ref()
-            .and_then(|x| imagery_storage.get_mut(x))
-    }
-    pub fn get_ready_imagery<'a>(
-        &self,
-        imagery_storage: &'a ImageryStorage,
-    ) -> Option<&'a Imagery> {
-        self.ready_imagery
-            .as_ref()
-            .and_then(|x| imagery_storage.get(x))
-    }
-
     pub fn process_state_machine(
         tile: &mut QuadtreeTile,
         tile_imagery_index: usize,
@@ -91,9 +54,8 @@ impl TileImagery {
         imagery_storage: &mut ImageryStorage,
     ) -> bool {
         let tile_imagery = tile.data.imagery.get_mut(tile_imagery_index).unwrap();
-
         imagery_layer.process_imagery_state_machine(
-            tile_imagery.loading_imagery.as_ref().unwrap(),
+            tile_imagery.loading_imagery.clone().unwrap(),
             asset_server,
             !tile_imagery.use_web_mercator_t,
             skip_loading,
@@ -104,51 +66,35 @@ impl TileImagery {
             globe_camera,
             imagery_storage,
         );
-        let loading_imagery = imagery_storage
-            .get_mut(tile_imagery.loading_imagery.as_ref().unwrap())
-            .unwrap();
-        if loading_imagery.state == ImageryState::READY {
-            // bevy::log::info!("imagery of tile {:?} is ready", tile.key);
+        let t = tile_imagery.loading_imagery.clone().unwrap();
+        let loading_imagery = t.read();
+        let loading_imagery_rectangle = loading_imagery.rectangle.clone();
 
-            if tile_imagery.ready_imagery.is_some() {
-                imagery_storage.release_reference(tile_imagery.ready_imagery.as_ref().unwrap());
-            }
+        if loading_imagery.state == ImageryState::READY {
             tile_imagery.ready_imagery = tile_imagery.loading_imagery.clone();
             tile_imagery.loading_imagery = None;
 
-            // bevy::log::info!(
-            //     "{:?},{:?}",
-            //     tile_imagery.key,
-            //     tile_imagery.ready_imagery.as_ref().unwrap()
-            // );
-            let loading_imagery = imagery_storage
-                .get_mut(tile_imagery.ready_imagery.as_ref().unwrap())
-                .unwrap();
-            let r = loading_imagery.rectangle.clone();
             tile_imagery.texture_translation_and_scale =
                 Some(imagery_layer.calculate_texture_translation_and_scale(
                     tile.rectangle.clone(),
                     tile_imagery,
-                    r,
+                    loading_imagery_rectangle.clone(),
                 ));
             return true; // done loading
         }
-        let r = loading_imagery.rectangle.clone();
-        let mut ancestor = loading_imagery
-            .parent
-            .as_ref()
-            .and_then(|x| Some(x.clone()));
 
-        let mut closest_ancestor_that_needs_loading: Option<ImageryKey> = None;
-        while ancestor.is_some() && {
-            if let Some(ancestor_imagery) = imagery_storage.get(ancestor.as_ref().unwrap()) {
-                ancestor_imagery.state != ImageryState::READY
-                    || !tile_imagery.use_web_mercator_t && ancestor_imagery.texture.is_none()
-            } else {
-                false
-            }
-        } {
-            let ancestor_imagery = imagery_storage.get(ancestor.as_ref().unwrap()).unwrap();
+        let mut ancestor = loading_imagery.parent.clone();
+        let mut closest_ancestor_that_needs_loading: Option<Imagery> = None;
+        let ancestor_ready = |ancestor: Option<Imagery>| {
+            ancestor.is_some_and(|x| {
+                let x = x.read();
+                x.state != ImageryState::READY
+                    || !tile_imagery.use_web_mercator_t && x.texture.is_none()
+            })
+        };
+        while ancestor.is_some() && ancestor_ready(ancestor.clone()) {
+            let t = ancestor.clone().unwrap();
+            let ancestor_imagery = t.read();
             if ancestor_imagery.state != ImageryState::FAILED
                 && ancestor_imagery.state != ImageryState::INVALID
             {
@@ -157,10 +103,7 @@ impl TileImagery {
                 }
             }
 
-            ancestor = ancestor_imagery
-                .parent
-                .as_ref()
-                .and_then(|x| Some(x.clone()));
+            ancestor = ancestor_imagery.parent.clone();
         }
 
         if (tile_imagery.ready_imagery.is_some()
@@ -168,32 +111,23 @@ impl TileImagery {
             && tile_imagery.ready_imagery != ancestor)
             || (tile_imagery.ready_imagery.is_none() && ancestor.is_none())
         {
-            if tile_imagery.ready_imagery.is_some() {
-                //readsy_imagery减少引用
-                imagery_storage.release_reference(tile_imagery.ready_imagery.as_ref().unwrap());
-            }
-            tile_imagery.ready_imagery = ancestor.as_ref().and_then(|x| Some(x.clone()));
+            tile_imagery.ready_imagery = ancestor.clone();
             if ancestor.is_some() {
                 //ancestor增加引用
-                imagery_storage.add_reference(ancestor.as_ref().unwrap());
                 tile_imagery.texture_translation_and_scale =
                     Some(imagery_layer.calculate_texture_translation_and_scale(
                         tile.rectangle.clone(),
                         tile_imagery,
-                        r,
+                        loading_imagery_rectangle.clone(),
                     ));
             }
         }
-
-        let loading_imagery = imagery_storage
-            .get_mut(tile_imagery.loading_imagery.as_ref().unwrap())
-            .unwrap();
         if loading_imagery.state == ImageryState::FAILED
             || loading_imagery.state == ImageryState::INVALID
         {
             if closest_ancestor_that_needs_loading.is_some() {
                 imagery_layer.process_imagery_state_machine(
-                    closest_ancestor_that_needs_loading.as_ref().unwrap(),
+                    closest_ancestor_that_needs_loading.clone().unwrap(),
                     asset_server,
                     !tile_imagery.use_web_mercator_t,
                     skip_loading,

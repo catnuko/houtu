@@ -57,6 +57,7 @@ impl Plugin for RendererPlugin {
                 camera::CameraPlugin,
                 quadtree::Plugin,
                 render::Plugin,
+                // GlobePlugin,
             )); //bevy_egui的插件会让wasm下canavas显示变成灰色，暂时先不用。
         #[cfg(not(target_arch = "wasm32"))]
         app.add_plugins(WorldInspectorPlugin::new());

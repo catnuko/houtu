@@ -41,12 +41,7 @@ impl TileReplacementQueue {
             self.last_before_start_of_frame = None;
         }
     }
-    pub fn trim_tiles(
-        &mut self,
-        storage: &mut QuadtreeTileStorage,
-        maximum_tiles: u32,
-        imagery_storage: &mut ImageryStorage,
-    ) {
+    pub fn trim_tiles(&mut self, storage: &mut QuadtreeTileStorage, maximum_tiles: u32) {
         // let mut tile_to_trim = self.get_tail();
         let mut keep_trimming = true;
         let mut count = self.count;
@@ -63,7 +58,7 @@ impl TileReplacementQueue {
             let tile = storage.get(&tile_key).unwrap();
             let previous = tile.replacement_previous;
 
-            if tile.eligible_for_unloading(imagery_storage) {
+            if tile.eligible_for_unloading() {
                 let entity = tile_key.clone();
                 self.remove(storage, &entity);
             }

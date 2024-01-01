@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use bevy::{
     math::{DVec3, DVec4},
-    prelude::{AssetServer, Assets, Handle, Image, ResMut, Component},
+    prelude::{AssetServer, Assets, Component, Handle, Image, ResMut},
     render::renderer::RenderDevice,
 };
 use houtu_jobs::{FinishedJobs, JobSpawner};
@@ -25,7 +25,7 @@ use super::{
     tile_key::TileKey,
     upsample_job::UpsampleJob,
 };
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone,Component,Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Component, Default)]
 pub enum TerrainState {
     FAILED = 0,
     #[default]
@@ -66,7 +66,7 @@ impl GlobeSurfaceTile {
     ///新增一个TileImagery
     pub fn add_imagery(
         &mut self,
-        imagery: ImageryKey,
+        imagery: Imagery,
         texture_coordinate_rectangle: Option<DVec4>,
         use_web_mercator_t: bool,
         insertion_point: Option<usize>,
@@ -82,10 +82,11 @@ impl GlobeSurfaceTile {
                 .splice(insertion_point..insertion_point, [tile_imagery]);
         }
     }
-    pub fn remove_imagery(&mut self, index: usize) -> TileImagery {
-        self.imagery.remove(index)
+    pub fn remove_imagery(&mut self, index: usize) {
+        let mut imagery = self.imagery.remove(index);
+        imagery.free_resources();
     }
-    pub fn eligible_for_unloading(&self, imagery_storage: &ImageryStorage) -> bool {
+    pub fn eligible_for_unloading(&self) -> bool {
         let loading_is_transitioning = self.terrain_state == TerrainState::RECEIVING
             || self.terrain_state == TerrainState::TRANSFORMING;
 
@@ -99,10 +100,8 @@ impl GlobeSurfaceTile {
             should_removeTile = if tile_imagery.loading_imagery.is_none() {
                 true
             } else {
-                let imagery = imagery_storage
-                    .get(tile_imagery.loading_imagery.as_ref().unwrap())
-                    .unwrap();
-                imagery.state != ImageryState::TRANSITIONING
+                tile_imagery.loading_imagery.as_ref().unwrap().get_state()
+                    != ImageryState::TRANSITIONING
             };
 
             i += 1;
@@ -147,29 +146,18 @@ impl GlobeSurfaceTile {
         let mut i = 0;
         let mut len = tile.data.imagery.len();
         while i < len {
-            let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
+            let tile_imagery = tile.get_imagery_mut(i);
             if tile_imagery.loading_imagery.is_none() {
                 is_upsampled_only = false;
                 i += 1;
                 continue;
             }
-            let loading_imagery = imagery_storage
-                .get(tile_imagery.loading_imagery.as_ref().unwrap())
-                .expect(
-                    format!(
-                        "tile_imagery.loading_imagery is not existed {:?}",
-                        tile_imagery.loading_imagery
-                    )
-                    .as_str(),
-                );
-            if loading_imagery.state == ImageryState::PLACEHOLDER {
-                // TODO: 进不到这里，可删除
-                bevy::log::info!("placeholder");
-                let imagery_layer_id = loading_imagery.key.layer_id;
+            let loading_imagery = tile_imagery.loading_imagery.clone().unwrap();
+            let imagery_layer_id = loading_imagery.get_layer_id();
+            if loading_imagery.get_state() == ImageryState::PLACEHOLDER {
                 let imagery_layer = imagery_layer_storage.get(&imagery_layer_id).unwrap();
                 if imagery_layer.ready && imagery_layer.imagery_provider.get_ready() {
-                    let mut tile_imagery = tile.data.remove_imagery(i);
-                    tile_imagery.free_resources(imagery_storage);
+                    tile.data.remove_imagery(i);
                     len = tile.data.imagery.len();
                     i -= 1;
                     continue;
@@ -177,9 +165,7 @@ impl GlobeSurfaceTile {
                     is_upsampled_only = false;
                 }
             }
-            let imagery_layer_id = loading_imagery.key.layer_id;
             let imagery_layer = imagery_layer_storage.get_mut(&imagery_layer_id).unwrap();
-            let loading_imagery_key = tile_imagery.loading_imagery.as_ref().unwrap().clone();
             let this_tile_done_loading = TileImagery::process_state_machine(
                 tile,
                 i,
@@ -193,16 +179,15 @@ impl GlobeSurfaceTile {
                 globe_camera,
                 imagery_storage,
             );
-            let loading_imagery = imagery_storage.get(&loading_imagery_key).unwrap();
-            let tile_imagery = tile.data.imagery.get_mut(i).unwrap();
+            let tile_imagery = tile.get_imagery_mut(i);
             is_done_loading = is_done_loading && this_tile_done_loading;
             is_any_tile_loaded = is_any_tile_loaded
                 || this_tile_done_loading
                 || tile_imagery.ready_imagery.is_some();
-            is_upsampled_only = is_upsampled_only
-                && tile_imagery.loading_imagery.is_some()
-                && (loading_imagery.state == ImageryState::FAILED
-                    || loading_imagery.state == ImageryState::INVALID);
+            is_upsampled_only = is_upsampled_only && tile_imagery.loading_imagery.is_some() && {
+                let state = loading_imagery.get_state();
+                (state == ImageryState::FAILED || state == ImageryState::INVALID)
+            };
 
             i += 1;
         }

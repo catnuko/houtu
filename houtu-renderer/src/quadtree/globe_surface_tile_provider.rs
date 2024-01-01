@@ -219,7 +219,6 @@ impl GlobeSurfaceTileProvider {
         tile_key: TileKey,
         imagery_layer_storage: &mut ImageryLayerStorage,
         primitive: &mut QuadtreePrimitive,
-        imagery_storage: &mut ImageryStorage,
     ) -> bool {
         let tile = primitive.storage.get_mut(&tile_key).unwrap();
         let terrain_ready = tile.data.terrain_state == TerrainState::READY;
@@ -236,9 +235,8 @@ impl GlobeSurfaceTileProvider {
                 if !ready {
                     ready
                 } else {
-                    let loading_imagery = imagery_storage
-                        .get(imagery.loading_imagery.as_ref().unwrap())
-                        .unwrap();
+                    let loading_imagery =
+                        imagery.loading_imagery.as_ref().unwrap().read();
                     ready
                         || loading_imagery.state == ImageryState::FAILED
                         || loading_imagery.state == ImageryState::INVALID
@@ -247,10 +245,10 @@ impl GlobeSurfaceTileProvider {
             let layer_id = {
                 let mut id = ImageryLayerId::new();
                 if imagery.loading_imagery.is_some() {
-                    id = imagery.loading_imagery.as_ref().unwrap().layer_id
+                    id = imagery.loading_imagery.as_ref().unwrap().get_layer_id()
                 }
                 if imagery.ready_imagery.is_some() {
-                    id = imagery.ready_imagery.as_ref().unwrap().layer_id
+                    id = imagery.ready_imagery.as_ref().unwrap().get_layer_id()
                 }
                 id
             };
@@ -300,8 +298,12 @@ impl GlobeSurfaceTileProvider {
                         if !v {
                             v
                         } else {
-                            let descendant_loading_imagery = imagery_storage
-                                .get(descendant_tile_imagery.loading_imagery.as_ref().unwrap())
+                            let descendant_loading_imagery = descendant_tile_imagery
+                                .loading_imagery
+                                .as_ref()
+                                .unwrap()
+                                .0
+                                .read()
                                 .unwrap();
                             v || descendant_loading_imagery.state == ImageryState::FAILED
                                 || descendant_loading_imagery.state == ImageryState::INVALID
@@ -314,14 +316,14 @@ impl GlobeSurfaceTileProvider {
                                 .loading_imagery
                                 .as_ref()
                                 .unwrap()
-                                .layer_id
+                                .get_layer_id()
                         }
                         if descendant_tile_imagery.ready_imagery.is_some() {
                             id = descendant_tile_imagery
                                 .ready_imagery
                                 .as_ref()
                                 .unwrap()
-                                .layer_id
+                                .get_layer_id()
                         }
                         id
                     };
@@ -461,10 +463,7 @@ pub fn update_tile_bounding_region(
                 let terrain_data = cloned.lock().unwrap();
                 let mesh = terrain_data._mesh.as_ref().unwrap();
 
-                map.insert(
-                    tile_key,
-                    (mesh.minimum_height, mesh.maximum_height),
-                );
+                map.insert(tile_key, (mesh.minimum_height, mesh.maximum_height));
             }
             ancestor_tile = in_ancestor_tile.parent.and_then(|x| {
                 ancestor_tile_key = Some(x);

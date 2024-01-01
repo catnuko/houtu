@@ -258,7 +258,7 @@ fn process_tile_load_queue(
     let size = primitive.tile_cache_size;
     primitive
         .tile_replacement_queue
-        .trim_tiles(&mut primitive.storage, size, imagery_storage);
+        .trim_tiles(&mut primitive.storage, size);
 
     let end_time = time.elapsed_seconds_f64() + primitive.load_queue_time_slice;
 
@@ -511,7 +511,6 @@ fn visit_tile(
                 tile_key,
                 imagery_layer_storage,
                 primitive,
-                imagery_storage,
             );
             // renderable = false;
         }

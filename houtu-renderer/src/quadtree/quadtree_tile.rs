@@ -5,6 +5,7 @@ use super::globe_surface_tile::GlobeSurfaceTile;
 
 use super::imagery_layer_storage::ImageryLayerStorage;
 use super::imagery_storage::ImageryStorage;
+use super::tile_imagery::TileImagery;
 use super::tile_key::TileKey;
 use super::tile_selection_result::TileSelectionResult;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -65,8 +66,17 @@ impl QuadtreeTile {
             entity: None,
         }
     }
-    pub fn eligible_for_unloading(&self, imagery_storage: &ImageryStorage) -> bool {
-        return self.data.eligible_for_unloading(imagery_storage);
+    #[inline]
+    pub fn get_imagery(&self, index: usize) -> &TileImagery {
+        self.data.imagery.get(index).unwrap()
+    }
+    #[inline]
+    pub fn get_imagery_mut(&mut self, index: usize) -> &mut TileImagery {
+        self.data.imagery.get_mut(index).unwrap()
+    }
+    #[inline]
+    pub fn eligible_for_unloading(&self) -> bool {
+        return self.data.eligible_for_unloading();
     }
 }
 

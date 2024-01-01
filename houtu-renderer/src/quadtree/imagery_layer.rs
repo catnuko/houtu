@@ -6,8 +6,8 @@ use bevy::{
     render::{
         define_atomic_id,
         render_resource::{
-            encase, BufferInitDescriptor, BufferUsages, Extent3d, TextureDescriptor,
-            TextureDimension, TextureFormat, TextureUsages, BufferDescriptor,
+            encase, BufferDescriptor, BufferInitDescriptor, BufferUsages, Extent3d,
+            TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
         renderer::RenderDevice,
     },
@@ -455,13 +455,13 @@ impl ImageryLayer {
 
                 let tex_coords_rectangle = DVec4::new(min_u, min_v, max_u, max_v);
                 let key = TileKey::new(i, j, imagery_level);
-                let imagery_key =
+                let imagery =
                     imagery_storage.add(&key, &self.id, &self.imagery_provider.get_tiling_scheme());
                 if i == 1 && j == 2 && imagery_level == 3 {
                     info!("{}", use_web_mercator_t);
                 }
                 tile.data.add_imagery(
-                    imagery_key.clone(),
+                    imagery,
                     Some(tex_coords_rectangle),
                     use_web_mercator_t,
                     insertion_point,
@@ -532,7 +532,7 @@ impl ImageryLayer {
         );
     }
     pub fn reproject_texture(
-        imagery_key: &mut ImageryKey,
+        imagery: Imagery,
         imagery_storage: &mut ImageryStorage,
         need_geographic_projection: bool,
         images: &mut Assets<Image>,
@@ -544,14 +544,13 @@ impl ImageryLayer {
         globe_camera: &GlobeCamera,
         projection_name: &'static str,
     ) {
-        let imagery = imagery_storage.get_mut(&imagery_key).unwrap();
-        let rectangle = imagery.rectangle.clone();
+        let img = imagery.read();
+        let rectangle = img.rectangle.clone();
         if need_geographic_projection
             && projection_name != "GeographicTilingScheme"
             && rectangle.compute_width() / width as f64 > 1e-5
             && false
         {
-            imagery_storage.add_reference(&imagery_key);
             let mut sin_latitude = rectangle.south.sin() as f32;
             let south_mercator_y = 0.5 * ((1.0 + sin_latitude) / (1.0 - sin_latitude)).ln();
 
@@ -560,9 +559,8 @@ impl ImageryLayer {
             let one_over_mercator_height = 1.0 / (north_mercator_y - south_mercator_y);
             let mut web_mercator_t: Vec<f32> = vec![0.0; 2 * 64];
 
-            let imagery = imagery_storage.get_mut(&imagery_key).unwrap();
-            let south = imagery.rectangle.south as f32;
-            let north = imagery.rectangle.north as f32;
+            let south = img.rectangle.south as f32;
+            let north = img.rectangle.north as f32;
 
             let mut output_index = 0;
             for web_mercator_t_index in 0..64 {
@@ -649,28 +647,28 @@ impl ImageryLayer {
             let task = ReprojectTextureTask {
                 output_buffer: output_buffer,
                 output_texture: image_handle,
-                image: imagery.texture.as_ref().expect("imagery.texture").clone(),
+                image: img.texture.as_ref().expect("img.texture").clone(),
                 webmercartor_buffer,
                 index_buffer,
                 uniform_buffer: buffer,
-                imagery_key: imagery.key,
+                imagery_key: img.key,
                 state: ReprojectTextureTaskState::Start,
             };
             render_world_queue.push(task);
         } else {
             // if (need_geographic_projection) {
-            //     imagery.texture = texture;
+            //     img.texture = texture;
             // }
             // ImageryLayer::finalize_reproject_texture();
-            let imagery = imagery_storage.get_mut(&imagery_key).unwrap();
-            imagery.state = ImageryState::READY;
+            let mut img = imagery.write();
+            img.state = ImageryState::READY;
         }
     }
 
     pub fn destroy(&mut self) {}
     pub fn process_imagery_state_machine(
         &mut self,
-        imagery_key: &ImageryKey,
+        loading_imagery: Imagery,
         asset_server: &AssetServer,
         need_geographic_projection: bool,
         skip_loading: bool,
@@ -681,36 +679,36 @@ impl ImageryLayer {
         globe_camera: &GlobeCamera,
         imagery_storage: &mut ImageryStorage,
     ) {
-        let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
-        if loading_imagery.state == ImageryState::UNLOADED && !skip_loading {
-            loading_imagery.state = ImageryState::REQUESTING;
+        let res = loading_imagery.0.write();
+        if res.is_err() {
+            return;
+        }
+        let mut img = res.unwrap();
+        if img.state == ImageryState::UNLOADED && !skip_loading {
+            img.state = ImageryState::REQUESTING;
             let request = self
                 .imagery_provider
-                .request_image(&imagery_key.key.clone(), asset_server);
-            let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
+                .request_image(img.get_tile_key(), asset_server);
             if let Some(v) = request {
-                loading_imagery.texture = Some(v);
+                img.texture = Some(v);
             } else {
-                loading_imagery.state = ImageryState::UNLOADED;
+                img.state = ImageryState::UNLOADED;
             }
         }
-        let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
-        if loading_imagery.state == ImageryState::REQUESTING {
-            let state = asset_server.get_load_state(loading_imagery.texture.as_ref().unwrap());
+        if img.state == ImageryState::REQUESTING {
+            let state = asset_server.get_load_state(img.texture.as_ref().unwrap());
             match state {
                 Some(LoadState::Loaded) => {
-                    loading_imagery.state = ImageryState::RECEIVED;
+                    img.state = ImageryState::RECEIVED;
                     // info!("imagery is ok");
                 }
-                Some(LoadState::Failed) => loading_imagery.state = ImageryState::FAILED,
+                Some(LoadState::Failed) => img.state = ImageryState::FAILED,
                 _ => {}
             }
         }
-        let loading_imagery = imagery_storage.get_mut(imagery_key).unwrap();
-
-        if loading_imagery.state == ImageryState::RECEIVED {
-            loading_imagery.state = ImageryState::TRANSITIONING;
-            loading_imagery.state = ImageryState::TEXTURE_LOADED;
+        if img.state == ImageryState::RECEIVED {
+            img.state = ImageryState::TRANSITIONING;
+            img.state = ImageryState::TEXTURE_LOADED;
         }
 
         // If the imagery is already ready, but we need a geographic version and don't have it yet,
@@ -718,12 +716,11 @@ impl ImageryLayer {
         // is fine initially, but the geographic one is needed later.
         // 如果图片已经准备好，我们需要一个geographic版本的图片。但是现在还没有，下一步将重新投影该影像
         // 投影到web墨卡托投影才算完成
-        let needs_reprojection =
-            loading_imagery.state != ImageryState::READY && need_geographic_projection;
+        let needs_reprojection = img.state != ImageryState::READY && need_geographic_projection;
 
-        if loading_imagery.state == ImageryState::TEXTURE_LOADED || needs_reprojection {
-            loading_imagery.state = ImageryState::TRANSITIONING;
-            // let mut key = loading_imagery.key.clone();
+        if img.state == ImageryState::TEXTURE_LOADED || needs_reprojection {
+            img.state = ImageryState::TRANSITIONING;
+            // let mut key = img.key.clone();
 
             // ImageryLayer::reproject_texture(
             //     &mut key,
@@ -738,7 +735,7 @@ impl ImageryLayer {
             //     globe_camera,
             //     self.imagery_provider.get_tiling_scheme().get_name(),
             // );
-            loading_imagery.state = ImageryState::READY;
+            img.state = ImageryState::READY;
         }
     }
     pub fn finalize_reproject_texture(&self, pixel_format: TextureFormat) {
@@ -754,12 +751,12 @@ pub fn finish_reproject_texture_system(
     mut imagery_storage: ResMut<ImageryStorage>,
     mut evt_reader: EventReader<FinishReprojectTexture>,
 ) {
-    for evt in evt_reader.iter() {
+    for evt in evt_reader.read() {
         if let Some(task) = render_world_queue.remove(&evt.imagery_key) {
             let imagery = imagery_storage.get_mut(&evt.imagery_key).unwrap();
-            imagery.texture = Some(task.output_texture.clone());
-            imagery.state = ImageryState::READY;
-            imagery_storage.release_reference(&evt.imagery_key);
+            let mut img = imagery.write();
+            img.texture = Some(task.output_texture.clone());
+            img.state = ImageryState::READY;
         } else {
         }
     }

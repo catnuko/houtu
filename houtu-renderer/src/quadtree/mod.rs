@@ -31,6 +31,7 @@ pub mod imagery_layer_storage;
 pub mod imagery_provider;
 pub mod imagery_storage;
 pub mod indices_and_edges_cache;
+pub mod terrain_data_asset;
 pub mod quadtree_primitive;
 pub mod quadtree_primitive_debug;
 pub mod quadtree_tile;
@@ -46,6 +47,7 @@ pub mod tile_replacement_queue;
 pub mod tile_selection_result;
 pub mod traversal_details;
 pub mod upsample_job;
+pub mod cesium_terrain_provider;
 pub struct Plugin;
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {

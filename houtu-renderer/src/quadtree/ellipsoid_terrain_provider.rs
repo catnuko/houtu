@@ -1,10 +1,14 @@
 use std::f64::consts::PI;
 
+use bevy::prelude::{AssetServer, Handle, Assets};
 use houtu_scene::{
-    Ellipsoid, GeographicTilingScheme, HeightmapTerrainData, Rectangle, TilingScheme,
+    get_level_zero_maximum_geometric_error, Ellipsoid, GeographicTilingScheme,
+    HeightmapTerrainData, Rectangle, TilingScheme,
 };
 
-use super::{terrain_provider::TerrainProvider, tile_key::TileKey};
+use super::{
+    terrain_data_asset::TerrainDataAsset, terrain_provider::TerrainProvider, tile_key::TileKey,
+};
 
 pub struct EllipsoidTerrainProvider {
     pub tiling_scheme: GeographicTilingScheme,
@@ -39,10 +43,15 @@ impl TerrainProvider for EllipsoidTerrainProvider {
     fn get_level_maximum_geometric_error(&self, level: u32) -> f64 {
         return self._level_zero_maximum_geometric_error / (1 << level) as f64;
     }
-    fn request_tile_geometry(&self) -> Option<HeightmapTerrainData> {
+    fn request_tile_geometry(
+        &self,
+        key: &TileKey,
+        asset_server: &AssetServer,
+        assets: &mut Assets<TerrainDataAsset>,
+    ) -> Option<Handle<TerrainDataAsset>> {
         let width = 16;
         let height = 16;
-        return Some(HeightmapTerrainData::new(
+        let terrain_data =  HeightmapTerrainData::new(
             vec![0.; width * height],
             width as u32,
             height as u32,
@@ -53,7 +62,8 @@ impl TerrainProvider for EllipsoidTerrainProvider {
             None,
             None,
             None,
-        ));
+        );
+        Some(assets.add(terrain_data.into()))
     }
     fn get_has_water_mask(&self) -> bool {
         false
@@ -67,19 +77,4 @@ impl TerrainProvider for EllipsoidTerrainProvider {
     fn get_ready(&self) -> bool {
         self.ready
     }
-}
-fn get_level_zero_maximum_geometric_error(tiling_scheme: &GeographicTilingScheme) -> f64 {
-    return get_estimated_level_zero_geometric_error_for_a_heightmap(
-        &tiling_scheme.ellipsoid,
-        64,
-        tiling_scheme.get_number_of_tiles_at_level(0),
-    );
-}
-fn get_estimated_level_zero_geometric_error_for_a_heightmap(
-    ellipsoid: &Ellipsoid,
-    tile_image_width: u32,
-    number_of_tiles_at_level_zero: u32,
-) -> f64 {
-    return (ellipsoid.maximum_radius * 2. * PI * 0.25)
-        / (tile_image_width as f64 * number_of_tiles_at_level_zero as f64);
 }

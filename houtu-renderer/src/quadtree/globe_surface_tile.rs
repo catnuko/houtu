@@ -20,6 +20,7 @@ use super::{
     quadtree_tile::QuadtreeTileLoadState,
     quadtree_tile_storage::QuadtreeTileStorage,
     reproject_texture::ReprojectTextureTaskQueue,
+    terrain_data_asset::TerrainDataAsset,
     terrain_provider::TerrainProvider,
     tile_imagery::TileImagery,
     tile_key::TileKey,
@@ -45,7 +46,7 @@ pub struct GlobeSurfaceTile {
     pub clipped_by_boundaries: bool,
     pub vertex_array: Option<bool>, //TODO 暂时不知道放什么数据结构，先放个bool值
     pub imagery: Vec<TileImagery>,
-    pub terrain_data: Option<Arc<Mutex<HeightmapTerrainData>>>,
+    pub terrain_data: Option<Handle<TerrainDataAsset>>,
     pub water_mask_texture: Option<Handle<Image>>,
 }
 impl GlobeSurfaceTile {
@@ -118,7 +119,7 @@ impl GlobeSurfaceTile {
             false
         }
     }
-    pub fn set_terrain_data(&mut self, new_terrain_data: HeightmapTerrainData) {
+    pub fn set_terrain_data(&mut self, new_terrain_data: Handle<TerrainDataAsset>) {
         self.terrain_data = Some(Arc::new(Mutex::new(new_terrain_data)));
         self.terrain_state = TerrainState::RECEIVED;
     }
@@ -281,6 +282,7 @@ fn processTerrainStateMachine(
     job_spawner: &mut JobSpawner,
     indices_and_edges_cache: &IndicesAndEdgesCacheArc,
     asset_server: &AssetServer,
+    terrain_assets: &mut Assets<TerrainDataAsset>,
     images: &mut Assets<Image>,
     render_world_queue: &mut ReprojectTextureTaskQueue,
     render_device: &RenderDevice,
@@ -339,7 +341,7 @@ fn processTerrainStateMachine(
     if tile.data.terrain_state == TerrainState::UNLOADED {
         tile.data.terrain_state = TerrainState::RECEIVING;
         let value = terrain_provider
-            .request_tile_geometry()
+            .request_tile_geometry(&tile_key, asset_server, terrain_assets)
             .expect("terrain_datasource.request_tile_geometry");
         tile.data.set_terrain_data(value);
     }

@@ -6,8 +6,6 @@ use std::{
 use crate::{
     get_estimated_level_zero_geometric_error_for_a_heightmap,
     lerp,
-    // get_estimated_level_zero_geometric_error_for_a_heightmap, get_regular_grid_and_skirt_indices_and_edge_indices,
-    // get_regular_grid_indices_and_edge_indices,
     CreateVerticeOptions,
     CreateVerticeReturn,
     GeographicTilingScheme,

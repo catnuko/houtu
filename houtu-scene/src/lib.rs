@@ -1,14 +1,3 @@
-// mod globe_surface_tile_provider;
-// mod imagery;
-// mod imagery_layer;
-// mod imagery_layer_collection;
-// mod imagery_layer_plugin;
-// mod imagery_provider;
-// mod layer_id;
-// mod load_file_system;
-// mod tile_boundingR_region;
-// mod tiling_scheme;
-// mod wmts_imagery_layer;
 mod attribute_compression;
 mod bounding_rectangle;
 mod bounding_volume;

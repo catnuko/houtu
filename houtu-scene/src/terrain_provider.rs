@@ -3,7 +3,7 @@ use std::{collections::HashMap, f64::consts::PI};
 
 use bevy::prelude::{Resource};
 
-use crate::{Ellipsoid, FOUR_GIGABYTES};
+use crate::{Ellipsoid, FOUR_GIGABYTES, get_estimated_level_zero_geometric_error_for_a_heightmap};
 #[derive(Debug, Clone)]
 pub struct IndicesAndEdges {
     pub indices: Vec<u32>,
@@ -19,7 +19,6 @@ pub struct InnerIndicesAndEdges {
     pub east_indices_north_to_south: Vec<u32>,
     pub north_indices_west_to_east: Vec<u32>,
 }
-const heightmap_terrain_quality: f64 = 0.25;
 // static mut regular_grid_and_edge_indices_cache: Vec<Vec<IndicesAndEdges>> = Vec::new();
 // static mut regular_grid_and_skirt_and_edge_indices_cache: Vec<Vec<IndicesAndEdges>> = Vec::new();
 // static mut regular_grid_indices_cache: Vec<Vec<Vec<u32>>> = Vec::new();
@@ -166,15 +165,6 @@ impl IndicesAndEdgesCache {
             number_of_tiles_at_level_zero,
         );
     }
-}
-
-pub fn get_estimated_level_zero_geometric_error_for_a_heightmap(
-    ellipsoid: &Ellipsoid,
-    tile_image_width: u32,
-    number_of_tiles_at_level_zero: u32,
-) -> f64 {
-    return (ellipsoid.maximum_radius * 2. * PI * heightmap_terrain_quality)
-        / (tile_image_width * number_of_tiles_at_level_zero) as f64;
 }
 
 pub fn get_edge_indices(width: u32, height: u32) -> InnerIndicesAndEdges {

@@ -319,7 +319,10 @@ pub fn process_terrain_state_machine_system(
         }
         if *terrain_state == TerrainState::UNLOADED {
             *terrain_state = TerrainState::RECEIVING;
-            let terrain_data = quadtree.terrain_provider.request_tile_geometry().unwrap();
+            let terrain_data = quadtree
+                .terrain_provider
+                .request_tile_geometry(tile_key.x, tile_key.y, tile_key.level)
+                .unwrap();
             commands
                 .entity(entity)
                 .insert(HeightmapTerrainDataCom(terrain_data));
